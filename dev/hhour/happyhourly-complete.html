@@ -6953,7 +6953,9 @@ async function adminSaveMerchantEdit(idx) {
     .update({
       name: newName,
       category: dbCategory,
-      address: newAddress
+      address: newAddress,
+      status: newStatus,
+      active: newStatus === 'active' ? true : false
     })
     .eq('id', m._venueId);
 
@@ -6963,7 +6965,7 @@ async function adminSaveMerchantEdit(idx) {
     return;
   }
 
-  console.log('[adminSaveMerchantEdit] Successfully saved to database');
+  console.log('[adminSaveMerchantEdit] Successfully saved to database', {name: newName, status: newStatus});
   showToast('✅ Merchant saved to database');
   document.getElementById('admin-edit-merchant-modal').remove();
   adminPage('merchants', null);
