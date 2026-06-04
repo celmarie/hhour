@@ -6622,11 +6622,13 @@ function adminAddUserModal() {
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Email *</label>'
           +'<input id="add-user-email" type="email" placeholder="e.g. john@email.com" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Role</label>'
-          +'<select id="add-user-role" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;">'
+          +'<select id="add-user-role" onchange="document.getElementById(\'add-user-passcode-field\').style.display = this.value === \'admin\' ? \'block\' : \'none\'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;">'
             +'<option value="customer">Customer</option>'
             +'<option value="merchant">Merchant</option>'
             +'<option value="admin">Admin</option>'
           +'</select></div>'
+        +'<div id="add-user-passcode-field" style="display:none;"><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Admin Passcode</label>'
+          +'<input id="add-user-passcode" type="text" placeholder="e.g. 1234" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Status</label>'
           +'<select id="add-user-status" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;">'
             +'<option value="active">Active</option>'
@@ -6645,12 +6647,29 @@ async function adminSaveNewUser() {
   var email  = document.getElementById('add-user-email').value.trim();
   var role   = document.getElementById('add-user-role').value;
   var status = document.getElementById('add-user-status').value;
-  if (!name || !email) { showToast('⚠️ Name and email are required'); return; }
+  var passcode = role === 'admin' ? document.getElementById('add-user-passcode').value.trim() : null;
+
+  if (!name || !email) {
+    showToast('⚠️ Name and email are required');
+    return;
+  }
+
+  if (role === 'admin' && (!passcode || passcode.length < 4)) {
+    showToast('⚠️ Admin passcode required (minimum 4 characters)');
+    return;
+  }
+
   try {
     var { error } = await db.from('profiles').insert({ name: name, email: email, role: role, status: status });
     if (error) throw error;
+
+    // If admin, store passcode with email as key
+    if (role === 'admin' && passcode) {
+      localStorage.setItem('hh_admin_passcode_' + email, passcode);
+    }
+
     adminUsers.unshift({ _id: null, name: name, email: email, joined: 'Just now', status: status, role: role, source: 'profile', credits: 0, reports: 0 });
-    showToast('✅ User "'+name+'" added');
+    showToast('✅ Admin user "'+name+'" added with passcode');
     document.getElementById('admin-add-user-modal').remove();
     adminPage('users', null);
   } catch(e) {
