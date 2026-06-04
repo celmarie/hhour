@@ -7272,22 +7272,14 @@ function adminPromptDeleteMerchant(idx) {
 
   console.log('[adminPromptDeleteMerchant] merchant=', m);
 
-  var confirm1 = confirm('⚠️ DELETE MERCHANT?\n\nMerchant: ' + m.name + '\nOwner: ' + m.owner + '\n\nAre you sure?');
-  if (!confirm1) {
+  var confirmed = confirm('🗑️ DELETE MERCHANT?\n\n' + m.name + '\n' + m.owner + '\n\nThis cannot be undone.');
+  if (!confirmed) {
+    console.log('[adminPromptDeleteMerchant] User cancelled');
     return;
   }
 
-  var pwd = prompt('Enter password to confirm (admin or HappyHour123):');
-  if (!pwd) {
-    return;
-  }
-
-  if (pwd === 'admin' || pwd === 'HappyHour123') {
-    console.log('[adminPromptDeleteMerchant] Password correct, calling adminDeleteMerchant');
-    adminDeleteMerchant(idx);
-  } else {
-    showToast('❌ Wrong password');
-  }
+  console.log('[adminPromptDeleteMerchant] User confirmed, calling adminDeleteMerchant');
+  adminDeleteMerchant(idx);
 }
 
 async function adminDeleteMerchant(idx) {
