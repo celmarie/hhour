@@ -6932,7 +6932,14 @@ async function adminSaveMerchantEdit(idx) {
   var newType = document.getElementById('edit-m-type').value;
   var newStatus = document.getElementById('edit-m-status').value;
 
-  console.log('[adminSaveMerchantEdit] updating venueId=' + m._venueId, {newName, newType, newAddress});
+  // Map form type to database category
+  var dbCategory = 'bars';
+  if (newType === 'restaurant') dbCategory = 'restaurants';
+  else if (newType === 'cafe' || newType === 'cocktail' || newType === 'wine') dbCategory = 'bars';
+  else if (newType === 'club') dbCategory = 'clubs';
+  else if (newType === 'beauty') dbCategory = 'beauty';
+
+  console.log('[adminSaveMerchantEdit] updating venueId=' + m._venueId, {newName, newType, dbCategory, newAddress});
 
   // Update local object
   m.owner = newOwner;
@@ -6946,7 +6953,7 @@ async function adminSaveMerchantEdit(idx) {
   var { error } = await db.from('venues')
     .update({
       name: newName,
-      category: newType || 'bars',
+      category: dbCategory,
       address: newAddress
     })
     .eq('id', m._venueId);
