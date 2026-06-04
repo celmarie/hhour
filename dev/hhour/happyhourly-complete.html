@@ -1553,7 +1553,7 @@ function googleTranslateElementInit(){
           <div style="padding:16px;display:grid;gap:14px;">
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Address</label>
-              <input id="uc-addr" type="text" placeholder="e.g. 123 Gran Via, Madrid" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='#E8192C'" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'" oninput="addrInput('uc-addr')">
+              <input id="uc-addr" type="text" placeholder="e.g. 123 Gran Via, Madrid" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='#E8192C';addrInput('uc-addr')" oninput="addrInput('uc-addr')" onblur="addrValidate('uc-addr');setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
             </div>
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Venue Name <span style="color:#E8192C;">*</span></label>
@@ -1787,7 +1787,7 @@ function googleTranslateElementInit(){
               </div>
             </div>
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Location</label>
-            <input id="com-ev-location" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="e.g. Sky Lounge, Barceloneta" oninput="addrInput('com-ev-location')" onfocus="this.style.borderColor='var(--red)';initAddressAutocomplete()" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
+            <input id="com-ev-location" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="e.g. Sky Lounge, Barceloneta" oninput="addrInput('com-ev-location')" onfocus="this.style.borderColor='var(--red)';addrInput('com-ev-location')" onblur="addrValidate('com-ev-location');setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Event name</label>
             <input id="com-ev-title" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="e.g. Friday Cocktail Night">
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Description</label>
@@ -2328,7 +2328,7 @@ function googleTranslateElementInit(){
       </div>
       <div style="padding:20px 16px;">
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Address</div>
-        <input id="b2-addr" type="text" placeholder="Carrer del Consell de Cent 280" class="biz-inp" autocomplete="off" style="margin-bottom:14px;" oninput="addrInput('b2-addr')" onblur="setTimeout(_addrHideDrop,150)">
+        <input id="b2-addr" type="text" placeholder="Carrer del Consell de Cent 280" class="biz-inp" autocomplete="off" style="margin-bottom:14px;" oninput="addrInput('b2-addr')" onfocus="addrInput('b2-addr')" onblur="addrValidate('b2-addr');setTimeout(_addrHideDrop,150)">
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Venue name</div>
         <input id="b2-venue" type="text" autocomplete="off" placeholder="e.g. The Golden Tap" class="biz-inp" style="margin-bottom:14px;" oninput="bizSearchVenue(this.value)" onfocus="initAddressAutocomplete();this.style.borderColor='var(--red)'" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Venue type</div>
@@ -3215,6 +3215,8 @@ function _addrPosition(d, inputEl) {
   }
 }
 
+var _addrValidSuggestions = {}; // Store valid suggestions per input
+
 function addrInput(inputId) {
   var inputEl = document.getElementById(inputId);
   var q = inputEl ? inputEl.value : '';
@@ -3227,14 +3229,18 @@ function addrInput(inputId) {
 
   svc.getPlacePredictions({ input: q }, function(preds, status) {
     if (!preds || status !== google.maps.places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
+
+    // Store valid suggestions for this input
+    _addrValidSuggestions[inputId] = preds.map(function(p){ return p.description; });
+
     var pin = '<svg width="16" height="20" viewBox="0 0 24 24" fill="#9E9E9E" style="flex-shrink:0;margin-top:1px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
-    d.innerHTML = preds.slice(0,5).map(function(p,i){
+    d.innerHTML = preds.slice(0,8).map(function(p,i){
       var main = (p.structured_formatting||{}).main_text || p.description.split(',')[0];
       var sec  = (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim();
       var esc  = p.description.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var mainEsc = main.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var clickHandler = (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
-      return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'"'
+      return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'" ontouchend="'+clickHandler+'"'
         +' style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;cursor:pointer;background:#fff;'
         +'border-top:'+(i?'1px solid #F0F0F0':'none')+'"'
         +' onmouseover="this.style.background=\'#F5F5F5\'" onmouseout="this.style.background=\'#fff\'">'
@@ -3247,6 +3253,24 @@ function addrInput(inputId) {
     _addrPosition(d, inputEl);
     d.style.display = 'block';
   });
+}
+
+function addrValidate(inputId) {
+  var inputEl = document.getElementById(inputId);
+  if (!inputEl || !inputEl.value) return true;
+
+  var valid = _addrValidSuggestions[inputId] && _addrValidSuggestions[inputId].includes(inputEl.value);
+
+  if (!valid && inputEl.value.length > 2) {
+    inputEl.style.borderColor = '#E8192C';
+    inputEl.style.backgroundColor = 'rgba(232, 25, 44, 0.05)';
+    showToast('⚠️ Please select from the suggestions');
+    return false;
+  } else {
+    inputEl.style.borderColor = '#E8E8EC';
+    inputEl.style.backgroundColor = '#F5F5F7';
+    return true;
+  }
 }
 
 function addrPick(address) {
@@ -6913,7 +6937,7 @@ function adminEditMerchant(idx) {
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Venue Name</label>'
           +'<input id="edit-m-venue-name" value="'+m.name+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Address</label>'
-          +'<input id="edit-m-address" autocomplete="off" value="'+(m.address||'')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" oninput="addrInput(\'edit-m-address\')" onfocus="this.style.borderColor=\'#E8192C\'" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor=\'#E8E8EC\'"></div>'
+          +'<input id="edit-m-address" autocomplete="off" value="'+(m.address||'')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" oninput="addrInput(\'edit-m-address\')" onfocus="this.style.borderColor=\'#E8192C\';addrInput(\'edit-m-address\')" onblur="addrValidate(\'edit-m-address\');setTimeout(_addrHideDrop,150);this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Venue Type</label>'
           +'<select id="edit-m-type" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
             +'<option value="">Select type...</option>'
