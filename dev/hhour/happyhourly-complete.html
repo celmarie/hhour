@@ -7257,46 +7257,65 @@ async function adminRestoreMerchant(idx) {
 }
 
 function adminPromptDeleteMerchant(idx) {
+  console.log('[adminPromptDeleteMerchant] idx=', idx, 'adminMerchants.length=', adminMerchants.length);
+
+  if (idx === undefined || idx === null || idx < 0 || idx >= adminMerchants.length) {
+    showToast('❌ Invalid merchant index');
+    return;
+  }
+
   var m = adminMerchants[idx];
   if (!m) {
     showToast('❌ Merchant not found');
     return;
   }
 
-  if (!confirm('⚠️ DELETE "' + m.name + '"?\n\nThis action cannot be undone. Type the password in the next prompt to confirm.')) {
+  console.log('[adminPromptDeleteMerchant] merchant=', m);
+
+  var confirm1 = confirm('⚠️ DELETE MERCHANT?\n\nMerchant: ' + m.name + '\nOwner: ' + m.owner + '\n\nAre you sure?');
+  if (!confirm1) {
     return;
   }
 
-  var pwd = prompt('Enter admin password to confirm deletion:');
-  if (!pwd || pwd === '') {
+  var pwd = prompt('Enter password to confirm (admin or HappyHour123):');
+  if (!pwd) {
     return;
   }
 
-  // Simple password check
   if (pwd === 'admin' || pwd === 'HappyHour123') {
+    console.log('[adminPromptDeleteMerchant] Password correct, calling adminDeleteMerchant');
     adminDeleteMerchant(idx);
   } else {
-    showToast('❌ Incorrect password - merchant not deleted');
+    showToast('❌ Wrong password');
   }
 }
 
 async function adminDeleteMerchant(idx) {
+  console.log('[adminDeleteMerchant] Called with idx:', idx);
+
+  if (idx === undefined || idx === null) {
+    showToast('❌ Invalid index');
+    return;
+  }
+
   var m = adminMerchants[idx];
-  console.log('[adminDeleteMerchant] Deleting merchant at idx:', idx, m);
+  console.log('[adminDeleteMerchant] m=', m);
 
   if (!m) {
-    showToast('❌ Merchant not found');
+    showToast('❌ Merchant not found at index ' + idx);
     return;
   }
   if (!m._venueId) {
-    showToast('❌ Venue ID missing');
+    showToast('❌ Venue ID missing for ' + m.name);
     return;
   }
 
-  showToast('⏳ Deleting merchant...');
+  showToast('⏳ Deleting ' + m.name + '...');
 
   try {
     // Soft delete: mark as deleted instead of removing
+    console.log('[adminDeleteMerchant] Updating DB for venueId:', m._venueId);
+
     var { error } = await db.from('venues')
       .update({
         status: 'deleted',
@@ -7306,21 +7325,25 @@ async function adminDeleteMerchant(idx) {
       .eq('id', m._venueId);
 
     if (error) {
-      showToast('❌ DB Error: ' + error.message);
+      var errMsg = error.message || JSON.stringify(error);
+      showToast('❌ DB Error: ' + errMsg);
       console.error('[adminDeleteMerchant] Supabase error:', error);
       return;
     }
 
+    console.log('[adminDeleteMerchant] Successfully deleted, closing modal and refreshing');
     showToast('🗑️ ' + m.name + ' deleted (can be restored)');
+
     // Close merchant modal if open
     var modal = document.getElementById('admin-merchant-modal');
     if (modal) modal.remove();
 
-    // Refresh merchants page
+    // Reload data and refresh merchants page
+    await loadAdminData();
     adminPage('merchants', null);
   } catch(e) {
     console.error('[adminDeleteMerchant] Exception:', e);
-    showToast('❌ Error: ' + e.message);
+    showToast('❌ Exception: ' + e.message);
   }
 }
 
