@@ -9521,8 +9521,15 @@ async function admDismissReport(reportId){
   try{
     var {error}=await db.from('event_reports').update({status:'dismissed'}).eq('id',reportId);
     if(error) throw error;
+    // Remove dismissed report from local array
+    eventReports = eventReports.filter(function(r){return r.id!==reportId;});
     showToast('✅ Report dismissed');
+    // Close detail modal
+    var detailOv = document.getElementById('adm-rep-detail-ov');
+    if(detailOv) detailOv.style.display = 'none';
     aUpdateEventsBadge();
+    // Reload reports from DB to update the list
+    await loadEventReports();
     adminPage('events', document.getElementById('adm-btn-events'));
   }catch(e){
     console.warn('[admDismissReport]',e);
@@ -9793,6 +9800,23 @@ function aRenderEvents(){
       }).join('');
   }
   html+='</div>';
+
+  // Dismissed reports section (history/archive)
+  var dismissedReports=(typeof eventReports!=='undefined'?eventReports.filter(function(r){return r.status==='dismissed';}):[]);
+  if(dismissedReports.length){
+    html+='<div style="'+card+'border-color:rgba(100,116,139,.2);opacity:0.7;">'
+      +'<div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;display:flex;align-items:center;justify-content:space-between;">'
+        +'<div style="font-size:14px;font-weight:700;color:#64748b;font-family:Inter,sans-serif;">📋 Report History</div>'
+        +'<span style="font-size:11px;color:#9A9AB0;font-family:Inter,sans-serif;">'+dismissedReports.length+' resolved</span>'
+      +'</div>'
+      +dismissedReports.slice(0, 5).map(function(rep){
+        return '<div style="padding:10px 18px;border-bottom:1px solid #F8F8FA;font-size:12px;color:#9A9AB0;display:flex;justify-content:space-between;">'
+          +'<div><strong>'+rep.event_title+'</strong> — '+rep.reason+'</div>'
+          +'<div style="white-space:nowrap;">'+dbAgo(rep.reported_at)+'</div>'
+        +'</div>';
+      }).join('')
+      +'</div>';
+  }
 
   return html;
 }
