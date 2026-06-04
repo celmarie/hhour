@@ -3015,9 +3015,11 @@ async function loadUserData() {
     ]);
     // Load RSVPs separately so a missing table can't break the main load
     try {
-      var {data:rsvpData} = await db.from('event_rsvps').select('event_id').eq('user_id', currentUser.id);
+      var {data:rsvpData, error:rsvpLoadErr} = await db.from('event_rsvps').select('event_id').eq('user_id', currentUser.id);
+      console.log('[loadUserData] RSVP load result:', {count: rsvpData?.length, error: rsvpLoadErr});
       if(rsvpData && rsvpData.length) {
         comMyEvents = rsvpData.map(function(r){ return r.event_id; });
+        console.log('[loadUserData] Loaded', comMyEvents.length, 'RSVP events:', comMyEvents);
         // Re-render community events to show RSVP status
         if(comCurrentTab && document.getElementById('com-tab-content')){
           if(comCurrentTab === 'meetups' && typeof comRenderMeetups === 'function') {
@@ -3026,8 +3028,10 @@ async function loadUserData() {
             comRenderMyEvents(document.getElementById('com-tab-content'));
           }
         }
+      } else {
+        console.log('[loadUserData] No RSVPs found');
       }
-    } catch(e){ /* event_rsvps table may not exist yet */ }
+    } catch(e){ console.warn('[loadUserData] RSVP load error:', e.message); }
     if (vr.data) {
       myVouchers = vr.data.map(function(row) {
         var d = row.deals || {};
@@ -12976,13 +12980,18 @@ async function comConfirm(id){
   // Persist RSVP to DB
   if(currentUser&&m._dbId){
     try{
-      var {error:e1}=await db.rpc('rsvp_event',{p_event_id:m._dbId,p_user_id:currentUser.id});
-      if(e1){
-        var {error:rsvpErr}=await db.from('event_rsvps').insert({event_id:m._dbId,user_id:currentUser.id});
-        if(rsvpErr) console.warn('[comJoinEvent] RSVP insert failed:', rsvpErr.message);
-        await db.from('community_events').update({going:m.going}).eq('id',m._dbId).catch(function(){});
+      console.log('[comConfirm] Saving RSVP - user:', currentUser.id, 'event:', m._dbId);
+      var {data:rsvpData, error:rsvpErr}=await db.from('event_rsvps').insert({event_id:m._dbId,user_id:currentUser.id});
+      if(rsvpErr) {
+        console.error('[comConfirm] RSVP insert failed:', rsvpErr.message);
+      } else {
+        console.log('[comConfirm] RSVP saved successfully');
       }
-    }catch(e){ console.warn('[comConfirm]',e); }
+      // Update event going count
+      await db.from('community_events').update({going:m.going}).eq('id',m._dbId).catch(function(e){
+        console.warn('[comConfirm] Update going count failed:', e.message);
+      });
+    }catch(e){ console.error('[comConfirm] Exception:', e); }
     // Award credits in DB
     if(currentProfile){
       var newCr=(currentProfile.credits||0)+evCr;
