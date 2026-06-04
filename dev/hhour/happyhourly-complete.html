@@ -3215,43 +3215,38 @@ function _addrPosition(d, inputEl) {
   }
 }
 
-var _addrInputTimer;
 function addrInput(inputId) {
-  clearTimeout(_addrInputTimer);
   var inputEl = document.getElementById(inputId);
   var q = inputEl ? inputEl.value : '';
   _addrDropInputId = inputId;
   var d = document.getElementById('addr-drop');
   if (!d || !q || q.length < 2) { _addrHideDrop(); return; }
 
-  // Debounce to avoid too many API calls
-  _addrInputTimer = setTimeout(function() {
-    var svc = _addrGetSvc();
-    if (!svc) { _loadGMapsAPI(function(){ addrInput(inputId); }); return; }
+  var svc = _addrGetSvc();
+  if (!svc) { _loadGMapsAPI(function(){ addrInput(inputId); }); return; }
 
-    svc.getPlacePredictions({ input: q }, function(preds, status) {
-      if (!preds || status !== google.maps.places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
-      var pin = '<svg width="16" height="20" viewBox="0 0 24 24" fill="#9E9E9E" style="flex-shrink:0;margin-top:1px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
-      d.innerHTML = preds.slice(0,5).map(function(p,i){
-        var main = (p.structured_formatting||{}).main_text || p.description.split(',')[0];
-        var sec  = (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim();
-        var esc  = p.description.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        var mainEsc = main.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        var clickHandler = (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
-        return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'"'
-          +' style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;cursor:pointer;background:#fff;'
-          +'border-top:'+(i?'1px solid #F0F0F0':'none')+'"'
-          +' onmouseover="this.style.background=\'#F5F5F5\'" onmouseout="this.style.background=\'#fff\'">'
-          +pin
-          +'<div style="min-width:0;flex:1">'
-          +'<div style="font-size:14px;font-weight:500;color:#111;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+main+'</div>'
-          +(sec?'<div style="font-size:12px;color:#777;margin-top:3px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sec+'</div>':'')
-          +'</div></div>';
-      }).join('');
-      _addrPosition(d, inputEl);
-      d.style.display = 'block';
-    });
-  }, 150);
+  svc.getPlacePredictions({ input: q }, function(preds, status) {
+    if (!preds || status !== google.maps.places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
+    var pin = '<svg width="16" height="20" viewBox="0 0 24 24" fill="#9E9E9E" style="flex-shrink:0;margin-top:1px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
+    d.innerHTML = preds.slice(0,5).map(function(p,i){
+      var main = (p.structured_formatting||{}).main_text || p.description.split(',')[0];
+      var sec  = (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim();
+      var esc  = p.description.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var mainEsc = main.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var clickHandler = (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
+      return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'"'
+        +' style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;cursor:pointer;background:#fff;'
+        +'border-top:'+(i?'1px solid #F0F0F0':'none')+'"'
+        +' onmouseover="this.style.background=\'#F5F5F5\'" onmouseout="this.style.background=\'#fff\'">'
+        +pin
+        +'<div style="min-width:0;flex:1">'
+        +'<div style="font-size:14px;font-weight:500;color:#111;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+main+'</div>'
+        +(sec?'<div style="font-size:12px;color:#777;margin-top:3px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sec+'</div>':'')
+        +'</div></div>';
+    }).join('');
+    _addrPosition(d, inputEl);
+    d.style.display = 'block';
+  });
 }
 
 function addrPick(address) {
