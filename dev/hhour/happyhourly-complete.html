@@ -13210,6 +13210,13 @@ function _initPlacesAutocomplete() {
 
       input.value = place.formatted_address;
 
+      // Auto-fill venue name with establishment name
+      var venueFieldId = id === 'b2-addr' ? 'b2-venue' : (id === 'uc-addr' ? 'uc-venue' : null);
+      if (venueFieldId && place.name) {
+        var venueField = document.getElementById(venueFieldId);
+        if (venueField) venueField.value = place.name;
+      }
+
       // Extract city and postcode if this is b2-addr
       if (id === 'b2-addr' && place.address_components) {
         var city = '', postcode = '';
