@@ -6363,8 +6363,11 @@ async function loadAdminData(){
 
     // Merchants (venues) — Always use direct query to ensure status column is included
     var { data: vFall } = await db.from('venues')
-      .select('id,name,city,status,active,address,category,owner_id,profiles(id,name,email)')
+      .select('id,name,city,status,active,address,category,owner_id,created_at,deleted_at,profiles(id,name,email)')
+      .order('deleted_at', {ascending:true,nullsFirst:true})
+      .order('status', {ascending:true})
       .order('created_at', {ascending:false});
+
     var venueSrc = (vFall||[]).map(function(v){
       return {
         id: v.id,
@@ -6374,27 +6377,45 @@ async function loadAdminData(){
         address: v.address || '',
         type: v.category || '',
         owner_name: v.profiles&&v.profiles.name||'—',
-        owner_email: v.profiles&&v.profiles.email||''
+        owner_email: v.profiles&&v.profiles.email||'',
+        deleted_at: v.deleted_at,
+        created_at: v.created_at
       };
     });
+
+    // Separate active and deleted merchants
+    adminMerchants = [];
+    var deletedMerchants = [];
+
     if (venueSrc.length) {
-      adminMerchants = venueSrc.map(function(v){
-        return {
+      venueSrc.forEach(function(v){
+        var merchant = {
           _venueId: v.id,
-          name: v.name || v.venue_name || '—',
+          name: v.name || '—',
           owner: v.owner_name || '—',
           ownerEmail: v.owner_email || '',
           address: v.address || '',
           city: v.city || '—',
           post: v.postcode || '',
           web: v.website || '',
-          type: v.venue_type || '',
-          status: v.status || 'pending',  // Default to pending if not in DB
+          type: v.type || '',
+          status: v.status || 'pending',
           rev: v.revenue || '—',
-          rating: v.rating || '—'
+          rating: v.rating || '—',
+          deleted_at: v.deleted_at,
+          created_at: v.created_at
         };
+
+        if (v.deleted_at) {
+          deletedMerchants.push(merchant);
+        } else {
+          adminMerchants.push(merchant);
+        }
       });
     }
+
+    // Store deleted merchants globally for restore functionality
+    window.adminDeletedMerchants = deletedMerchants;
     // Deal reports (customer flags)
     try {
       var { data: dbReports } = await db.from('deal_reports')
@@ -7139,7 +7160,7 @@ function adminOpenMerchant(idx) {
             +'<button onclick="showToast(\'📊 Analytics report sent to admin email\')" style="background:#F5F5F7;color:#1A1A1A;border:1.5px solid #E8E8EC;border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">📊 Analytics</button>'
             +'<button onclick="showToast(\'💳 Plan changed to Pro\')" style="background:#F5F5F7;color:#6366F1;border:1.5px solid rgba(99,102,241,.25);border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">💳 Change Plan</button>'
           +'</div>')
-      +'<button onclick="if(confirm(\'Remove this merchant permanently?\')){adminMerchants.splice('+idx+',1);showToast(\'🗑️ Merchant removed\');document.getElementById(\'admin-merchant-modal\').remove();adminPage(\'merchants\',null);}" style="background:white;color:#E8192C;border:1.5px solid rgba(232,25,44,.2);border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;width:100%;">🗑️ Remove Merchant</button>'
+      +'<button onclick="adminPromptDeleteMerchant('+idx+')" style="background:white;color:#E8192C;border:1.5px solid rgba(232,25,44,.2);border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;width:100%;">🗑️ Delete Merchant</button>'
     +'</div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
@@ -7232,6 +7253,83 @@ async function adminRestoreMerchant(idx) {
   }
   showToast('✅ '+m.name+' restored to active');
   document.getElementById('admin-merchant-modal').remove();
+  adminPage('merchants', null);
+}
+
+function adminPromptDeleteMerchant(idx) {
+  var m = adminMerchants[idx];
+  if (!m) return;
+
+  var pwd = prompt('⚠️ Delete "'+m.name+'"?\n\nEnter admin password to confirm:');
+  if (!pwd) return;
+
+  // Simple password check (replace with real auth if available)
+  if (pwd === 'admin' || pwd === 'HappyHour123') {
+    adminDeleteMerchant(idx);
+  } else {
+    showToast('❌ Incorrect password');
+  }
+}
+
+async function adminDeleteMerchant(idx) {
+  var m = adminMerchants[idx];
+  console.log('[adminDeleteMerchant] merchant:', m);
+  if (!m) {
+    showToast('❌ Merchant not found');
+    return;
+  }
+  if (!m._venueId) {
+    showToast('❌ Venue ID missing');
+    return;
+  }
+
+  // Soft delete: mark as deleted instead of removing
+  var { error } = await db.from('venues')
+    .update({status: 'deleted', active: false, deleted_at: new Date().toISOString()})
+    .eq('id', m._venueId);
+
+  if (error) {
+    showToast('❌ DB Error: ' + error.message);
+    console.error('[adminDeleteMerchant] Supabase error:', error);
+    return;
+  }
+
+  showToast('🗑️ '+m.name+' deleted (can be restored)');
+  document.getElementById('admin-merchant-modal').remove();
+  adminPage('merchants', null);
+}
+
+function adminPromptRestoreDeletedMerchant(idx) {
+  var m = window.adminDeletedMerchants[idx];
+  if (!m) return;
+
+  var pwd = prompt('⚠️ Restore "'+m.name+'"?\n\nEnter admin password to confirm:');
+  if (!pwd) return;
+
+  if (pwd === 'admin' || pwd === 'HappyHour123') {
+    adminRestoreDeletedMerchant(idx);
+  } else {
+    showToast('❌ Incorrect password');
+  }
+}
+
+async function adminRestoreDeletedMerchant(idx) {
+  var m = window.adminDeletedMerchants[idx];
+  if (!m || !m._venueId) {
+    showToast('❌ Merchant not found');
+    return;
+  }
+
+  var { error } = await db.from('venues')
+    .update({status: 'pending', active: false, deleted_at: null})
+    .eq('id', m._venueId);
+
+  if (error) {
+    showToast('❌ DB Error: ' + error.message);
+    return;
+  }
+
+  showToast('✅ '+m.name+' restored to pending');
   adminPage('merchants', null);
 }
 
@@ -7541,11 +7639,34 @@ function adminPage(page,btn){
             // Quick actions
             +'<div style="display:flex;gap:6px;flex-shrink:0;">'
               +'<button onclick="adminEditMerchant('+realIdx+')" title="Edit" style="background:#F5F5F7;border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">✏️</button>'
-              +'<button onclick="adminDeleteMerchant('+realIdx+')" title="Delete" style="background:rgba(232,25,44,.06);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">🗑️</button>'
+              +'<button onclick="adminPromptDeleteMerchant('+realIdx+')" title="Delete" style="background:rgba(232,25,44,.06);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">🗑️</button>'
             +'</div>'
           +'</div>';
         }).join(''))
       +'</div>';
+
+    // Show deleted merchants section if any exist
+    if (window.adminDeletedMerchants && window.adminDeletedMerchants.length > 0) {
+      body.innerHTML += '<div style="background:white;border-radius:14px;border:1.5px solid rgba(232,25,44,.2);overflow:hidden;margin-top:12px;">'
+        +'<div style="padding:12px 16px;border-bottom:1px solid #E8E8EC;font-size:13px;font-weight:700;color:#dc2626;">'
+          +'🗑️ Deleted Merchants ('+window.adminDeletedMerchants.length+')'
+        +'</div>'
+        +(window.adminDeletedMerchants.map(function(m,i){
+          var av=(m.name||'?').substring(0,2).toUpperCase();
+          return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F5F5F7;">'
+            +'<div style="display:flex;align-items:center;gap:12px;flex:1;">'
+              +'<div style="width:40px;height:40px;border-radius:10px;background:rgba(232,25,44,.1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#dc2626;flex-shrink:0;">'+av+'</div>'
+              +'<div style="flex:1;min-width:0;">'
+                +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+m.name+'</div>'
+                +'<div style="font-size:11px;color:#555;">'+m.owner+'</div>'
+                +'<div style="font-size:10px;color:#9A9AB0;margin-top:1px;">Deleted · 📍 '+(m.address?m.address+(m.city?', '+m.city:''):m.city||'—')+'</div>'
+              +'</div>'
+            +'</div>'
+            +'<button onclick="adminPromptRestoreDeletedMerchant('+i+')" title="Restore" style="background:rgba(18,161,80,.1);color:#12A150;border:1.5px solid rgba(18,161,80,.2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;">↺ Restore</button>'
+          +'</div>';
+        }).join(''))
+      +'</div>';
+    }
   } else if(page==='deals'){
     var pending = pendingCommunityDeals.filter(function(d){ return d.status==='pending'; });
     var approved = pendingCommunityDeals.filter(function(d){ return d.status==='approved'; });
