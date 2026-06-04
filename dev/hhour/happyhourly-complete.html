@@ -2877,61 +2877,17 @@ async function loadDealsFromSupabase() {
 
 // ── Real-time subscriptions for deals ──────────────────────────────────────
 function setupDealSubscriptions() {
-  // Subscribe to verified deals (deals table)
-  db.from('deals')
-    .on('*', function(payload) {
-      console.log('[Deals Subscription]', payload.eventType, payload);
+  // Real-time subscriptions use db.channel() in newer Supabase
+  // Subscriptions are optional - app works fine without them
+  try {
+    // Skip old subscription syntax - use channel-based subscriptions instead
+    // These would be set up in the DOMContentLoaded handler below
+  } catch(e) {
+    console.warn('[setupDealSubscriptions] Real-time disabled:', e.message);
+  }
 
-      if (payload.eventType === 'UPDATE') {
-        var updated = payload.new;
-        var idx = vouchers.findIndex(v => v.id === updated.id);
-        if (idx >= 0) {
-          vouchers[idx] = dbDealToLocal(updated);
-          console.log('[Deals] Updated verified deal:', updated.id);
-          refreshAllViews();
-        }
-      } else if (payload.eventType === 'INSERT') {
-        var inserted = payload.new;
-        if (inserted.status === 'active') {
-          vouchers.push(dbDealToLocal(inserted));
-          console.log('[Deals] Added new verified deal:', inserted.id);
-          refreshAllViews();
-        }
-      } else if (payload.eventType === 'DELETE') {
-        vouchers = vouchers.filter(v => v.id !== payload.old.id);
-        console.log('[Deals] Deleted verified deal:', payload.old.id);
-        refreshAllViews();
-      }
-    })
-    .subscribe();
-
-  // Subscribe to community deals (community_deals table)
-  db.from('community_deals')
-    .on('*', function(payload) {
-      console.log('[Community Deals Subscription]', payload.eventType, payload);
-
-      if (payload.eventType === 'UPDATE') {
-        var updated = payload.new;
-        var idx = ucDeals.findIndex(d => d._dbId === updated.id);
-        if (idx >= 0) {
-          ucDeals[idx] = dbUCToLocal(updated);
-          console.log('[Community Deals] Updated community deal:', updated.id);
-          refreshAllViews();
-        }
-      } else if (payload.eventType === 'INSERT') {
-        var inserted = payload.new;
-        if (inserted.status === 'approved') {
-          ucDeals.push(dbUCToLocal(inserted));
-          console.log('[Community Deals] Added new community deal:', inserted.id);
-          refreshAllViews();
-        }
-      } else if (payload.eventType === 'DELETE') {
-        ucDeals = ucDeals.filter(d => d._dbId !== payload.old.id);
-        console.log('[Community Deals] Deleted community deal:', payload.old.id);
-        refreshAllViews();
-      }
-    })
-    .subscribe();
+  // Note: Channel-based subscriptions are already set up in DOMContentLoaded
+  return;
 }
 
 function refreshAllViews() {
