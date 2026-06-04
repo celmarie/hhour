@@ -9519,18 +9519,35 @@ async function admBlockUser(userId, email){
 }
 async function admDismissReport(reportId){
   try{
+    // Animate fade out of report item
+    var reportEl = document.getElementById('adm-rep-'+reportId);
+    if(reportEl){
+      reportEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      reportEl.style.opacity = '0';
+      reportEl.style.transform = 'translateX(20px)';
+    }
+
+    // Update in database
     var {error}=await db.from('event_reports').update({status:'dismissed'}).eq('id',reportId);
     if(error) throw error;
+
     // Remove dismissed report from local array
     eventReports = eventReports.filter(function(r){return r.id!==reportId;});
+
     showToast('✅ Report dismissed');
+
     // Close detail modal
     var detailOv = document.getElementById('adm-rep-detail-ov');
     if(detailOv) detailOv.style.display = 'none';
-    aUpdateEventsBadge();
-    // Reload reports from DB to update the list
-    await loadEventReports();
-    adminPage('events', document.getElementById('adm-btn-events'));
+
+    // Wait for animation to complete, then refresh
+    setTimeout(function(){
+      aUpdateEventsBadge();
+      // Reload reports from DB to update the list
+      loadEventReports().then(function(){
+        adminPage('events', document.getElementById('adm-btn-events'));
+      });
+    }, 300);
   }catch(e){
     console.warn('[admDismissReport]',e);
     showToast('Failed to dismiss');
@@ -9780,7 +9797,7 @@ function aRenderEvents(){
     html+='<div style="padding:24px 20px;text-align:center;font-size:13px;color:#9A9AB0;font-family:Inter,sans-serif;">No event reports</div>';
   } else {
     html+=openReports.map(function(rep){
-        return '<div onclick="admOpenReportDetail('+rep.id+')" style="padding:14px 18px;border-bottom:1px solid #F8F8FA;cursor:pointer;transition:background 0.2s;">'
+        return '<div id="adm-rep-'+rep.id+'" onclick="admOpenReportDetail('+rep.id+')" style="padding:14px 18px;border-bottom:1px solid #F8F8FA;cursor:pointer;transition:background 0.2s;">'
           +'<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;">'
             +'<div style="flex:1;min-width:0;">'
               +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+rep.event_title+'</div>'
