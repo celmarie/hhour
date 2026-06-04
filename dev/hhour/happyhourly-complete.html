@@ -3016,7 +3016,17 @@ async function loadUserData() {
     // Load RSVPs separately so a missing table can't break the main load
     try {
       var {data:rsvpData} = await db.from('event_rsvps').select('event_id').eq('user_id', currentUser.id);
-      if(rsvpData && rsvpData.length) comMyEvents = rsvpData.map(function(r){ return r.event_id; });
+      if(rsvpData && rsvpData.length) {
+        comMyEvents = rsvpData.map(function(r){ return r.event_id; });
+        // Re-render community events to show RSVP status
+        if(comCurrentTab && document.getElementById('com-tab-content')){
+          if(comCurrentTab === 'meetups' && typeof comRenderMeetups === 'function') {
+            comRenderMeetups(document.getElementById('com-tab-content'));
+          } else if(comCurrentTab === 'my-events' && typeof comRenderMyEvents === 'function') {
+            comRenderMyEvents(document.getElementById('com-tab-content'));
+          }
+        }
+      }
     } catch(e){ /* event_rsvps table may not exist yet */ }
     if (vr.data) {
       myVouchers = vr.data.map(function(row) {
