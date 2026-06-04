@@ -6361,22 +6361,21 @@ async function loadAdminData(){
       return new Date(b.joinedRaw||0) - new Date(a.joinedRaw||0);
     });
 
-    // Merchants (venues) — reuse dbVenueOwners already fetched above
-    var venueSrc = (dbVenueOwners||[]).length ? dbVenueOwners : [];
-    if (!venueSrc.length) {
-      var { data: vFall } = await db.from('venues')
-        .select('id,name,city,profiles(id,name,email)')
-        .order('created_at', {ascending:false});
-      venueSrc = (vFall||[]).map(function(v){
-        return { id: v.id, name: v.name, city: v.city,
-          owner_name: v.profiles&&v.profiles.name||'—',
-          owner_email: v.profiles&&v.profiles.email||'' };
-      });
-    }
-    // Ensure all venue objects have an id (fallback to venue_id if needed)
-    venueSrc = venueSrc.map(function(v){
-      if (!v.id && v.venue_id) v.id = v.venue_id;
-      return v;
+    // Merchants (venues) — Always use direct query to ensure status column is included
+    var { data: vFall } = await db.from('venues')
+      .select('id,name,city,status,active,address,category,owner_id,profiles(id,name,email)')
+      .order('created_at', {ascending:false});
+    var venueSrc = (vFall||[]).map(function(v){
+      return {
+        id: v.id,
+        name: v.name,
+        city: v.city,
+        status: v.status || (v.active ? 'active' : 'pending'),
+        address: v.address || '',
+        type: v.category || '',
+        owner_name: v.profiles&&v.profiles.name||'—',
+        owner_email: v.profiles&&v.profiles.email||''
+      };
     });
     if (venueSrc.length) {
       adminMerchants = venueSrc.map(function(v){
