@@ -7258,22 +7258,32 @@ async function adminRestoreMerchant(idx) {
 
 function adminPromptDeleteMerchant(idx) {
   var m = adminMerchants[idx];
-  if (!m) return;
+  if (!m) {
+    showToast('❌ Merchant not found');
+    return;
+  }
 
-  var pwd = prompt('⚠️ Delete "'+m.name+'"?\n\nEnter admin password to confirm:');
-  if (!pwd) return;
+  if (!confirm('⚠️ DELETE "' + m.name + '"?\n\nThis action cannot be undone. Type the password in the next prompt to confirm.')) {
+    return;
+  }
 
-  // Simple password check (replace with real auth if available)
+  var pwd = prompt('Enter admin password to confirm deletion:');
+  if (!pwd || pwd === '') {
+    return;
+  }
+
+  // Simple password check
   if (pwd === 'admin' || pwd === 'HappyHour123') {
     adminDeleteMerchant(idx);
   } else {
-    showToast('❌ Incorrect password');
+    showToast('❌ Incorrect password - merchant not deleted');
   }
 }
 
 async function adminDeleteMerchant(idx) {
   var m = adminMerchants[idx];
-  console.log('[adminDeleteMerchant] merchant:', m);
+  console.log('[adminDeleteMerchant] Deleting merchant at idx:', idx, m);
+
   if (!m) {
     showToast('❌ Merchant not found');
     return;
@@ -7283,54 +7293,96 @@ async function adminDeleteMerchant(idx) {
     return;
   }
 
-  // Soft delete: mark as deleted instead of removing
-  var { error } = await db.from('venues')
-    .update({status: 'deleted', active: false, deleted_at: new Date().toISOString()})
-    .eq('id', m._venueId);
+  showToast('⏳ Deleting merchant...');
 
-  if (error) {
-    showToast('❌ DB Error: ' + error.message);
-    console.error('[adminDeleteMerchant] Supabase error:', error);
-    return;
+  try {
+    // Soft delete: mark as deleted instead of removing
+    var { error } = await db.from('venues')
+      .update({
+        status: 'deleted',
+        active: false,
+        deleted_at: new Date().toISOString()
+      })
+      .eq('id', m._venueId);
+
+    if (error) {
+      showToast('❌ DB Error: ' + error.message);
+      console.error('[adminDeleteMerchant] Supabase error:', error);
+      return;
+    }
+
+    showToast('🗑️ ' + m.name + ' deleted (can be restored)');
+    // Close merchant modal if open
+    var modal = document.getElementById('admin-merchant-modal');
+    if (modal) modal.remove();
+
+    // Refresh merchants page
+    adminPage('merchants', null);
+  } catch(e) {
+    console.error('[adminDeleteMerchant] Exception:', e);
+    showToast('❌ Error: ' + e.message);
   }
-
-  showToast('🗑️ '+m.name+' deleted (can be restored)');
-  document.getElementById('admin-merchant-modal').remove();
-  adminPage('merchants', null);
 }
 
 function adminPromptRestoreDeletedMerchant(idx) {
   var m = window.adminDeletedMerchants[idx];
-  if (!m) return;
+  if (!m) {
+    showToast('❌ Merchant not found');
+    return;
+  }
 
-  var pwd = prompt('⚠️ Restore "'+m.name+'"?\n\nEnter admin password to confirm:');
-  if (!pwd) return;
+  if (!confirm('↺ RESTORE "' + m.name + '"?\n\nThis will restore it to pending status.')) {
+    return;
+  }
+
+  var pwd = prompt('Enter admin password to confirm restoration:');
+  if (!pwd || pwd === '') {
+    return;
+  }
 
   if (pwd === 'admin' || pwd === 'HappyHour123') {
     adminRestoreDeletedMerchant(idx);
   } else {
-    showToast('❌ Incorrect password');
+    showToast('❌ Incorrect password - merchant not restored');
   }
 }
 
 async function adminRestoreDeletedMerchant(idx) {
   var m = window.adminDeletedMerchants[idx];
-  if (!m || !m._venueId) {
+  console.log('[adminRestoreDeletedMerchant] Restoring merchant at idx:', idx, m);
+
+  if (!m) {
     showToast('❌ Merchant not found');
     return;
   }
-
-  var { error } = await db.from('venues')
-    .update({status: 'pending', active: false, deleted_at: null})
-    .eq('id', m._venueId);
-
-  if (error) {
-    showToast('❌ DB Error: ' + error.message);
+  if (!m._venueId) {
+    showToast('❌ Venue ID missing');
     return;
   }
 
-  showToast('✅ '+m.name+' restored to pending');
-  adminPage('merchants', null);
+  showToast('⏳ Restoring merchant...');
+
+  try {
+    var { error } = await db.from('venues')
+      .update({
+        status: 'pending',
+        active: false,
+        deleted_at: null
+      })
+      .eq('id', m._venueId);
+
+    if (error) {
+      showToast('❌ DB Error: ' + error.message);
+      console.error('[adminRestoreDeletedMerchant] Supabase error:', error);
+      return;
+    }
+
+    showToast('✅ ' + m.name + ' restored to pending');
+    adminPage('merchants', null);
+  } catch(e) {
+    console.error('[adminRestoreDeletedMerchant] Exception:', e);
+    showToast('❌ Error: ' + e.message);
+  }
 }
 
 function adminPage(page,btn){
