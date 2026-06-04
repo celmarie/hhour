@@ -7118,27 +7118,55 @@ function adminOpenMerchant(idx) {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
-function adminApproveMerchant(idx) {
-  adminMerchants[idx].status = 'active';
-  showToast('✅ '+adminMerchants[idx].name+' approved!');
+async function adminApproveMerchant(idx) {
+  var m = adminMerchants[idx];
+  if (!m || !m._venueId) return;
+  m.status = 'active';
+  var { error } = await db.from('venues').update({active: true}).eq('id', m._venueId);
+  if (error) {
+    showToast('❌ Error: ' + error.message);
+    return;
+  }
+  showToast('✅ '+m.name+' approved!');
   document.getElementById('admin-merchant-modal').remove();
   adminPage('merchants', null);
 }
-function adminRejectMerchant(idx) {
+async function adminRejectMerchant(idx) {
+  var m = adminMerchants[idx];
+  if (!m || !m._venueId) return;
+  var { error } = await db.from('venues').delete().eq('id', m._venueId);
+  if (error) {
+    showToast('❌ Error: ' + error.message);
+    return;
+  }
   adminMerchants.splice(idx, 1);
   showToast('✕ Merchant rejected and removed');
   document.getElementById('admin-merchant-modal').remove();
   adminPage('merchants', null);
 }
-function adminSuspendMerchant(idx) {
-  adminMerchants[idx].status = 'suspended';
-  showToast('⛔ '+adminMerchants[idx].name+' suspended');
+async function adminSuspendMerchant(idx) {
+  var m = adminMerchants[idx];
+  if (!m || !m._venueId) return;
+  m.status = 'suspended';
+  var { error } = await db.from('venues').update({active: false}).eq('id', m._venueId);
+  if (error) {
+    showToast('❌ Error: ' + error.message);
+    return;
+  }
+  showToast('⛔ '+m.name+' suspended');
   document.getElementById('admin-merchant-modal').remove();
   adminPage('merchants', null);
 }
-function adminRestoreMerchant(idx) {
-  adminMerchants[idx].status = 'active';
-  showToast('✅ '+adminMerchants[idx].name+' restored to active');
+async function adminRestoreMerchant(idx) {
+  var m = adminMerchants[idx];
+  if (!m || !m._venueId) return;
+  m.status = 'active';
+  var { error } = await db.from('venues').update({active: true}).eq('id', m._venueId);
+  if (error) {
+    showToast('❌ Error: ' + error.message);
+    return;
+  }
+  showToast('✅ '+m.name+' restored to active');
   document.getElementById('admin-merchant-modal').remove();
   adminPage('merchants', null);
 }
