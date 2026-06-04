@@ -7157,7 +7157,7 @@ async function adminApproveMerchant(idx) {
     return;
   }
   m.status = 'active';
-  var { error } = await db.from('venues').update({active: true}).eq('id', m._venueId);
+  var { error } = await db.from('venues').update({active: true, status: 'active'}).eq('id', m._venueId);
   if (error) {
     showToast('❌ DB Error: ' + error.message);
     console.error('[adminApproveMerchant] Supabase error:', error);
@@ -7169,24 +7169,42 @@ async function adminApproveMerchant(idx) {
 }
 async function adminRejectMerchant(idx) {
   var m = adminMerchants[idx];
-  if (!m || !m._venueId) return;
-  var { error } = await db.from('venues').delete().eq('id', m._venueId);
+  console.log('[adminRejectMerchant] merchant:', m);
+  if (!m) {
+    showToast('❌ Merchant not found');
+    return;
+  }
+  if (!m._venueId) {
+    showToast('❌ Venue ID missing - cannot save');
+    return;
+  }
+  var { error } = await db.from('venues').update({status: 'rejected', active: false}).eq('id', m._venueId);
   if (error) {
-    showToast('❌ Error: ' + error.message);
+    showToast('❌ DB Error: ' + error.message);
+    console.error('[adminRejectMerchant] Supabase error:', error);
     return;
   }
   adminMerchants.splice(idx, 1);
-  showToast('✕ Merchant rejected and removed');
+  showToast('✕ Merchant rejected');
   document.getElementById('admin-merchant-modal').remove();
   adminPage('merchants', null);
 }
 async function adminSuspendMerchant(idx) {
   var m = adminMerchants[idx];
-  if (!m || !m._venueId) return;
+  console.log('[adminSuspendMerchant] merchant:', m);
+  if (!m) {
+    showToast('❌ Merchant not found');
+    return;
+  }
+  if (!m._venueId) {
+    showToast('❌ Venue ID missing - cannot save');
+    return;
+  }
   m.status = 'suspended';
-  var { error } = await db.from('venues').update({active: false}).eq('id', m._venueId);
+  var { error } = await db.from('venues').update({active: false, status: 'suspended'}).eq('id', m._venueId);
   if (error) {
-    showToast('❌ Error: ' + error.message);
+    showToast('❌ DB Error: ' + error.message);
+    console.error('[adminSuspendMerchant] Supabase error:', error);
     return;
   }
   showToast('⛔ '+m.name+' suspended');
@@ -7195,11 +7213,20 @@ async function adminSuspendMerchant(idx) {
 }
 async function adminRestoreMerchant(idx) {
   var m = adminMerchants[idx];
-  if (!m || !m._venueId) return;
+  console.log('[adminRestoreMerchant] merchant:', m);
+  if (!m) {
+    showToast('❌ Merchant not found');
+    return;
+  }
+  if (!m._venueId) {
+    showToast('❌ Venue ID missing - cannot save');
+    return;
+  }
   m.status = 'active';
-  var { error } = await db.from('venues').update({active: true}).eq('id', m._venueId);
+  var { error } = await db.from('venues').update({active: true, status: 'active'}).eq('id', m._venueId);
   if (error) {
-    showToast('❌ Error: ' + error.message);
+    showToast('❌ DB Error: ' + error.message);
+    console.error('[adminRestoreMerchant] Supabase error:', error);
     return;
   }
   showToast('✅ '+m.name+' restored to active');
