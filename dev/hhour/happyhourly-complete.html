@@ -6368,7 +6368,7 @@ async function loadAdminData(){
         .select('id,name,city,profiles(id,name,email)')
         .order('created_at', {ascending:false});
       venueSrc = (vFall||[]).map(function(v){
-        return { name: v.name, city: v.city,
+        return { id: v.id, name: v.name, city: v.city,
           owner_name: v.profiles&&v.profiles.name||'—',
           owner_email: v.profiles&&v.profiles.email||'' };
       });
@@ -6376,6 +6376,7 @@ async function loadAdminData(){
     if (venueSrc.length) {
       adminMerchants = venueSrc.map(function(v){
         return {
+          _venueId: v.id,
           name: v.name || v.venue_name || '—',
           owner: v.owner_name || '—',
           ownerEmail: v.owner_email || '',
@@ -6906,14 +6907,39 @@ function adminEditMerchant(idx) {
 
 async function adminSaveMerchantEdit(idx) {
   var m = adminMerchants[idx];
-  if (!m) return;
-  m.owner = document.getElementById('edit-m-owner-name').value.trim();
-  m.ownerEmail = document.getElementById('edit-m-owner-email').value.trim();
-  m.name = document.getElementById('edit-m-venue-name').value.trim();
-  m.address = document.getElementById('edit-m-address').value.trim();
-  m.type = document.getElementById('edit-m-type').value;
-  m.status = document.getElementById('edit-m-status').value;
-  showToast('✅ Merchant updated');
+  if (!m || !m._venueId) return;
+
+  // Collect form data
+  var newOwner = document.getElementById('edit-m-owner-name').value.trim();
+  var newEmail = document.getElementById('edit-m-owner-email').value.trim();
+  var newName = document.getElementById('edit-m-venue-name').value.trim();
+  var newAddress = document.getElementById('edit-m-address').value.trim();
+  var newType = document.getElementById('edit-m-type').value;
+  var newStatus = document.getElementById('edit-m-status').value;
+
+  // Update local object
+  m.owner = newOwner;
+  m.ownerEmail = newEmail;
+  m.name = newName;
+  m.address = newAddress;
+  m.type = newType;
+  m.status = newStatus;
+
+  // Save to database
+  var { error } = await db.from('venues')
+    .update({
+      name: newName,
+      category: newType || 'bars',
+      address: newAddress
+    })
+    .eq('id', m._venueId);
+
+  if (error) {
+    showToast('❌ Error saving merchant: ' + error.message);
+    return;
+  }
+
+  showToast('✅ Merchant saved to database');
   document.getElementById('admin-edit-merchant-modal').remove();
   adminPage('merchants', null);
 }
