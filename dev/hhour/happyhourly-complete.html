@@ -12921,10 +12921,13 @@ async function comSubmitReport(){
       user_id:currentUser.id,
       type:'new',
       icon:'🚩',
+      icon_class:'ai-red',
       title:'Report submitted',
       body:'Your report on "'+eventTitle+'" has been submitted.',
-      unread:true
-    }).then(function(){}, function(e){console.warn('[db notif]',e);});
+      read:false
+    }).then(function(){
+      console.log('[Notification saved to DB]');
+    }, function(e){console.warn('[db notif error]',e);});
   }catch(e){
     console.error('[comSubmitReport] caught error:', e);
     showToast('❌ '+e.message);
