@@ -3019,7 +3019,9 @@ async function loadUserData() {
       if(_dismissed.includes(row.id)) return false;
       return true;
     });
+    console.log('[loadUserData] Loaded', _rawNotifs.length, 'notifications from DB');
     alerts = _rawNotifs.map(function(row, i){
+      console.log('[loadUserData] Converting notification:', row.title, 'type:', row.type);
       return {
         id: i, type: row.type || 'new', icon: row.icon || '📍',
         cls: row.icon_class || 'ai-red', title: row.title,
@@ -3027,6 +3029,7 @@ async function loadUserData() {
         unread: !row.read, act: true, _dbId: row.id
       };
     });
+    console.log('[loadUserData] Total alerts after conversion:', alerts.length);
   } catch (e) { console.warn('[Supabase] user data load failed', e); }
 }
 
@@ -3053,7 +3056,13 @@ async function handleAuthSession(user) {
   if(typeof comLoadMyCreatedFromDB==='function') comLoadMyCreatedFromDB();
   if (typeof renderMyVouchers === 'function') renderMyVouchers();
   if (typeof renderSaved      === 'function') renderSaved();
-  if (typeof renderAlerts     === 'function') renderAlerts('all');
+  console.log('[handleAuthSession] Rendering alerts - total in array:', alerts.length);
+  if (typeof renderAlerts     === 'function') {
+    renderAlerts('all');
+    console.log('[handleAuthSession] ✅ Alerts rendered');
+  } else {
+    console.warn('[handleAuthSession] ❌ renderAlerts function not found');
+  }
 
   var role = (profile && profile.role)
     || (user.user_metadata && user.user_metadata.role)
@@ -12887,6 +12896,7 @@ async function comSubmitReport(){
     }
 
     // Also save to DB for persistence (non-blocking)
+    console.log('[comSubmitReport] Saving notification to DB for user:', currentUser.id);
     db.from('notifications').insert({
       user_id:currentUser.id,
       type:'new',
@@ -12896,8 +12906,10 @@ async function comSubmitReport(){
       body:'Your report on "'+eventTitle+'" has been submitted.',
       read:false
     }).then(function(){
-      console.log('[Notification saved to DB]');
-    }, function(e){console.warn('[db notif error]',e);});
+      console.log('[comSubmitReport] ✅ Notification saved to DB successfully');
+    }, function(e){
+      console.error('[comSubmitReport] ❌ Notification save failed:', e.message || e);
+    });
   }catch(e){
     console.error('[comSubmitReport] caught error:', e);
     showToast('❌ '+e.message);
