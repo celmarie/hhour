@@ -3331,6 +3331,11 @@ let curScreen='deals', prevScreen='deals', curV=0, qty=1;
 // CLOCK
 // Defer all DOM-dependent startup calls until the DOM is ready
 document.addEventListener('DOMContentLoaded', async function(){
+  // Preload Google Maps API immediately for address autocomplete
+  if (GMAPS_KEY && GMAPS_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY') {
+    _loadGMapsAPI(_initPlacesAutocomplete);
+  }
+
   // Check session FIRST — hide login screen immediately so refresh doesn't show it
   var { data: { session } } = await db.auth.getSession();
   if (session) {
@@ -13110,7 +13115,11 @@ function _loadGMapsAPI(cb) {
   };
   var s = document.createElement('script');
   s.src = 'https://maps.googleapis.com/maps/api/js?key=' + GMAPS_KEY + '&libraries=places&callback=_onGMapsLoaded';
-  s.async = true; s.defer = true;
+  s.async = true;
+  s.onerror = function() {
+    console.error('Google Maps API failed to load');
+    _gmapsLoading = false;
+  };
   document.head.appendChild(s);
 }
 
