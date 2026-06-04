@@ -6362,7 +6362,7 @@ async function loadAdminData(){
     });
 
     // Merchants (venues) — reuse dbVenueOwners already fetched above
-    var venueSrc = dbVenueOwners.length ? dbVenueOwners : [];
+    var venueSrc = (dbVenueOwners||[]).length ? dbVenueOwners : [];
     if (!venueSrc.length) {
       var { data: vFall } = await db.from('venues')
         .select('id,name,city,profiles(id,name,email)')
@@ -6373,6 +6373,11 @@ async function loadAdminData(){
           owner_email: v.profiles&&v.profiles.email||'' };
       });
     }
+    // Ensure all venue objects have an id (fallback to venue_id if needed)
+    venueSrc = venueSrc.map(function(v){
+      if (!v.id && v.venue_id) v.id = v.venue_id;
+      return v;
+    });
     if (venueSrc.length) {
       adminMerchants = venueSrc.map(function(v){
         return {
@@ -6907,7 +6912,17 @@ function adminEditMerchant(idx) {
 
 async function adminSaveMerchantEdit(idx) {
   var m = adminMerchants[idx];
-  if (!m || !m._venueId) return;
+  console.log('[adminSaveMerchantEdit] merchant:', m);
+
+  if (!m) {
+    showToast('❌ Merchant not found');
+    return;
+  }
+  if (!m._venueId) {
+    showToast('❌ Venue ID missing - cannot save');
+    console.log('[adminSaveMerchantEdit] _venueId missing!', m);
+    return;
+  }
 
   // Collect form data
   var newOwner = document.getElementById('edit-m-owner-name').value.trim();
@@ -6916,6 +6931,8 @@ async function adminSaveMerchantEdit(idx) {
   var newAddress = document.getElementById('edit-m-address').value.trim();
   var newType = document.getElementById('edit-m-type').value;
   var newStatus = document.getElementById('edit-m-status').value;
+
+  console.log('[adminSaveMerchantEdit] updating venueId=' + m._venueId, {newName, newType, newAddress});
 
   // Update local object
   m.owner = newOwner;
@@ -6935,10 +6952,12 @@ async function adminSaveMerchantEdit(idx) {
     .eq('id', m._venueId);
 
   if (error) {
-    showToast('❌ Error saving merchant: ' + error.message);
+    showToast('❌ DB Error: ' + error.message);
+    console.error('[adminSaveMerchantEdit] Supabase error:', error);
     return;
   }
 
+  console.log('[adminSaveMerchantEdit] Successfully saved to database');
   showToast('✅ Merchant saved to database');
   document.getElementById('admin-edit-merchant-modal').remove();
   adminPage('merchants', null);
@@ -7120,11 +7139,21 @@ function adminOpenMerchant(idx) {
 
 async function adminApproveMerchant(idx) {
   var m = adminMerchants[idx];
-  if (!m || !m._venueId) return;
+  console.log('[adminApproveMerchant] merchant:', m);
+  if (!m) {
+    showToast('❌ Merchant not found');
+    return;
+  }
+  if (!m._venueId) {
+    showToast('❌ Venue ID missing - cannot save');
+    console.log('[adminApproveMerchant] _venueId missing!', m);
+    return;
+  }
   m.status = 'active';
   var { error } = await db.from('venues').update({active: true}).eq('id', m._venueId);
   if (error) {
-    showToast('❌ Error: ' + error.message);
+    showToast('❌ DB Error: ' + error.message);
+    console.error('[adminApproveMerchant] Supabase error:', error);
     return;
   }
   showToast('✅ '+m.name+' approved!');
