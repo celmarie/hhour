@@ -3169,6 +3169,7 @@ function _addrPosition(d, inputEl) {
   var r   = inputEl.getBoundingClientRect();
   // Use visualViewport when available (handles mobile keyboard correctly)
   var vv  = window.visualViewport;
+  var vvW = vv ? vv.width : window.innerWidth;
   var vvH = vv ? vv.height : window.innerHeight;
   var vvOffsetTop  = vv ? vv.offsetTop  : 0;
   var vvOffsetLeft = vv ? vv.offsetLeft : 0;
@@ -3180,8 +3181,13 @@ function _addrPosition(d, inputEl) {
   var spaceBelow = vvH - bottom;
   var spaceAbove = top;
 
-  d.style.left  = left + 'px';
-  d.style.width = r.width + 'px';
+  // Ensure dropdown doesn't overflow screen width on mobile
+  var dropWidth = r.width;
+  var maxLeft = vvW - dropWidth;
+  var finalLeft = Math.max(0, Math.min(left, maxLeft));
+
+  d.style.left  = finalLeft + 'px';
+  d.style.width = dropWidth + 'px';
   d.style.right = 'auto';
 
   if (spaceBelow >= 120 || spaceBelow >= spaceAbove) {
