@@ -2868,6 +2868,10 @@ async function loadDealsFromSupabase() {
     } else {
       ucDeals = []; // No community deals from DB
     }
+
+    // Render deals immediately after loading for faster display
+    if (typeof renderCoupons === 'function') renderCoupons('all');
+    if (typeof renderUC === 'function') renderUC('all');
   } catch (e) { console.warn('[Supabase] deals load failed — using seed data', e); }
 }
 
@@ -5738,11 +5742,11 @@ function goScreen(name){
   if(name==='terms'){ var tb=document.getElementById('screen-terms-body'); if(tb) tb.textContent=adminContent.termsGeneral||''; }
   if(name==='privacy'){ var pb=document.getElementById('screen-privacy-body'); if(pb) pb.textContent=adminContent.privacyPolicy||''; }
   if(name==='settings') { var sp=document.getElementById('st-profile-sub'); if(sp) sp.textContent=(document.querySelector('.prof-name')||{textContent:'John Doe'}).textContent+' · '+(document.querySelector('.prof-email')||{textContent:'john.doe@email.com'}).textContent; }
-  if(name==='deals') { setTimeout(function(){
+  if(name==='deals') {
     if(typeof renderCoupons==='function') renderCoupons('all');
     if(typeof renderUC==='function') renderUC('all');
     renderAllDeals('all');
-  }, 50); }
+  }
   if(name==='invitedeals') renderUnlockedDeals();
   if(name==='alldeals') { _adCurTab='all'; renderAllDeals('all'); }
   if(name==='profile') updateLogoutBtnLabel();
