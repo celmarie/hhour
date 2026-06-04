@@ -13159,18 +13159,50 @@ function _initPlacesAutocomplete() {
   _autocompleteInited = true;
   if (typeof google === 'undefined' || !google.maps || !google.maps.places) return;
 
-  // Init the shared service used by addrInput()
+  // Use native Google Autocomplete widget (works great on mobile)
+  var acOptions = {
+    types: ['establishment', 'geocode'],
+    fields: ['formatted_address', 'name', 'geometry', 'address_components']
+  };
+
+  // Apply to all address input fields
+  var addressFields = ['uc-addr', 'b2-addr', 'com-ev-location', 'edit-m-address', 'pa'];
+  addressFields.forEach(function(id) {
+    var input = document.getElementById(id);
+    if (!input) return;
+
+    var ac = new google.maps.places.Autocomplete(input, acOptions);
+    ac.addListener('place_changed', function() {
+      var place = ac.getPlace();
+      if (!place || !place.formatted_address) return;
+
+      input.value = place.formatted_address;
+
+      // Extract city and postcode if this is b2-addr
+      if (id === 'b2-addr' && place.address_components) {
+        var city = '', postcode = '';
+        place.address_components.forEach(function(comp) {
+          if (comp.types.includes('locality')) city = comp.long_name;
+          if (comp.types.includes('postal_code')) postcode = comp.long_name;
+        });
+        if (city) document.getElementById('b2-city').value = city;
+        if (postcode) document.getElementById('b2-post').value = postcode;
+      }
+
+      // Mark as valid
+      input.style.borderColor = '#E8E8EC';
+      input.style.backgroundColor = '#F5F5F7';
+    });
+  });
+
+  // Also init the shared service for old custom dropdown (will be phased out)
   _addrSvc = new google.maps.places.AutocompleteService();
 
-  // Merchant deal creation address (#pa) — keep native widget for the merchant form
+  // Keep legacy code for #pa field if it exists
   var paInput = document.getElementById('pa');
-  if (paInput) {
-    var paAc = new google.maps.places.Autocomplete(paInput, {
-      types: ['establishment', 'geocode'],
-      fields: ['formatted_address', 'name', 'geometry']
-    });
-    paAc.addListener('place_changed', function() {
-      var place = paAc.getPlace();
+  if (paInput && _autocompleteInited) {
+    // Already initialized above
+  }
       var addr = place.formatted_address || place.name || '';
       if (addr) { paInput.value = addr; clearTimeout(_addrTimer); updateAddressMap(); }
     });
