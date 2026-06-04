@@ -7256,6 +7256,15 @@ async function adminRestoreMerchant(idx) {
   adminPage('merchants', null);
 }
 
+function getAdminPasscode() {
+  var stored = localStorage.getItem('hh_admin_passcode');
+  return stored || '1234';  // Default passcode
+}
+
+function setAdminPasscode(passcode) {
+  localStorage.setItem('hh_admin_passcode', passcode);
+}
+
 function adminPromptDeleteMerchant(idx) {
   console.log('[adminPromptDeleteMerchant] idx=', idx, 'adminMerchants.length=', adminMerchants.length);
 
@@ -7272,14 +7281,18 @@ function adminPromptDeleteMerchant(idx) {
 
   console.log('[adminPromptDeleteMerchant] merchant=', m);
 
-  var confirmed = confirm('🗑️ DELETE MERCHANT?\n\n' + m.name + '\n' + m.owner + '\n\nThis cannot be undone.');
-  if (!confirmed) {
-    console.log('[adminPromptDeleteMerchant] User cancelled');
+  var passcode = prompt('🔐 Enter passcode to delete:\n\n' + m.name);
+  if (!passcode) {
     return;
   }
 
-  console.log('[adminPromptDeleteMerchant] User confirmed, calling adminDeleteMerchant');
-  adminDeleteMerchant(idx);
+  var correctPasscode = getAdminPasscode();
+  if (passcode === correctPasscode) {
+    console.log('[adminPromptDeleteMerchant] Passcode correct, deleting merchant');
+    adminDeleteMerchant(idx);
+  } else {
+    showToast('❌ Incorrect passcode');
+  }
 }
 
 async function adminDeleteMerchant(idx) {
@@ -7337,6 +7350,62 @@ async function adminDeleteMerchant(idx) {
     console.error('[adminDeleteMerchant] Exception:', e);
     showToast('❌ Exception: ' + e.message);
   }
+}
+
+function adminRenderSettings() {
+  var body = document.getElementById('admin-body');
+  if (!body) return;
+
+  var currentPasscode = getAdminPasscode();
+
+  body.innerHTML = '<div style="max-width:600px;margin:0 auto;">'
+    + '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:16px;">'
+      + '<div style="padding:16px;border-bottom:1px solid #E8E8EC;">'
+        + '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">🔐 Admin Authentication</div>'
+        + '<div style="font-size:12px;color:#9A9AB0;margin-top:4px;">Set passcode for sensitive operations</div>'
+      + '</div>'
+      + '<div style="padding:16px;">'
+        + '<div style="margin-bottom:12px;">'
+          + '<label style="font-size:12px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Current Passcode</label>'
+          + '<input id="adm-setting-current-pwd" type="password" value="' + currentPasscode + '" readonly style="width:100%;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:13px;color:#1A1A1A;box-sizing:border-box;">'
+        + '</div>'
+        + '<div style="margin-bottom:12px;">'
+          + '<label style="font-size:12px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">New Passcode</label>'
+          + '<input id="adm-setting-new-pwd" type="text" placeholder="Enter new passcode" style="width:100%;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:13px;color:#1A1A1A;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
+        + '</div>'
+        + '<button onclick="adminSavePasscode()" style="width:100%;background:#E8192C;color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-top:8px;">💾 Save Passcode</button>'
+      + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(96,165,250,.06);border:1.5px solid rgba(96,165,250,.2);border-radius:14px;padding:14px;">'
+      + '<div style="font-size:12px;color:#1E40AF;font-weight:600;line-height:1.6;">'
+        + '⚠️ <strong>Default passcode:</strong> 1234<br>'
+        + '🔒 Used to confirm sensitive actions:<br>'
+        + '• Deleting merchants<br>'
+        + '• Deleting deals<br>'
+        + '• Deleting users<br>'
+        + '• Other critical operations'
+      + '</div>'
+    + '</div>'
+    + '</div>';
+}
+
+function adminSavePasscode() {
+  var newPwd = document.getElementById('adm-setting-new-pwd').value;
+
+  if (!newPwd || newPwd.trim() === '') {
+    showToast('❌ Passcode cannot be empty');
+    return;
+  }
+
+  if (newPwd.length < 4) {
+    showToast('❌ Passcode must be at least 4 characters');
+    return;
+  }
+
+  setAdminPasscode(newPwd);
+  document.getElementById('adm-setting-current-pwd').value = newPwd;
+  document.getElementById('adm-setting-new-pwd').value = '';
+  showToast('✅ Passcode updated');
 }
 
 function adminPromptRestoreDeletedMerchant(idx) {
@@ -7955,6 +8024,8 @@ function adminPage(page,btn){
   } else if(page==='credits'){
     body.innerHTML='<div style="padding:32px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;">Loading credits data…</div>';
     adminLoadCredits();
+  } else if(page==='settings'){
+    adminRenderSettings();
   }
 }
 function aApprovePayout(id){
@@ -14047,6 +14118,7 @@ function _setupDealMap() {
     <button class="adm-nav-btn" onclick="adminPage('payouts',this)"><span class="adm-tab-icon">💸</span><span class="adm-tab-label">Payouts</span></button>
     <button class="adm-nav-btn" onclick="adminPage('finance',this)"><span class="adm-tab-icon">⚙️</span><span class="adm-tab-label">Finance</span></button>
     <button class="adm-nav-btn" onclick="adminPage('content',this)"><span class="adm-tab-icon">📝</span><span class="adm-tab-label">Content</span></button>
+    <button class="adm-nav-btn" onclick="adminPage('settings',this)"><span class="adm-tab-icon">🔐</span><span class="adm-tab-label">Settings</span></button>
     <button class="adm-nav-btn" onclick="adminPage('notifications',this)"><span class="adm-tab-icon">🔔</span><span class="adm-tab-label">Alerts</span></button>
     <button class="adm-nav-btn" onclick="adminPage('reviews',this)"><span class="adm-tab-icon">⭐</span><span class="adm-tab-label">Reviews</span></button>
     <button class="adm-nav-btn" onclick="adminPage('credits',this)" id="adm-btn-credits"><span class="adm-tab-icon">💎</span><span class="adm-tab-label">Credits</span></button>
