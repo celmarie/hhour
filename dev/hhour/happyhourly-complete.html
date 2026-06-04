@@ -1553,7 +1553,7 @@ function googleTranslateElementInit(){
           <div style="padding:16px;display:grid;gap:14px;">
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Address</label>
-              <input id="uc-addr" type="text" placeholder="e.g. 123 Gran Via, Madrid" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='#E8192C'" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'" oninput="addrInput('uc-addr')">
+              <input id="uc-addr" type="text" placeholder="e.g. 123 Gran Via, Madrid" autocomplete="street-address" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
             </div>
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Venue Name <span style="color:#E8192C;">*</span></label>
@@ -1787,7 +1787,7 @@ function googleTranslateElementInit(){
               </div>
             </div>
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Location</label>
-            <input id="com-ev-location" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="e.g. Sky Lounge, Barceloneta" oninput="addrInput('com-ev-location')" onfocus="this.style.borderColor='var(--red)';initAddressAutocomplete()" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
+            <input id="com-ev-location" autocomplete="street-address" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="e.g. Sky Lounge, Barceloneta" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='#E8E8EC'">
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Event name</label>
             <input id="com-ev-title" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="e.g. Friday Cocktail Night">
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Description</label>
@@ -2328,7 +2328,7 @@ function googleTranslateElementInit(){
       </div>
       <div style="padding:20px 16px;">
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Address</div>
-        <input id="b2-addr" type="text" placeholder="Carrer del Consell de Cent 280" class="biz-inp" autocomplete="off" style="margin-bottom:14px;" oninput="addrInput('b2-addr')" onblur="setTimeout(_addrHideDrop,150)">
+        <input id="b2-addr" type="text" placeholder="Carrer del Consell de Cent 280" class="biz-inp" autocomplete="street-address" style="margin-bottom:14px;">
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Venue name</div>
         <input id="b2-venue" type="text" autocomplete="off" placeholder="e.g. The Golden Tap" class="biz-inp" style="margin-bottom:14px;" oninput="bizSearchVenue(this.value)" onfocus="initAddressAutocomplete();this.style.borderColor='var(--red)'" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Venue type</div>
@@ -6913,7 +6913,7 @@ function adminEditMerchant(idx) {
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Venue Name</label>'
           +'<input id="edit-m-venue-name" value="'+m.name+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Address</label>'
-          +'<input id="edit-m-address" autocomplete="off" value="'+(m.address||'')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" oninput="addrInput(\'edit-m-address\')" onfocus="this.style.borderColor=\'#E8192C\'" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor=\'#E8E8EC\'"></div>'
+          +'<input id="edit-m-address" autocomplete="street-address" value="'+(m.address||'')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Venue Type</label>'
           +'<select id="edit-m-type" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
             +'<option value="">Select type...</option>'
