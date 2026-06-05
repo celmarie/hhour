@@ -1607,6 +1607,10 @@ function googleTranslateElementInit(){
                     <option value="AUD">A$ AUD</option>
                     <option value="CHF">CHF</option>
                     <option value="JPY">¥ JPY</option>
+                    <option value="CNY">¥ CNY</option>
+                    <option value="INR">₹ INR</option>
+                    <option value="KRW">₩ KRW</option>
+                    <option value="PHP">₱ PHP</option>
                     <option value="SEK">kr SEK</option>
                     <option value="NOK">kr NOK</option>
                     <option value="DKK">kr DKK</option>
@@ -1823,6 +1827,10 @@ function googleTranslateElementInit(){
                   <option value="AUD">A$ AUD</option>
                   <option value="CHF">CHF</option>
                   <option value="JPY">¥ JPY</option>
+                  <option value="CNY">¥ CNY</option>
+                  <option value="INR">₹ INR</option>
+                  <option value="KRW">₩ KRW</option>
+                  <option value="PHP">₱ PHP</option>
                   <option value="SEK">kr SEK</option>
                   <option value="NOK">kr NOK</option>
                   <option value="DKK">kr DKK</option>
@@ -13207,7 +13215,7 @@ async function comSubmitEventInner(){
   var priceRaw=(document.getElementById('com-ev-price')||{}).value||'5';
   var catEmojis={cocktails:'🍹',beer:'🍺',wine:'🍷',social:'👥',food:'🍕',rooftop:'🌅'};
   var d;try{d=new Date(date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}catch(e){d=date;}
-  var syms={EUR:'€',USD:'$',GBP:'£',CAD:'CA$',AUD:'A$',CHF:'CHF',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',MXN:'MX$',BRL:'R$',SGD:'S$',AED:'د.إ'};
+  var syms={EUR:'€',USD:'$',GBP:'£',CAD:'CA$',AUD:'A$',CHF:'CHF',JPY:'¥',CNY:'¥',INR:'₹',KRW:'₩',PHP:'₱',SEK:'kr',NOK:'kr',DKK:'kr',MXN:'MX$',BRL:'R$',SGD:'S$',AED:'د.إ'};
   var sym=syms[comTicketCurrency]||'€';
   var priceStr=comTicketType==='paid'?sym+priceRaw:'Free';
   var hostName=(currentProfile&&currentProfile.name)||'Community';
