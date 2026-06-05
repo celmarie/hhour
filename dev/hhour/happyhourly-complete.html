@@ -11280,7 +11280,7 @@ function meRenderDeals(){
   var arr=dealsData||[];
   var rows = arr.length
     ? arr.map(function(d){
-        return '<div style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid #E8E8EC;">'+
+        return '<div onclick="meOpenEditDeal(\''+(d.id||d._dbId)+'\')" style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid #E8E8EC;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background=\'#FAFBFF\'" onmouseleave="this.style.background=\'white\'">'+
           '<div style="font-size:26px;">'+d.emoji+'</div>'+
           '<div style="flex:1;"><div style="font-size:13px;font-weight:800;color:#1A1A1A;">'+d.name+'</div><div style="font-size:11px;color:#9A9AB0;">'+d.type+' · '+d.time+'</div></div>'+
           '<div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:var(--red);">'+d.off+'</div><div style="font-size:10px;color:#9A9AB0;margin-top:2px;">'+d.sold+'/'+d.total+' sold</div></div></div>';
