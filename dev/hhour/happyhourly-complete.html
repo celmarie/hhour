@@ -9828,14 +9828,14 @@ function aRenderEvents(){
 
     html+=openReports.map(function(rep){
       var event = rep.community_events || {};
-      return '<div id="adm-rep-'+rep.id+'" onclick="admOpenReportDetail('+rep.id+')" style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1.5fr 2fr;gap:16px;padding:14px 18px;border-bottom:1px solid #F0F0F4;align-items:center;cursor:pointer;transition:background 0.2s;hover:background:#F8F8FA;">'
-        +'<div style="min-width:0;">'
-          +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;">'+rep.event_title+'</div>'
+      return '<div id="adm-rep-'+rep.id+'" style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1.5fr 2fr;gap:16px;padding:14px 18px;border-bottom:1px solid #F0F0F4;align-items:center;transition:background 0.2s;">'
+        +'<div style="min-width:0;cursor:pointer;" onclick="event.stopPropagation();admOpenEventDetail('+rep.event_id+')">'
+          +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;text-decoration:underline;text-decoration-color:rgba(26,26,26,.2);">'+rep.event_title+'</div>'
           +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">by '+event.host_name+'</div>'
         +'</div>'
-        +'<div style="font-size:12px;color:#9A9AB0;">'+rep.reporter_name+'<br><span style="color:#7A7A9E;">'+rep.reporter_email+'</span></div>'
-        +'<div style="font-size:12px;color:#dc2626;font-weight:700;">'+rep.reason+'</div>'
-        +'<div style="font-size:12px;color:#9A9AB0;"><div>'+dbAgo(rep.reported_at)+'</div><div style="font-size:11px;margin-top:2px;">'+new Date(rep.reported_at).toLocaleDateString()+'</div></div>'
+        +'<div style="font-size:12px;color:#9A9AB0;cursor:pointer;" onclick="event.stopPropagation();admOpenReportDetail('+rep.id+')">'+rep.reporter_name+'<br><span style="color:#7A7A9E;">'+rep.reporter_email+'</span></div>'
+        +'<div style="font-size:12px;color:#dc2626;font-weight:700;cursor:pointer;" onclick="event.stopPropagation();admOpenReportDetail('+rep.id+')">'+rep.reason+'</div>'
+        +'<div style="font-size:12px;color:#9A9AB0;cursor:pointer;" onclick="event.stopPropagation();admOpenReportDetail('+rep.id+')""><div>'+dbAgo(rep.reported_at)+'</div><div style="font-size:11px;margin-top:2px;">'+new Date(rep.reported_at).toLocaleDateString()+'</div></div>'
         +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
           +'<button onclick="event.stopPropagation();admBlockUser(\''+rep.reporter_id+'\',\''+rep.reporter_email+'\')" style="background:rgba(220,38,38,.06);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Block user</button>'
           +'<button onclick="event.stopPropagation();admDismissReport('+rep.id+')" style="background:rgba(18,161,80,.06);color:#12A150;border:1.5px solid rgba(18,161,80,.2);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Dismiss</button>'
@@ -9864,11 +9864,14 @@ function aRenderEvents(){
 
     html+=dismissedReports.map(function(rep){
       var event = rep.community_events || {};
-      return '<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1.5fr 2fr;gap:16px;padding:14px 18px;border-bottom:1px solid #F0F0F4;align-items:center;opacity:0.7;cursor:pointer;transition:background 0.2s;" onclick="admOpenReportDetail('+rep.id+')">'
-        +'<div style="min-width:0;"><div style="font-size:13px;font-weight:800;color:#1A1A1A;">'+rep.event_title+'</div><div style="font-size:11px;color:#9A9AB0;margin-top:2px;">by '+event.host_name+'</div></div>'
-        +'<div style="font-size:12px;color:#9A9AB0;">'+rep.reporter_name+'<br><span style="color:#7A7A9E;font-size:11px;">'+rep.reporter_email+'</span></div>'
-        +'<div style="font-size:12px;color:#9A9AB0;">'+rep.reason+'</div>'
-        +'<div style="font-size:12px;color:#9A9AB0;"><div>'+dbAgo(rep.reported_at)+'</div></div>'
+      return '<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1.5fr 2fr;gap:16px;padding:14px 18px;border-bottom:1px solid #F0F0F4;align-items:center;opacity:0.7;transition:background 0.2s;">'
+        +'<div style="min-width:0;cursor:pointer;" onclick="event.stopPropagation();admOpenEventDetail('+rep.event_id+')">'
+          +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;text-decoration:underline;text-decoration-color:rgba(26,26,26,.2);">'+rep.event_title+'</div>'
+          +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">by '+event.host_name+'</div>'
+        +'</div>'
+        +'<div style="font-size:12px;color:#9A9AB0;cursor:pointer;" onclick="event.stopPropagation();admOpenReportDetail('+rep.id+')">'+rep.reporter_name+'<br><span style="color:#7A7A9E;font-size:11px;">'+rep.reporter_email+'</span></div>'
+        +'<div style="font-size:12px;color:#9A9AB0;cursor:pointer;" onclick="event.stopPropagation();admOpenReportDetail('+rep.id+')">'+rep.reason+'</div>'
+        +'<div style="font-size:12px;color:#9A9AB0;cursor:pointer;" onclick="event.stopPropagation();admOpenReportDetail('+rep.id+')""><div>'+dbAgo(rep.reported_at)+'</div></div>'
         +'<div style="font-size:11px;color:#12A150;font-weight:700;">✓ Dismissed</div>'
       +'</div>';
     }).join('');
