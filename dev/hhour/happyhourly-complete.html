@@ -12899,10 +12899,19 @@ function comOpenDetail(id){
   var m=comMeetups.find(function(x){return x.id===id;});if(!m)return;
   var det=document.getElementById('com-event-detail');if(!det)return;
   var isGoing=comMyEvents.indexOf(m.id)>-1;
+  var isOrganizer=currentUser&&comMyCreated.find(function(e){return e.id===id||e._dbId===id;});
   var pct=m.capacity>0?Math.min(100,Math.round(m.going/m.capacity*100)):0;
   var bg=m.cat==='rooftop'?'#1a2a4a,#2d4a8a':m.cat==='beer'?'#1a2a1a,#2d5a2d':m.cat==='wine'?'#2a1a3a,#5a2d6b':'#1a1a3a,#2d2d6b';
   var hostAv=(m.host||'?').substring(0,2).toUpperCase();
   var dc=document.getElementById('com-detail-content');
+
+  // If organizer, load attendees
+  var attendeesHtml='';
+  if(isOrganizer){
+    attendeesHtml='<div id="com-event-attendees" style="margin-bottom:16px;"></div>';
+    comLoadEventAttendees(id);
+  }
+
   if(dc)dc.innerHTML=
     // Hero — image if available, else gradient + emoji
     '<div style="height:220px;background:linear-gradient(135deg,'+bg+');display:flex;align-items:center;justify-content:center;font-size:72px;position:relative;overflow:hidden;">'
@@ -12935,6 +12944,8 @@ function comOpenDetail(id){
       +'</div>'
       // Description
       +(m.desc?'<div style="font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:18px;">'+m.desc+'</div>':'')
+      // Attendees (for organizer)
+      +attendeesHtml
       // Action
       +(isGoing
         ?'<div style="background:rgba(18,161,80,.08);border:1.5px solid rgba(18,161,80,.2);border-radius:14px;padding:12px;text-align:center;margin-bottom:10px;"><div style="font-size:14px;font-weight:800;color:#12A150;">✅ You\'re going!</div></div>'
@@ -12946,6 +12957,51 @@ function comOpenDetail(id){
       +'</div>'
     +'</div>';
   det.style.display='flex';
+}
+async function comLoadEventAttendees(eventId){
+  try{
+    // Query event_rsvps joined with profiles to get attendee details
+    var {data:attendees,error:err}=await db.from('event_rsvps')
+      .select('user_id, profiles(name, email)')
+      .eq('event_id',eventId)
+      .order('created_at',{ascending:false});
+
+    if(err||!attendees){
+      console.warn('[comLoadEventAttendees] error:',err);
+      return;
+    }
+
+    var el=document.getElementById('com-event-attendees');
+    if(!el) return;
+
+    if(attendees.length===0){
+      el.innerHTML='<div style="background:rgba(18,161,80,.08);border:1.5px solid rgba(18,161,80,.15);border-radius:12px;padding:14px;"><div style="font-size:13px;font-weight:700;color:#12A150;">👥 Attendees: '+attendees.length+'</div><div style="font-size:11px;color:var(--t3);margin-top:4px;">No attendees yet. Share the event to get signups!</div></div>';
+      return;
+    }
+
+    var html='<div style="background:rgba(18,161,80,.08);border:1.5px solid rgba(18,161,80,.15);border-radius:12px;padding:14px;margin-bottom:12px;">'
+      +'<div style="font-size:13px;font-weight:700;color:#12A150;margin-bottom:12px;">👥 Attendees: '+attendees.length+'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:10px;">';
+
+    attendees.forEach(function(att){
+      var profile=att.profiles;
+      var name=profile&&profile.name?profile.name:'Guest';
+      var email=profile&&profile.email?profile.email:'';
+      var initials=name.substring(0,2).toUpperCase();
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:10px;background:white;border-radius:10px;border:1px solid #E8E8EC;">'
+        +'<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--red),#FF6B35);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;">'+initials+'</div>'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:12px;font-weight:700;color:var(--text);">'+name+'</div>'
+          +'<div style="font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+email+'</div>'
+        +'</div>'
+      +'</div>';
+    });
+
+    html+='</div></div>';
+    el.innerHTML=html;
+  }catch(e){
+    console.warn('[comLoadEventAttendees]',e);
+  }
 }
 function comOpenReportEvent(id){
   var m=comMeetups.find(function(x){return x.id===id;});if(!m)return;
