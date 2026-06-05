@@ -11123,8 +11123,7 @@ function meRenderDash(){
     +[['📊',sym+'2,340','Revenue','↑ 18%','linear-gradient(135deg,#E8192C,#FF5533)'],
       ['👁️','4,812','Deal views','↑ 41%','linear-gradient(135deg,#3B82F6,#60A5FA)'],
       ['⭐','4.8','Avg rating','127 reviews','linear-gradient(135deg,#FFB300,#FFC93C)']].map(function(s,idx){
-      var isLast = idx === 2;
-      return '<div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;padding:20px;'+(isLast?'grid-column:1/-1;':'')+'">'
+      return '<div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);transition:transform .2s,box-shadow .2s;padding:20px;">'
         +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">'
           +'<div style="width:48px;height:48px;border-radius:14px;background:'+s[4]+'15;display:flex;align-items:center;justify-content:center;font-size:24px;">'+s[0]+'</div>'
           +'<div style="background:rgba(22,163,74,.1);color:#16a34a;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;">'+s[3]+'</div>'
