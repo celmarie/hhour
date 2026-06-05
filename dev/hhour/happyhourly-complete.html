@@ -1028,8 +1028,8 @@ function googleTranslateElementInit(){
             </div>
           </div>
         </div>
-        <!-- Stat cards row -->
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:18px;">
+        <!-- Stat cards row - hidden for guests -->
+        <div id="prof-stat-cards" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:18px;">
           <div style="background:rgba(255,255,255,.18);border-radius:14px;padding:14px 10px;text-align:center;">
             <div style="font-size:22px;font-weight:900;color:white;">12</div>
             <div style="font-size:11px;color:rgba(255,255,255,.75);font-weight:600;margin-top:3px;">My Deals</div>
@@ -1065,12 +1065,12 @@ function googleTranslateElementInit(){
             <div style="flex:1;"><div class="prow-text" style="margin:0;">My Vouchers</div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-top:2px;" id="prow-myvouchers-sub">QR codes &amp; purchases</div></div>
             <div class="prow-arrow" id="prow-myvouchers-arrow">›</div>
           </div>
-          <div class="prow" onclick="goScreen('credits')">
+          <div class="prow" onclick="goScreen('credits')" id="prow-credits">
             <div style="width:42px;height:42px;background:rgba(255,193,7,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🪙</div>
             <div style="flex:1;"><div class="prow-text" style="margin:0;">Credits &amp; Rewards</div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-top:2px;">Earn, redeem &amp; leaderboard</div></div>
             <div class="prow-arrow">›</div>
           </div>
-          <div class="prow" onclick="isGuest?requireLogin('view contributions'):goScreen('mycontribs')">
+          <div class="prow" onclick="isGuest?requireLogin('view contributions'):goScreen('mycontribs')" id="prow-contributions">
             <div style="width:42px;height:42px;background:rgba(232,25,44,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;position:relative;">
               📣<div id="mycontribs-badge" style="display:none;position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#d97706;border-radius:50%;border:2px solid white;"></div>
             </div>
@@ -1084,7 +1084,7 @@ function googleTranslateElementInit(){
             <div style="flex:1;"><div class="prow-text" style="margin:0;">Community</div><div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;">Meetups &amp; events</div></div>
             <div class="prow-arrow">›</div>
           </div>
-          <div class="prow" onclick="goScreen('invitedeals')">
+          <div class="prow" onclick="goScreen('invitedeals')" style="display:'+isGuest+'?none:flex;" id="prow-invitedeals">
             <div style="width:42px;height:42px;background:rgba(123,47,190,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔒</div>
             <div style="flex:1;"><div class="prow-text" style="margin:0;">Invite-Only Deals</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Enter event codes</div></div>
             <div class="prow-arrow">›</div>
@@ -1092,8 +1092,8 @@ function googleTranslateElementInit(){
         </div>
 
         <!-- ── BUSINESS ── -->
-        <div style="font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;padding:0 4px;margin-bottom:8px;">For Businesses</div>
-        <div class="psec" style="margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;padding:0 4px;margin-bottom:8px;display:'+isGuest+'?none:block;">For Businesses</div>
+        <div class="psec" style="margin-bottom:16px;display:'+isGuest+'?none:block;">
           <div class="prow" onclick="goScreen('business')">
             <div style="width:42px;height:42px;background:rgba(232,25,44,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">💼</div>
             <div style="flex:1;"><div class="prow-text" style="margin:0;">Business Signup</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">List your venue &amp; post deals</div></div>
@@ -3056,6 +3056,7 @@ async function handleAuthSession(user) {
     var cbd = document.getElementById('cr-balance-display'); if (cbd) cbd.textContent = (profile.credits || 0).toLocaleString();
   }
   isGuest = false;
+  updateGuestVisibility();
   var ls = document.getElementById('login-screen');
   if (ls) { ls.style.transition = 'opacity .3s'; ls.style.opacity = '0'; setTimeout(function() { ls.style.display = 'none'; }, 300); }
 
@@ -5713,6 +5714,20 @@ function adminUpdateDealsBadge(){
 
 // NAVIGATION
 const navList=['deals','alerts','map','saved','profile','settings','credits','community','post','myvouchers','vdetail','invitedeals','business','support','terms','privacy','qr','alldeals','mycontribs'];
+function updateGuestVisibility(){
+  // Hide stats for guests
+  var statCards = document.getElementById('prof-stat-cards');
+  if(statCards) statCards.style.display = isGuest ? 'none' : 'grid';
+  // Hide menu items for guests
+  var creditsRow = document.getElementById('prow-credits');
+  if(creditsRow) creditsRow.style.display = isGuest ? 'none' : 'flex';
+  var contribRow = document.getElementById('prow-contributions');
+  if(contribRow) contribRow.style.display = isGuest ? 'none' : 'flex';
+  var inviteRow = document.getElementById('prow-invitedeals');
+  if(inviteRow) inviteRow.style.display = isGuest ? 'none' : 'flex';
+  var businessLabel = document.querySelector('[style*="For Businesses"]');
+  if(businessLabel) businessLabel.style.display = isGuest ? 'none' : 'block';
+}
 function goScreen(name){
   if(name==='myvouchers' && isGuest){ requireLogin('view vouchers'); return; }
   const old=document.getElementById('screen-'+curScreen);
@@ -5737,7 +5752,7 @@ function goScreen(name){
   }
   if(name==='invitedeals') renderUnlockedDeals();
   if(name==='alldeals') { _adCurTab='all'; renderAllDeals('all'); }
-  if(name==='profile') updateLogoutBtnLabel();
+  if(name==='profile') { updateLogoutBtnLabel(); updateGuestVisibility(); }
   if(name==='alerts'){ alerts.forEach(function(a){a.unread=false;}); if(typeof renderAlerts==='function') renderAlerts(); }
   const darkScreens=['qr'];
   const sbar=document.getElementById('sbar');
@@ -6192,6 +6207,7 @@ async function doLogout(){
   // Sign out and clear state
   await db.auth.signOut().catch(function(){});
   currentUser = null; currentProfile = null; isGuest = false;
+  updateGuestVisibility();
   myVouchers = []; savedDeals = [];
 
   // Show login screen
