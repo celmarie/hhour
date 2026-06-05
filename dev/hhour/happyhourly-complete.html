@@ -9845,14 +9845,18 @@ function aRenderEvents(){
   }
   html+='</div>';
 
-  // Dismissed reports section (Done/History)
+  // Dismissed reports section (Done/History) - COLLAPSED BY DEFAULT
   if(dismissedReports.length){
     html+='<div style="'+card+'border-color:rgba(18,161,80,.2);">'
-      +'<div style="padding:16px 18px;border-bottom:2px solid #F0F0F4;">'
-        +'<div style="font-size:16px;font-weight:800;color:#12A150;font-family:Inter,sans-serif;">✓ Done</div>'
-        +'<div style="font-size:12px;color:#9A9AB0;margin-top:2px;">'+dismissedReports.length+' dismissed reports</div>'
+      +'<div style="padding:16px 18px;border-bottom:2px solid #F0F0F4;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="var el=document.getElementById(\'adm-history-table\');el.style.display=el.style.display===\'none\'?\'block\':\'none\';this.querySelector(\'span\').textContent=el.style.display===\'none\'?\'▶\':\'▼\';">'
+        +'<div>'
+          +'<div style="font-size:16px;font-weight:800;color:#12A150;font-family:Inter,sans-serif;">✓ History</div>'
+          +'<div style="font-size:12px;color:#9A9AB0;margin-top:2px;">'+dismissedReports.length+' dismissed reports</div>'
+        +'</div>'
+        +'<span style="font-size:14px;color:#9A9AB0;">▶</span>'
       +'</div>';
 
+    html+='<div id="adm-history-table" style="display:none;">';
     // Table header
     html+='<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1.5fr 2fr;gap:16px;padding:12px 18px;background:#F8F8FA;border-bottom:1px solid #E8E8EC;font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:0.5px;">'
       +'<div>Event</div><div>Reported by</div><div>Reason</div><div>Dismissed</div><div></div>'
@@ -9868,6 +9872,7 @@ function aRenderEvents(){
         +'<div style="font-size:11px;color:#12A150;font-weight:700;">✓ Dismissed</div>'
       +'</div>';
     }).join('');
+    html+='</div>';
     html+='</div>';
   }
 
