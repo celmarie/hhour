@@ -345,3 +345,10 @@ create policy "Admin read all reports" on duplicate_reports for select using (
 create policy "Admin update reports" on duplicate_reports for update using (
   exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')
 );
+
+-- ── ADD CURRENCY SUPPORT ──────────────────────────────────────────────────────
+-- Add currency column to community_events if it doesn't exist
+alter table if exists community_events add column if not exists currency text default 'EUR';
+
+-- Add currency column to deals if it doesn't exist (for consistency)
+alter table if exists community_deals add column if not exists currency text default 'EUR';

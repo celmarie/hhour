@@ -1814,7 +1814,25 @@ function googleTranslateElementInit(){
             </div>
             <div id="com-price-row" style="display:none;margin-bottom:12px;">
               <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Ticket price</label>
-              <input id="com-ev-price" type="number" min="0.50" step="0.50" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;" placeholder="e.g. 5.00">
+              <div style="display:flex;gap:0;border:2px solid #E8E8EC;border-radius:12px;overflow:hidden;background:#F5F5F7;">
+                <select id="com-ev-currency" onchange="comUpdateCurrencyPreview()" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 8px 0 10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:#E8192C;outline:none;cursor:pointer;flex-shrink:0;height:48px;">
+                  <option value="EUR">€ EUR</option>
+                  <option value="USD">$ USD</option>
+                  <option value="GBP">£ GBP</option>
+                  <option value="CAD">CA$ CAD</option>
+                  <option value="AUD">A$ AUD</option>
+                  <option value="CHF">CHF</option>
+                  <option value="JPY">¥ JPY</option>
+                  <option value="SEK">kr SEK</option>
+                  <option value="NOK">kr NOK</option>
+                  <option value="DKK">kr DKK</option>
+                  <option value="MXN">MX$ MXN</option>
+                  <option value="BRL">R$ BRL</option>
+                  <option value="SGD">S$ SGD</option>
+                  <option value="AED">د.إ AED</option>
+                </select>
+                <input id="com-ev-price" type="number" min="0.50" step="0.50" style="flex:1;background:#F5F5F7;border:none;padding:13px 12px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:var(--text);outline:none;" placeholder="e.g. 5.00">
+              </div>
             </div>
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:10px;">Category</label>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;" id="com-cat-grid">
@@ -12613,7 +12631,7 @@ var comCurrentTab='feed';var comMeetups=[
   {id:3,emoji:'🍷',title:'Wine & Cheese Social',desc:'A relaxed evening of fine wines and cheese pairings.',date:'Sat 7 Jun',time:'5:00 PM',location:'La Cave, Gràcia',host:'Sara R.',hostAv:'SR',hostCol:'#7B2FBE',going:8,capacity:20,price:'€8',type:'paid',cat:'wine',status:'approved',tags:['Wine','Cosy']},
 ];
 var comMyEvents=[];var comMyCreated=[];var comAdminPendingMeetups=[];
-var comTicketType='free';var comSelectedCat='cocktails';
+var comTicketType='free';var comSelectedCat='cocktails';var comTicketCurrency='EUR';
 
 function comSaveMyCreated(){
   if(!currentUser) return;
@@ -13129,6 +13147,10 @@ function comSelectCat(el,cat){
   document.querySelectorAll('.com-cat-chip').forEach(function(c){c.style.background='#F5F5F7';c.style.borderColor='#E8E8EC';c.style.color='#555';});
   el.style.background='var(--redl)';el.style.borderColor='rgba(232,25,44,.3)';el.style.color='var(--red)';
 }
+function comUpdateCurrencyPreview(){
+  var curSel=document.getElementById('com-ev-currency');
+  if(curSel) comTicketCurrency=curSel.value;
+}
 async function comSubmitEvent(){
   // Photo is required
   var photoPreview=document.getElementById('com-photo-preview');
@@ -13144,6 +13166,10 @@ async function comSubmitEvent(){
   var timeVal=(document.getElementById('com-ev-time').value||'19:00');
   var priceRaw=(document.getElementById('com-ev-price')||{}).value||'5';
   if(!title||!desc||!date||!loc||cap<2){showToast('Please fill all required fields');return;}
+
+  // Update currency from selector
+  var curSel=document.getElementById('com-ev-currency');
+  if(curSel) comTicketCurrency=curSel.value;
 
   // Check for duplicate address
   try{
@@ -13181,7 +13207,9 @@ async function comSubmitEventInner(){
   var priceRaw=(document.getElementById('com-ev-price')||{}).value||'5';
   var catEmojis={cocktails:'🍹',beer:'🍺',wine:'🍷',social:'👥',food:'🍕',rooftop:'🌅'};
   var d;try{d=new Date(date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}catch(e){d=date;}
-  var priceStr=comTicketType==='paid'?'€'+priceRaw:'Free';
+  var syms={EUR:'€',USD:'$',GBP:'£',CAD:'CA$',AUD:'A$',CHF:'CHF',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',MXN:'MX$',BRL:'R$',SGD:'S$',AED:'د.إ'};
+  var sym=syms[comTicketCurrency]||'€';
+  var priceStr=comTicketType==='paid'?sym+priceRaw:'Free';
   var hostName=(currentProfile&&currentProfile.name)||'Community';
 
   var photoImg=document.getElementById('com-photo-preview-img');
@@ -13203,7 +13231,7 @@ async function comSubmitEventInner(){
   var ev={id:Date.now(),emoji:catEmojis[comSelectedCat]||'🎉',title:title,desc:desc,date:d,
     time:timeVal,location:loc,host:hostName,going:0,capacity:cap,
     price:priceStr,type:comTicketType,cat:comSelectedCat,status:'pending',
-    image_url:compressedPhoto,
+    image_url:compressedPhoto,currency:comTicketCurrency,
     submittedAt:submittedAt,submitterIp:submitterIp,submitterLocation:submitterLocation};
 
   // Save to DB
@@ -13216,6 +13244,7 @@ async function comSubmitEventInner(){
         capacity:cap, price:priceStr,
         ticket_type:comTicketType, category:comSelectedCat,
         emoji:catEmojis[comSelectedCat]||'🎉', status:'pending',
+        currency:comTicketCurrency,
         image_url:compressedPhoto||null,
         submitter_ip:submitterIp||null, submitter_location:submitterLocation||null
       }).select('id').single();
