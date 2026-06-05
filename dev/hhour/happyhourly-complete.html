@@ -12880,9 +12880,7 @@ function comOpenDetail(id){
     // Hero — image if available, else gradient + emoji
     '<div style="height:220px;background:linear-gradient(135deg,'+bg+');display:flex;align-items:center;justify-content:center;font-size:72px;position:relative;overflow:hidden;">'
       +(m.image_url||m.img?'<img src="'+(m.image_url||m.img)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">':'')
-      +'<span style="position:relative;z-index:1;'+(m.image_url||m.img?'display:none':'')+'">'+m.emoji+'</span>'
       +'<button onclick="document.getElementById(\'com-event-detail\').style.display=\'none\'" style="position:absolute;top:14px;left:14px;background:rgba(0,0,0,.5);border:none;border-radius:10px;width:38px;height:38px;color:white;font-size:20px;cursor:pointer;z-index:2;">‹</button>'
-      +'<div style="position:absolute;top:14px;right:14px;background:'+(m.type==='paid'?'var(--red)':'rgba(18,161,80,.9)')+';color:white;font-size:12px;font-weight:800;padding:5px 14px;border-radius:20px;z-index:2;">'+(m.type==='paid'?m.price:'FREE')+'</div>'
     +'</div>'
     +'<div style="padding:18px;">'
       // Title + host
