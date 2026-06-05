@@ -12717,7 +12717,7 @@ function comCard(m,showJoin){
     '<div style="height:120px;background:linear-gradient(135deg,'+bg+');display:flex;align-items:center;justify-content:center;font-size:36px;position:relative;overflow:hidden;">'
       +(m.image_url||m.img?'<img src="'+(m.image_url||m.img)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">':'')
       +'<span style="position:relative;z-index:1;'+(m.image_url||m.img?'opacity:.7':'')+'">'+m.emoji+'</span>'
-    +'</div>'+
+      +'<div style="position:absolute;top:8px;right:8px;background:'+(m.type==='paid'?'var(--red)':'rgba(18,161,80,.9)')+';color:white;font-size:10px;font-weight:800;padding:3px 9px;border-radius:15px;z-index:2;">'+(m.type==='paid'?m.price:'FREE')+'</div></div>'+
     '<div style="padding:12px;">'+
       '<div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:3px;">'+m.title+'</div>'+
       '<div style="font-size:11px;color:var(--t3);margin-bottom:2px;">📅 '+m.date+' · '+m.time+'</div>'+
@@ -12877,6 +12877,7 @@ function comRenderMyEvents(el){
           +'<div style="height:90px;background:linear-gradient(135deg,'+bg+');display:flex;align-items:center;justify-content:center;font-size:30px;position:relative;overflow:hidden;">'
             +(m.image_url?'<img src="'+m.image_url+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">':'')
             +'<span style="position:relative;z-index:1;'+(m.image_url?'display:none':'')+'">'+m.emoji+'</span>'
+            +'<span style="position:absolute;bottom:6px;right:8px;background:'+(m.type==='free'?'rgba(18,161,80,.9)':'var(--red)')+';color:white;font-size:9px;font-weight:800;padding:2px 8px;border-radius:10px;z-index:2;">'+(m.type==='free'?'FREE':m.price)+'</span>'
           +'</div>'
           +'<div style="padding:12px 14px;">'
             +'<div style="font-size:13px;font-weight:800;color:var(--text);">'+m.title+'</div>'
