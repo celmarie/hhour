@@ -719,7 +719,7 @@ textarea.finput{resize:none;height:80px;}
 .me-main{flex:1;width:0;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:#F0F2F5;}
 
 /* Mobile topbar */
-.me-topbar{display:flex !important;align-items:center;justify-content:space-between;padding:12px 14px;background:linear-gradient(135deg,#111317,#1f2128);flex-shrink:0;}
+.me-topbar{display:flex !important;align-items:center;justify-content:space-between;padding:16px 20px;background:linear-gradient(135deg,#0f0f12,#1a1a1f);flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08);}
 
 /* Mobile nav strip */
 .me-hnav{display:flex !important;overflow-x:auto;scrollbar-width:none;background:white;border-bottom:1.5px solid #E8E8EC;flex-shrink:0;}
@@ -13989,8 +13989,8 @@ function _setupDealMap() {
   background:linear-gradient(135deg,#111317,#1f2228);
   min-height:56px;
 }
-.me-topbar-title{font-size:15px;font-weight:900;color:white;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.me-topbar-actions{display:flex;gap:8px;flex-shrink:0;}
+.me-topbar-title{font-size:18px;font-weight:900;color:white;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.5px;}
+.me-topbar-actions{display:flex;gap:12px;flex-shrink:0;}
 .me-tb-btn-red{background:#E8192C;border:none;border-radius:10px;padding:9px 16px;color:white;font-size:13px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;min-height:40px;}
 .me-tb-btn-ghost{background:rgba(255,255,255,.14);border:none;border-radius:10px;padding:9px 14px;color:white;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;min-height:40px;}
 
@@ -14213,9 +14213,9 @@ function _setupDealMap() {
 
     <!-- Mobile topbar -->
     <div id="me-topbar">
-      <div class="me-topbar-title">🏪 My Venue</div>
+      <div class="me-topbar-title">📊 Dashboard</div>
       <div class="me-topbar-actions">
-        <button class="me-tb-btn-ghost" onclick="closeMerchant()">✕</button>
+        <button class="me-tb-btn-ghost" onclick="closeMerchant()" style="background:rgba(255,255,255,.1);border:none;border-radius:12px;width:40px;height:40px;color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;font-weight:300;">✕</button>
       </div>
     </div>
 
@@ -14230,11 +14230,11 @@ function _setupDealMap() {
     </div>
 
     <!-- Desktop title bar -->
-    <div id="me-titlebar">
-      <div class="me-title-h1" id="me-page-title-text">Dashboard</div>
+    <div id="me-titlebar" style="background:linear-gradient(135deg,#0f0f12,#1a1a1f);border-bottom:1px solid rgba(255,255,255,.08);padding:20px 32px;display:flex;align-items:center;justify-content:space-between;">
+      <div class="me-title-h1" id="me-page-title-text" style="font-size:24px;font-weight:900;color:white;letter-spacing:-.5px;">📊 Dashboard</div>
       <div class="me-titlebar-btns">
-        <button class="me-tt-btn-red" onclick="meOpenCreate()">+ Create Deal</button>
-        <button class="me-tt-btn-dark" onclick="closeMerchant()">← Back to App</button>
+        <button class="me-tt-btn-red" onclick="meOpenCreate()" style="background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:12px;padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">+ Create Deal</button>
+        <button class="me-tt-btn-dark" onclick="closeMerchant()" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:none;border-radius:12px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s;">← Back to App</button>
       </div>
     </div>
 
