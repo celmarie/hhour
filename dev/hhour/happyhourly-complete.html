@@ -11082,8 +11082,8 @@ function meRenderDash(){
   }
 
   var dealRows = dealsData.length
-    ? dealsData.slice(0,6).map(function(d){return [d.emoji,d.name,d.status,d.sold+'/'+d.total];})
-    : [['🍹','2-for-1 Mojitos','active','147/200'],['🍸','Cocktail Night','active','89/150'],['🍷','Buy-2-get-1 Drinks','scheduled','0/300'],['🥂','Premium Drinks','active','64/100']];
+    ? dealsData.slice(0,6).map(function(d){return [d.emoji,d.name,d.status,d.sold+'/'+d.total,d.id||d._dbId];})
+    : [['🍹','2-for-1 Mojitos','active','147/200','demo1'],['🍸','Cocktail Night','active','89/150','demo2'],['🍷','Buy-2-get-1 Drinks','scheduled','0/300','demo3'],['🥂','Premium Drinks','active','64/100','demo4']];
 
   var actRows=[
     {icon:'🎟️',bg:'rgba(232,25,44,.08)',actor:'Jamie M.',action:'bought 2× 2-for-1 Mojitos voucher',time:'2 min ago'},
@@ -11191,7 +11191,7 @@ function meRenderDash(){
               +'<td style="padding:10px;border-bottom:1px solid #F8F8FA;">'+badge(d[2])+'</td>'
               +'<td style="padding:10px;border-bottom:1px solid #F8F8FA;text-align:center;font-size:13px;font-weight:700;color:#555;font-family:Inter,sans-serif;">'+d[3]+'</td>'
               +'<td style="padding:10px;border-bottom:1px solid #F8F8FA;text-align:right;">'
-                +'<button onclick="showToast(\'Opening editor...\')" style="background:rgba(232,25,44,.08);color:#E8192C;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Edit</button>'
+                +'<button onclick="meOpenEditDeal(\''+d[4]+'\')" style="background:rgba(232,25,44,.08);color:#E8192C;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Edit</button>'
               +'</td>'
             +'</tr>';
           }).join('')
@@ -11243,6 +11243,37 @@ function meRenderDash(){
   );
 }
 
+function meOpenEditDeal(dealId){
+  var deal=dealsData&&dealsData.find(function(d){return (d.id||d._dbId)===dealId;});
+  if(!deal){showToast('Deal not found');return;}
+
+  // Open the create sheet in edit mode
+  var ov=document.getElementById('me-create-sheet-ov');
+  if(!ov)return;
+
+  // Populate form with deal data
+  var titleInp=document.getElementById('uc-deal-title');
+  var descInp=document.getElementById('uc-deal-desc');
+  var priceInp=document.getElementById('uc-deal-price');
+  var wasInp=document.getElementById('uc-deal-was-price');
+  var catSel=document.getElementById('uc-deal-cat');
+  var daysSel=document.getElementById('uc-deal-days');
+  var hourInp=document.getElementById('uc-deal-time-start');
+  var hourOutInp=document.getElementById('uc-deal-time-end');
+
+  if(titleInp)titleInp.value=deal.name||'';
+  if(descInp)descInp.value=deal.desc||'';
+  if(priceInp)priceInp.value=deal.price||'';
+  if(wasInp)wasInp.value=deal.was_price||'';
+  if(catSel)catSel.value=deal.category||'bars';
+  if(daysSel)daysSel.value=deal.days||'Fri–Sat';
+  if(hourInp)hourInp.value=(deal.time_from||17)+':00';
+  if(hourOutInp)hourOutInp.value=(deal.time_to||21)+':00';
+
+  // Open sheet
+  meOpenCreate();
+  showToast('📝 Editing deal...');
+}
 function meRenderDeals(){
   var arr=dealsData||[];
   var rows = arr.length
