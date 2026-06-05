@@ -13144,10 +13144,48 @@ async function comSubmitEvent(){
   var timeVal=(document.getElementById('com-ev-time').value||'19:00');
   var priceRaw=(document.getElementById('com-ev-price')||{}).value||'5';
   if(!title||!desc||!date||!loc||cap<2){showToast('Please fill all required fields');return;}
+
+  // Check for duplicate address
+  try{
+    var {data:existingEvents,error:dupErr}=await db.from('community_events').select('id,title,location,status').eq('location',loc);
+    if(!dupErr&&existingEvents&&existingEvents.length>0){
+      // Duplicate found - show warning dialog
+      var dup=existingEvents[0];
+      var dupTitle='⚠️ Similar Event Found';
+      var dupMsg='An event at "'+dup.location+'" already exists: "'+dup.title+'"\n\nDo you want to report this as a duplicate?';
+      var ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+      ov.innerHTML='<div style="background:white;border-radius:16px;max-width:400px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);">'
+        +'<div style="font-size:18px;font-weight:900;color:var(--red);margin-bottom:12px;">'+dupTitle+'</div>'
+        +'<div style="font-size:14px;color:#666;line-height:1.6;margin-bottom:20px;">'+dupMsg+'</div>'
+        +'<div style="display:flex;gap:10px;">'
+          +'<button onclick="this.parentElement.parentElement.parentElement.remove();comReportDuplicateEvent(\''+dup.id+'\',\''+loc.replace(/'/g,'\\\'')+'\')" style="flex:1;background:var(--red);color:white;border:none;border-radius:10px;padding:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">🚩 Report Duplicate</button>'
+          +'<button onclick="this.parentElement.parentElement.parentElement.remove();comSubmitEventForce()" style="flex:1;background:#ccc;color:#333;border:none;border-radius:10px;padding:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Continue Anyway</button>'
+        +'</div>'
+      +'</div>';
+      document.body.appendChild(ov);
+      ov.onclick=function(e){if(e.target===ov)ov.remove();};
+      return;
+    }
+  }catch(e){console.warn('[comSubmitEvent] duplicate check error:',e);}
+
+  comSubmitEventInner();
+}
+async function comSubmitEventInner(){
+  var title=(document.getElementById('com-ev-title').value||'').trim();
+  var desc=(document.getElementById('com-ev-desc').value||'').trim();
+  var date=(document.getElementById('com-ev-date').value||'').trim();
+  var loc=(document.getElementById('com-ev-location').value||'').trim();
+  var cap=parseInt((document.getElementById('com-ev-capacity')||{}).value)||0;
+  var timeVal=(document.getElementById('com-ev-time').value||'19:00');
+  var priceRaw=(document.getElementById('com-ev-price')||{}).value||'5';
   var catEmojis={cocktails:'🍹',beer:'🍺',wine:'🍷',social:'👥',food:'🍕',rooftop:'🌅'};
   var d;try{d=new Date(date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}catch(e){d=date;}
   var priceStr=comTicketType==='paid'?'€'+priceRaw:'Free';
   var hostName=(currentProfile&&currentProfile.name)||'Community';
+
+  var photoImg=document.getElementById('com-photo-preview-img');
+  var photoDataUrl=(photoImg&&photoImg.src&&photoImg.src.startsWith('data:'))?photoImg.src:'';
 
   // Compress photo
   var compressedPhoto=photoDataUrl;
@@ -13181,9 +13219,9 @@ async function comSubmitEvent(){
         image_url:compressedPhoto||null,
         submitter_ip:submitterIp||null, submitter_location:submitterLocation||null
       }).select('id').single();
-      if(insErr) console.warn('[comSubmitEvent] DB insert failed:',insErr.message);
+      if(insErr) console.warn('[comSubmitEventInner] DB insert failed:',insErr.message);
       if(row){ ev._dbId=row.id; ev.id=row.id; }
-    }catch(e){ console.warn('[comSubmitEvent]',e); }
+    }catch(e){ console.warn('[comSubmitEventInner]',e); }
   }
 
   comMyCreated.push(ev);comAdminPendingMeetups.push(ev);
@@ -13192,6 +13230,33 @@ async function comSubmitEvent(){
   var tabs=document.querySelectorAll('.com-tab');if(tabs[1])comSwitchTab('my-events',tabs[1]);
   aUpdateEventsBadge();
   showToast('📤 Submitted for admin review!');
+}
+function comSubmitEventForce(){
+  // User chose to continue despite duplicate warning
+  showToast('⚠️ Duplicate warning noted. Submitting...');
+  comSubmitEventInner();
+}
+async function comReportDuplicateEvent(duplicateId, location){
+  if(!currentUser){
+    showToast('🔒 Sign in to report duplicates');
+    return;
+  }
+  try{
+    var {error:err}=await db.from('duplicate_reports').insert({
+      user_id:currentUser.id,
+      original_event_id:duplicateId,
+      report_reason:'Duplicate event at same location: '+location,
+      status:'pending'
+    });
+    if(err){
+      showToast('Failed to report: '+err.message);
+      return;
+    }
+    showToast('✅ Duplicate reported to admin! Thank you.');
+  }catch(e){
+    console.warn('[comReportDuplicateEvent]',e);
+    showToast('Error reporting duplicate');
+  }
 }
 
 function renderMySubmissions(){
