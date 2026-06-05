@@ -1238,19 +1238,20 @@ function googleTranslateElementInit(){
         </div>
 
         <!-- ══ REVIEWS SECTION ══ -->
-        <div id="vd-reviews-section" style="margin-bottom:18px;">
-          <!-- Rating summary bar -->
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="font-size:16px;font-weight:900;color:var(--text);">💬 Reviews</div>
-              <div id="vd-avg-stars" style="display:flex;align-items:center;gap:3px;"></div>
-              <div id="vd-avg-score" style="font-size:13px;font-weight:800;color:var(--t2);"></div>
+        <div id="vd-reviews-section" style="margin-bottom:24px;">
+          <!-- Header with title and rating -->
+          <div style="margin-bottom:18px;">
+            <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px;">
+              <div style="font-size:20px;font-weight:900;color:var(--text);">💬 Reviews</div>
+              <div id="vd-avg-stars" style="display:flex;align-items:center;gap:2px;font-size:18px;"></div>
+              <div id="vd-avg-score" style="font-size:14px;font-weight:700;color:var(--t2);"></div>
             </div>
-            <button id="vd-write-review-btn" onclick="openWriteReview()" style="background:var(--red);color:white;border:none;border-radius:9px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">Write Review</button>
           </div>
+          <!-- Write Review Button -->
+          <button id="vd-write-review-btn" onclick="openWriteReview()" style="width:100%;background:linear-gradient(135deg,var(--red),#FF6B35);color:white;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:16px;transition:transform .15s;" onmousedown="this.style.transform='scale(.98)'" onmouseup="this.style.transform=''" ontouchstart="this.style.transform='scale(.98)'" ontouchend="this.style.transform='';">✏️ Write Review</button>
           <!-- Review cards -->
           <div id="vd-reviews-list"></div>
-          <button id="vd-see-all-btn" onclick="showAllReviews()" style="display:none;width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:11px;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;font-family:'Inter',sans-serif;margin-top:6px;">See all reviews →</button>
+          <button id="vd-see-all-btn" onclick="showAllReviews()" style="display:none;width:100%;background:white;border:1.5px solid var(--border);border-radius:12px;padding:13px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;margin-top:12px;transition:background .2s;" onmousedown="this.style.background='var(--bg)'" onmouseup="this.style.background='white'">See all reviews →</button>
         </div>
 
         <!-- Inline write-review panel (hidden by default) -->
@@ -4946,7 +4947,7 @@ function renderDealReviews(dealId){
   }
 
   if(!rs.length){
-    listEl.innerHTML='<div style="padding:20px 0;text-align:center;color:var(--t3);font-size:13px;font-weight:600;background:white;border-radius:14px;border:1.5px solid var(--border);">No reviews yet — be the first!</div>';
+    listEl.innerHTML='<div style="padding:28px 20px;text-align:center;color:var(--t3);font-size:13px;font-weight:600;background:linear-gradient(135deg,rgba(232,25,44,.02),rgba(255,107,53,.02));border-radius:14px;border:1.5px solid rgba(232,25,44,.1);">😊 No reviews yet<br><span style="font-size:12px;color:var(--t2);margin-top:4px;display:block;">Be the first to share your experience!</span></div>';
   } else {
     listEl.innerHTML=rs.slice(0,3).map(makeReviewCard).join('');
   }
