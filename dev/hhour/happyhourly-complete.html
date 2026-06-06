@@ -4765,6 +4765,47 @@ async function rejectDealMistake(reportId){
     adminPage('deals',document.querySelector('.adm-nav-btn'));
   }catch(e){console.warn('[rejectDealMistake]',e);}
 }
+function adminReviewMistakeReport(reportId){
+  var report=adminMistakeReports.find(function(r){return r.id===reportId;});
+  if(!report)return;
+
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  var modal='<div style="background:white;border-radius:16px;width:100%;max-width:500px;padding:24px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">'
+      +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;">Review Information Correction</div>'
+      +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>'
+    +'</div>'
+    +'<div style="margin-bottom:14px;padding:12px;background:#F5F5F7;border-radius:12px;">'
+      +'<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;margin-bottom:4px;">Field Reported</div>'
+      +'<div style="font-size:14px;font-weight:700;color:#1A1A1A;">'+report.field_reported+'</div>'
+    +'</div>'
+    +'<div style="margin-bottom:14px;padding:12px;background:#F5F5F7;border-radius:12px;">'
+      +'<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;margin-bottom:4px;">Suggested Correction</div>'
+      +'<input type="text" id="correction-input" value="'+report.suggested_correction.replace(/"/g,'&quot;')+'" style="width:100%;background:white;border:2px solid #E8E8EC;border-radius:8px;padding:10px;font-size:13px;color:#1A1A1A;font-family:Inter,sans-serif;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
+    +'</div>'
+    +(report.additional_comments?'<div style="margin-bottom:14px;padding:12px;background:#F5F5F7;border-radius:12px;">'
+      +'<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;margin-bottom:4px;">Additional Comments</div>'
+      +'<div style="font-size:13px;color:#555;line-height:1.5;">'+report.additional_comments+'</div>'
+    +'</div>':'')
+    +'<div style="margin-bottom:14px;padding:12px;background:#fffbeb;border-radius:12px;border:1px solid rgba(249,115,22,.2);">'
+      +'<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;margin-bottom:4px;">Reported By</div>'
+      +'<div style="font-size:13px;color:#1A1A1A;">'+report.reporter_name+' ('+report.reporter_email+')</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;">'
+      +'<button onclick="adminApproveMistakeModal('+report.id+','+report.deal_id+',\''+report.field_reported+'\',document.getElementById(\'correction-input\').value);this.closest(\'[style*=fixed]\').remove()" style="flex:1;background:linear-gradient(135deg,#12A150,#34d058);color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✓ Approve & Update</button>'
+      +'<button onclick="rejectDealMistake('+report.id+');this.closest(\'[style*=fixed]\').remove()" style="flex:1;background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✗ Reject</button>'
+    +'</div>'
+  +'</div>';
+  overlay.innerHTML=modal;
+  document.body.appendChild(overlay);
+}
+async function adminApproveMistakeModal(reportId,dealId,field,correction){
+  await approveDealMistake(reportId,dealId,field,correction);
+}
+function adminShowAllMistakeReports(){
+  adminPage('deals',document.querySelectorAll('.adm-nav-btn')[3]);
+}
 async function buyVoucher(){
   if (!requireLogin('purchase vouchers')) return;
   const code = 'HH-' + Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -5664,6 +5705,7 @@ function mcFilter(status, btn) {
   }).join('');
 }
 var dealReports = [];    // customer reports: {dealId, type, name, reportedAt}
+var adminMistakeReports = [];  // deal mistake reports from customers
 var eventReports = [];   // event reports: {id, event_id, reporter_id, reporter_email, reason, status, reported_at}
 var deletedVouchers = [];        // soft-deleted merchant deals (for revert)
 var removedCommunityDeals = [];  // soft-deleted community deals (for revert)
@@ -7720,10 +7762,16 @@ function adminPage(page,btn){
   var body=document.getElementById('admin-body');if(!body)return;
   var sym=finSym();
   if(page==='dashboard'){
+    // Load mistake reports
+    (async function(){
+      adminMistakeReports=await loadDealMistakeReports()||[];
+      if(adminCurrentPage==='dashboard')adminPage('dashboard',btn);
+    })();
+
     var pendingDeals  = pendingCommunityDeals.filter(function(d){return d.status==='pending';});
     var pendingEvents = (typeof comAdminPendingMeetups!=='undefined') ? comAdminPendingMeetups.filter(function(e){return e.status==='pending';}) : [];
     var pendingPay    = adminPayoutQueue.filter(function(p){return p.status==='pending';});
-    var totalUrgent   = pendingDeals.length + pendingEvents.length + pendingPay.length + dealReports.length;
+    var totalUrgent   = pendingDeals.length + pendingEvents.length + pendingPay.length + dealReports.length + (adminMistakeReports?adminMistakeReports.length:0);
 
     // card / row shorthand
     var card  = 'background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.05);';
@@ -7838,6 +7886,33 @@ function adminPage(page,btn){
           +'</div>';
         }).join('')
         +(dealReports.length>3?'<div style="padding:10px 18px;text-align:center;"><button onclick="adminPage(\'deals\',document.querySelectorAll(\'.adm-nav-btn\')[3])" style="background:none;border:none;font-size:13px;font-weight:700;color:#E8192C;cursor:pointer;font-family:Inter,sans-serif;">+ '+(dealReports.length-3)+' more reported deals</button></div>':'')
+      +'</div>';
+    }
+
+    // ── ③c DEAL MISTAKE REPORTS ────────────────────────────────────────────────
+    if(adminMistakeReports&&adminMistakeReports.length>0){
+      html += '<div style="'+card+'border-color:rgba(249,115,22,.3);">'
+        +'<div style="'+hdr+'">'
+          +'<div style="display:flex;align-items:center;gap:10px;">'
+            +'<span style="font-size:14px;font-weight:800;color:#d97706;">⚠️ Deal Information Corrections</span>'
+            +'<span style="background:#d97706;color:white;font-size:10px;font-weight:900;padding:3px 8px;border-radius:10px;min-width:20px;text-align:center;">'+adminMistakeReports.length+'</span>'
+          +'</div>'
+          +'<button onclick="adminShowAllMistakeReports()" style="background:none;border:none;font-size:12px;font-weight:700;color:#E8192C;cursor:pointer;font-family:Inter,sans-serif;">See all →</button>'
+        +'</div>'
+        +adminMistakeReports.slice(0,3).map(function(r){
+          return '<div style="'+row+'cursor:pointer;background:#fffbeb;" onmouseenter="this.style.background=\'#fef3c7\'" onmouseleave="this.style.background=\'#fffbeb\'">'
+            +'<div style="width:42px;height:42px;border-radius:12px;background:rgba(249,115,22,.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">⚠️</div>'
+            +'<div style="flex:1;min-width:0;">'
+              +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;">Deal #'+r.deal_id+' — '+r.field_reported+'</div>'
+              +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">Suggested: '+r.suggested_correction.substring(0,50)+(r.suggested_correction.length>50?'…':'')+' · by '+r.reporter_name+'</div>'
+              +'<div style="font-size:10px;color:#d97706;font-weight:700;margin-top:2px;">Status: '+r.status+'</div>'
+            +'</div>'
+            +'<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-shrink:0;">'
+              +'<button onclick="adminReviewMistakeReport('+r.id+')" style="background:rgba(59,130,246,.08);color:#3b82f6;border:1.5px solid rgba(59,130,246,.2);border-radius:9px;padding:6px 11px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Review</button>'
+            +'</div>'
+          +'</div>';
+        }).join('')
+        +(adminMistakeReports.length>3?'<div style="padding:10px 18px;text-align:center;"><button onclick="adminShowAllMistakeReports()" style="background:none;border:none;font-size:13px;font-weight:700;color:#E8192C;cursor:pointer;font-family:Inter,sans-serif;">+ '+(adminMistakeReports.length-3)+' more corrections</button></div>':'')
       +'</div>';
     }
 
