@@ -1307,7 +1307,7 @@ function googleTranslateElementInit(){
         </div>
       </div>
       <!-- Report Mistake Modal -->
-      <div id="report-mistake-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;flex-direction:column;align-items:center;justify-content:center;padding:16px;">
+      <div id="report-mistake-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;padding:16px;" class="report-modal-open">
         <div style="background:white;border-radius:16px;width:100%;max-width:450px;padding:24px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div style="font-size:18px;font-weight:900;color:#1A1A1A;">Report Incorrect Information</div>
@@ -4698,7 +4698,12 @@ function openReportMistakeModal(){
     showToast('🔒 Sign in to report');
     return;
   }
-  document.getElementById('report-mistake-modal').style.display='flex';
+  var modal=document.getElementById('report-mistake-modal');
+  if(!modal){showToast('Modal not found');return;}
+  modal.style.display='flex';
+  modal.style.flexDirection='column';
+  modal.style.alignItems='center';
+  modal.style.justifyContent='center';
   document.getElementById('mistake-field').value='';
   document.getElementById('mistake-correction').value='';
   document.getElementById('mistake-comments').value='';
