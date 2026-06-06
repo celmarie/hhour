@@ -4702,6 +4702,7 @@ function openReportMistakeModal(){
   document.getElementById('mistake-field').value='';
   document.getElementById('mistake-correction').value='';
   document.getElementById('mistake-comments').value='';
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 async function submitMistakeReport(){
   if(!currentUser){showToast('🔒 Sign in first');return;}
