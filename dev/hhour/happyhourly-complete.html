@@ -4793,9 +4793,11 @@ function adminReviewMistakeReport(reportId){
       +'<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;margin-bottom:4px;">Reported By</div>'
       +'<div style="font-size:13px;color:#1A1A1A;">'+report.reporter_name+' ('+report.reporter_email+')</div>'
     +'</div>'
-    +'<div style="display:flex;gap:8px;">'
-      +'<button onclick="adminApproveMistakeModal('+report.id+','+report.deal_id+',\''+report.field_reported+'\',document.getElementById(\'correction-input\').value);this.closest(\'[style*=fixed]\').remove()" style="flex:1;background:linear-gradient(135deg,#12A150,#34d058);color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✓ Approve & Update</button>'
-      +'<button onclick="rejectDealMistake('+report.id+');this.closest(\'[style*=fixed]\').remove()" style="flex:1;background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✗ Reject</button>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      +'<button onclick="adminApproveMistakeModal('+report.id+','+report.deal_id+',\''+report.field_reported+'\',document.getElementById(\'correction-input\').value);this.closest(\'[style*=fixed]\').remove()" style="flex:1;min-width:120px;background:linear-gradient(135deg,#12A150,#34d058);color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✓ Approve & Update</button>'
+      +'<button onclick="adminEditDealFromCorrection('+report.deal_id+');this.closest(\'[style*=fixed]\').remove()" style="flex:1;min-width:120px;background:rgba(59,130,246,.1);color:#3b82f6;border:1.5px solid rgba(59,130,246,.2);border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✏️ Edit Deal</button>'
+      +'<button onclick="adminDeleteDealFromCorrection('+report.id+','+report.deal_id+');this.closest(\'[style*=fixed]\').remove()" style="flex:1;min-width:120px;background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗑️ Delete</button>'
+      +'<button onclick="rejectDealMistake('+report.id+');this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:#F5F5F7;color:#9A9AB0;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-top:4px;">✗ Reject Report</button>'
     +'</div>'
   +'</div>';
   overlay.innerHTML=modal;
@@ -4806,6 +4808,84 @@ async function adminApproveMistakeModal(reportId,dealId,field,correction){
 }
 function adminShowAllMistakeReports(){
   adminPage('deals',document.querySelectorAll('.adm-nav-btn')[3]);
+}
+function adminEditDealFromCorrection(dealId){
+  var deal=dealsData.find(function(d){return d.id===dealId;});
+  if(!deal){showToast('Deal not found');return;}
+
+  // Open a detailed edit modal
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  var modal='<div style="background:white;border-radius:16px;width:100%;max-width:550px;padding:24px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">'
+      +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;">Edit Deal Details</div>'
+      +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>'
+    +'</div>'
+    +'<div style="margin-bottom:14px;">'
+      +'<label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:6px;">Deal Name</label>'
+      +'<input type="text" id="edit-deal-name" value="'+(deal.name||'').replace(/"/g,'&quot;')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;color:#1A1A1A;font-family:Inter,sans-serif;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
+    +'</div>'
+    +'<div style="margin-bottom:14px;">'
+      +'<label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:6px;">Price</label>'
+      +'<input type="text" id="edit-deal-price" value="'+(deal.price||'').replace(/"/g,'&quot;')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;color:#1A1A1A;font-family:Inter,sans-serif;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
+    +'</div>'
+    +'<div style="margin-bottom:14px;">'
+      +'<label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:6px;">Description</label>'
+      +'<textarea id="edit-deal-desc" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;color:#1A1A1A;font-family:Inter,sans-serif;outline:none;resize:vertical;min-height:80px;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'+(deal.desc||'')+'</textarea>'
+    +'</div>'
+    +'<div style="margin-bottom:14px;">'
+      +'<label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:6px;">Time</label>'
+      +'<input type="text" id="edit-deal-time" value="'+(deal.time||'').replace(/"/g,'&quot;')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;color:#1A1A1A;font-family:Inter,sans-serif;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;">'
+      +'<button onclick="adminSaveDealEdits('+dealId+');this.closest(\'[style*=fixed]\').remove()" style="flex:1;background:linear-gradient(135deg,#12A150,#34d058);color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">💾 Save Changes</button>'
+      +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="flex:1;background:#F5F5F7;color:#9A9AB0;border:1.5px solid #E8E8EC;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>'
+    +'</div>'
+  +'</div>';
+  overlay.innerHTML=modal;
+  document.body.appendChild(overlay);
+}
+async function adminSaveDealEdits(dealId){
+  var name=document.getElementById('edit-deal-name').value.trim();
+  var price=document.getElementById('edit-deal-price').value.trim();
+  var desc=document.getElementById('edit-deal-desc').value.trim();
+  var time=document.getElementById('edit-deal-time').value.trim();
+
+  if(!name){showToast('Deal name required');return;}
+
+  try{
+    var update={name:name,price:price,desc:desc,time:time};
+    var {error:err}=await db.from('verified_deals').update(update).eq('id',dealId);
+    if(err){showToast('Failed to update: '+err.message);return;}
+
+    // Update local object
+    var deal=dealsData.find(function(d){return d.id===dealId;});
+    if(deal){
+      deal.name=name;
+      deal.price=price;
+      deal.desc=desc;
+      deal.time=time;
+    }
+    showToast('✅ Deal updated successfully');
+    adminPage('deals',document.querySelectorAll('.adm-nav-btn')[3]);
+  }catch(e){console.warn('[adminSaveDealEdits]',e);showToast('Error saving');}
+}
+async function adminDeleteDealFromCorrection(reportId,dealId){
+  if(!confirm('⚠️ Delete this deal permanently?'))return;
+
+  try{
+    // Delete the deal
+    var {error:err}=await db.from('verified_deals').delete().eq('id',dealId);
+    if(err){showToast('Failed to delete: '+err.message);return;}
+
+    // Mark report as approved
+    await db.from('deal_mistake_reports').update({status:'approved'}).eq('id',reportId);
+
+    // Remove from local array
+    dealsData=dealsData.filter(function(d){return d.id!==dealId;});
+    showToast('✅ Deal deleted');
+    adminPage('deals',document.querySelectorAll('.adm-nav-btn')[3]);
+  }catch(e){console.warn('[adminDeleteDealFromCorrection]',e);showToast('Error deleting');}
 }
 async function buyVoucher(){
   if (!requireLogin('purchase vouchers')) return;
