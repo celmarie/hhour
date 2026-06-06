@@ -6795,6 +6795,12 @@ async function loadAdminData(){
       }
     } catch(e){ console.warn('[loadAdminData] deal_reports fetch failed (table may not exist yet):',e); }
 
+    // Deal mistake reports
+    try {
+      adminMistakeReports=await loadDealMistakeReports()||[];
+      console.log('[loadAdminData] Loaded '+adminMistakeReports.length+' mistake reports');
+    } catch(e){ console.warn('[loadAdminData] deal_mistake_reports fetch failed:',e); }
+
     // Community events — wrapped independently so a missing table can't break other admin data
     try{
       var evRows=null;
@@ -7857,12 +7863,6 @@ function adminPage(page,btn){
   var body=document.getElementById('admin-body');if(!body)return;
   var sym=finSym();
   if(page==='dashboard'){
-    // Load mistake reports
-    (async function(){
-      adminMistakeReports=await loadDealMistakeReports()||[];
-      if(adminCurrentPage==='dashboard')adminPage('dashboard',btn);
-    })();
-
     var pendingDeals  = pendingCommunityDeals.filter(function(d){return d.status==='pending';});
     var pendingEvents = (typeof comAdminPendingMeetups!=='undefined') ? comAdminPendingMeetups.filter(function(e){return e.status==='pending';}) : [];
     var pendingPay    = adminPayoutQueue.filter(function(p){return p.status==='pending';});
