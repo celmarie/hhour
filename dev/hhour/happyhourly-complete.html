@@ -7993,8 +7993,8 @@ function adminPage(page,btn){
               +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">Suggested: '+r.suggested_correction.substring(0,50)+(r.suggested_correction.length>50?'…':'')+' · by '+r.reporter_name+'</div>'
               +'<div style="font-size:10px;color:#d97706;font-weight:700;margin-top:2px;">Status: '+r.status+'</div>'
             +'</div>'
-            +'<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-shrink:0;">'
-              +'<button onclick="adminReviewMistakeReport('+r.id+')" style="background:rgba(59,130,246,.08);color:#3b82f6;border:1.5px solid rgba(59,130,246,.2);border-radius:9px;padding:6px 11px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Review</button>'
+            +'<div style="display:flex;gap:6px;flex-shrink:0;">'
+              +'<button onclick="event.stopPropagation();adminReviewMistakeReport('+r.id+')" style="background:rgba(59,130,246,.08);color:#3b82f6;border:1.5px solid rgba(59,130,246,.2);border-radius:9px;padding:6px 11px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Review</button>'
             +'</div>'
           +'</div>';
         }).join('')
