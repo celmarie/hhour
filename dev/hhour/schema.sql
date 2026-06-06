@@ -352,3 +352,26 @@ alter table if exists community_events add column if not exists currency text de
 
 -- Add currency column to deals if it doesn't exist (for consistency)
 alter table if exists community_deals add column if not exists currency text default 'EUR';
+
+-- ── DEAL MISTAKE REPORTS ──────────────────────────────────────────────────
+create table if not exists deal_mistake_reports (
+  id          bigserial primary key,
+  deal_id     bigint not null,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  reporter_name text,
+  reporter_email text,
+  field_reported text not null check (field_reported in ('price','time','days','location','description')),
+  suggested_correction text,
+  additional_comments text,
+  status      text not null default 'pending' check (status in ('pending','reviewed','approved','rejected')),
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+alter table deal_mistake_reports enable row level security;
+create policy "Users insert own reports" on deal_mistake_reports for insert with check (auth.uid() = user_id);
+create policy "Admin read all reports" on deal_mistake_reports for select using (
+  exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')
+);
+create policy "Admin update reports" on deal_mistake_reports for update using (
+  exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')
+);

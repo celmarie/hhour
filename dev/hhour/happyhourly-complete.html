@@ -1254,6 +1254,11 @@ function googleTranslateElementInit(){
           <button id="vd-see-all-btn" onclick="showAllReviews()" style="display:none;width:100%;background:white;border:1.5px solid var(--border);border-radius:12px;padding:13px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;margin-top:12px;transition:background .2s;" onmousedown="this.style.background='var(--bg)'" onmouseup="this.style.background='white'">See all reviews →</button>
         </div>
 
+        <!-- Report Mistake Section -->
+        <div style="margin-bottom:18px;">
+          <button onclick="openReportMistakeModal()" style="width:100%;background:rgba(232,25,44,.08);color:#E8192C;border:1.5px solid rgba(232,25,44,.2);border-radius:12px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">🚩 Report incorrect information</button>
+        </div>
+
         <!-- Inline write-review panel (hidden by default) -->
         <div id="vd-inline-review" style="display:none;background:white;border:2px solid var(--border);border-radius:16px;padding:18px;margin-bottom:18px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -1301,6 +1306,37 @@ function googleTranslateElementInit(){
           <div style="text-align:center;font-size:11px;color:var(--t3);font-weight:500;margin-top:10px;">Help the community — confirm if this deal is still running</div>
         </div>
       </div>
+      <!-- Report Mistake Modal -->
+      <div id="report-mistake-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;flex-direction:column;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:white;border-radius:16px;width:100%;max-width:450px;padding:24px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="font-size:18px;font-weight:900;color:#1A1A1A;">Report Incorrect Information</div>
+            <button onclick="document.getElementById('report-mistake-modal').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>
+          </div>
+          <div style="font-size:13px;color:#9A9AB0;margin-bottom:18px;">Help us keep deal information accurate. Let us know what's wrong.</div>
+          <div style="margin-bottom:14px;">
+            <label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">What field is incorrect?</label>
+            <select id="mistake-field" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;font-weight:600;color:#1A1A1A;font-family:Inter,sans-serif;outline:none;">
+              <option value="">Select a field...</option>
+              <option value="price">💰 Price</option>
+              <option value="time">⏰ Time</option>
+              <option value="days">📅 Days</option>
+              <option value="location">📍 Location</option>
+              <option value="description">📝 Description</option>
+            </select>
+          </div>
+          <div style="margin-bottom:14px;">
+            <label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">What should it be?</label>
+            <input id="mistake-correction" type="text" placeholder="e.g. €3.50 instead of €5.00" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;color:#1A1A1A;font-family:Inter,sans-serif;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+          </div>
+          <div style="margin-bottom:16px;">
+            <label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Additional details (optional)</label>
+            <textarea id="mistake-comments" placeholder="Any extra information..." style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;color:#1A1A1A;font-family:Inter,sans-serif;outline:none;resize:vertical;min-height:80px;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'"></textarea>
+          </div>
+          <button onclick="submitMistakeReport()" style="width:100%;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Submit Report</button>
+        </div>
+      </div>
+
       <!-- Purchase success overlay (brief, then auto-goes to voucher screen) -->
       <div class="vc-overlay" id="vc-overlay">
         <div class="vc-card" style="position:relative;">
@@ -4657,6 +4693,78 @@ function chQty(d){
   document.getElementById('vd-total').textContent=base>0?(sym+(base*qty).toFixed(2)):deal.price;
 }
 
+function openReportMistakeModal(){
+  if(!currentUser){
+    showToast('🔒 Sign in to report');
+    return;
+  }
+  document.getElementById('report-mistake-modal').style.display='flex';
+  document.getElementById('mistake-field').value='';
+  document.getElementById('mistake-correction').value='';
+  document.getElementById('mistake-comments').value='';
+}
+async function submitMistakeReport(){
+  if(!currentUser){showToast('🔒 Sign in first');return;}
+  var field=document.getElementById('mistake-field').value.trim();
+  var correction=document.getElementById('mistake-correction').value.trim();
+  if(!field||!correction){showToast('Please fill required fields');return;}
+
+  try{
+    var {error:err}=await db.from('deal_mistake_reports').insert({
+      deal_id:curV,
+      user_id:currentUser.id,
+      reporter_name:(currentProfile&&currentProfile.name)||'Anonymous',
+      reporter_email:currentUser.email,
+      field_reported:field,
+      suggested_correction:correction,
+      additional_comments:document.getElementById('mistake-comments').value.trim()||null,
+      status:'pending'
+    });
+    if(err){showToast('❌ Failed to submit: '+err.message);return;}
+    showToast('✅ Report submitted! Thanks for helping.');
+    document.getElementById('report-mistake-modal').style.display='none';
+  }catch(e){
+    console.warn('[submitMistakeReport]',e);
+    showToast('Error submitting report');
+  }
+}
+async function loadDealMistakeReports(){
+  try{
+    var {data:reports,error:err}=await db.from('deal_mistake_reports')
+      .select('*')
+      .eq('status','pending')
+      .order('created_at',{ascending:false});
+    if(err)return [];
+    return reports||[];
+  }catch(e){return [];}
+}
+async function approveDealMistake(reportId,dealId,field,correction){
+  try{
+    var deal=dealsData.find(function(d){return d.id===dealId;});
+    if(!deal)return;
+
+    // Update deal field in database
+    var update={};
+    update[field]=correction;
+    var {error:err}=await db.from('verified_deals').update(update).eq('id',dealId);
+    if(err){showToast('Failed to update: '+err.message);return;}
+
+    // Mark report as approved
+    await db.from('deal_mistake_reports').update({status:'approved'}).eq('id',reportId);
+
+    // Update local deal object
+    deal[field]=correction;
+    showToast('✅ Deal updated and field corrected');
+    adminPage('deals',document.querySelector('.adm-nav-btn'));
+  }catch(e){console.warn('[approveDealMistake]',e);showToast('Error approving');}
+}
+async function rejectDealMistake(reportId){
+  try{
+    await db.from('deal_mistake_reports').update({status:'rejected'}).eq('id',reportId);
+    showToast('Report rejected');
+    adminPage('deals',document.querySelector('.adm-nav-btn'));
+  }catch(e){console.warn('[rejectDealMistake]',e);}
+}
 async function buyVoucher(){
   if (!requireLogin('purchase vouchers')) return;
   const code = 'HH-' + Math.random().toString(36).substring(2, 6).toUpperCase();
