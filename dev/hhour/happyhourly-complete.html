@@ -5896,7 +5896,7 @@ function _submitDealInner(){
   var addr=(document.getElementById('uc-addr')||{value:''}).value.trim();
   if(!v){showToast('Please enter a venue name 📍');return;}
   if(!title){showToast('Please enter a deal title 📝');return;}
-  if(!d){showToast('Please add a description 📝');return;}
+  if(!addr){showToast('Please enter an address 📍');return;}
 
   var catEl=document.getElementById('uc-deal-cat');
   var catVal=catEl?catEl.value:'bars';
@@ -5905,10 +5905,11 @@ function _submitDealInner(){
 
   var curEl=document.getElementById('uc-deal-currency');
   var curCode=curEl?curEl.value:'EUR';
-  var syms={EUR:'€',USD:'$',GBP:'£',CAD:'CA$',AUD:'A$',CHF:'CHF',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',MXN:'MX$',BRL:'R$',SGD:'S$',AED:'د.إ',FREE:'🆓'};
+  var syms={EUR:'€',USD:'$',GBP:'£',CAD:'CA$',AUD:'A$',CHF:'CHF',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',MXN:'MX$',BRL:'R$',SGD:'S$',AED:'د.إ',FREE:'🆓',THB:'฿',VND:'₫',PHP:'₱',MYR:'RM',IDR:'Rp',SGD:'S$',INR:'₹',KRW:'₩',CNY:'¥',PKR:'₨',BDT:'৳'};
   var sym=syms[curCode]||curCode;
   var isFreeSelected=(curCode==='FREE');
   var priceRaw=(document.getElementById('uc-deal-price')||{value:''}).value.trim();
+  if(!priceRaw && !isFreeSelected){showToast('Please enter a price 💰');return;}
   var price=isFreeSelected?'Free':(priceRaw?(sym+parseFloat(priceRaw).toFixed(2)):'');
   var wasRaw=(document.getElementById('uc-deal-was')||{value:''}).value.trim();
   var was=wasRaw?(sym+parseFloat(wasRaw).toFixed(2)):'';
