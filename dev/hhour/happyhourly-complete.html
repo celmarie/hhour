@@ -10000,10 +10000,23 @@ async function adminSaveEditsOnly(){
       }
     }
 
-    console.log('[adminSaveEditsOnly] Save successful! Reloading data...');
+    console.log('[adminSaveEditsOnly] Save successful! Reloading specific deal...');
 
-    // Reload the deal data from database to refresh admin view
-    await loadAdminData();
+    // Reload just the specific deal we edited (not all deals)
+    var { data: freshDeal, error: fetchErr } = await db.from('community_deals').select('*').eq('id', dbId).single();
+    if(!fetchErr && freshDeal){
+      console.log('[adminSaveEditsOnly] Fresh deal fetched:', freshDeal);
+      // Update the deal in the local array
+      var existingDeal = ucDeals.find(function(d){ return d._dbId === dbId || d.id === (_admReviewDealId); });
+      if(existingDeal){
+        var converted = dbUCToLocal(freshDeal);
+        Object.assign(existingDeal, converted);
+        console.log('[adminSaveEditsOnly] Local deal updated with fresh data');
+      }
+    } else {
+      console.log('[adminSaveEditsOnly] Could not fetch fresh deal, reloading all admin data...');
+      await loadAdminData();
+    }
 
     // Refresh the review form with the newly loaded data
     console.log('[adminSaveEditsOnly] Refreshing form with fresh data...');
