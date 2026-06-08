@@ -2924,7 +2924,7 @@ async function loadDealsFromSupabase() {
         .eq('status', 'active')
         .or('end_date.is.null,end_date.gte.' + today)
         .order('claimed', { ascending: false }),
-      db.from('community_deals').select('*').eq('status', 'approved').order('updated_at', { ascending: false, nullsFirst: false }),
+      db.from('community_deals').select('*').eq('status', 'approved').order('created_at', { ascending: false }),
       db.from('reviews').select('deal_id,deal_kind,rating')
     ]);
     if (dr.error) console.error('[Supabase] deals fetch error:', dr.error.message);
