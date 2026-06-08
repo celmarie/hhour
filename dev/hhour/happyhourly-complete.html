@@ -9470,11 +9470,12 @@ function adminOpenDealReview(id, source){
     });
     // Buttons: only Save + Delete (no approve/reject for merchant)
     document.getElementById('adm-rev-approve-btn').style.display = 'none';
-    document.getElementById('adm-rev-reject-btn').style.display = 'none';
+    document.getElementById('adm-rev-reject-btn').style.display = '';
+    document.getElementById('adm-rev-delete-btn').style.display = '';
     document.getElementById('adm-rev-save-btn').style.display = '';
     document.getElementById('adm-rev-delete-btn').style.background = 'rgba(220,38,38,.08)';
     document.getElementById('adm-rev-delete-btn').style.color = '#dc2626';
-    document.getElementById('adm-rev-delete-btn').title = 'Deactivate deal';
+    document.getElementById('adm-rev-delete-btn').title = 'Reject correction';
     // Seed photo preview in edit form
     admSeedEditPhotoPreview(deal.img||'');
     // Auto-open edit form for merchant deals
@@ -9564,8 +9565,9 @@ function adminReviewDeal(id){
 
   // Hide approve/reject if already decided
   var isDecided = s !== 'pending';
-  document.getElementById('adm-rev-approve-btn').style.display = isDecided ? 'none' : '';
+  document.getElementById('adm-rev-approve-btn').style.display = 'none'; // Always hidden - Save button does both
   document.getElementById('adm-rev-reject-btn').style.display = isDecided ? 'none' : '';
+  document.getElementById('adm-rev-delete-btn').style.display = isDecided ? 'none' : '';
   document.getElementById('adm-rev-save-btn').style.display = 'none'; // hidden until edit toggled
   // Reset edit toggle button
   var ef = document.getElementById('adm-rev-edit-form');
@@ -15213,10 +15215,10 @@ function _setupDealMap() {
 
     <!-- Fixed bottom actions -->
     <div id="adm-rev-action-bar" style="flex-shrink:0;background:white;border-top:1px solid #E8E8EC;padding:12px 16px 28px;display:flex;gap:8px;">
-      <button id="adm-rev-save-btn" onclick="adminSaveEditsOnly()" style="display:none;flex:1;background:#1A1A1A;color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">💾 Save</button>
-      <button id="adm-rev-approve-btn" onclick="adminSaveAndApprove()" style="flex:1;background:#12A150;color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✓ Approve</button>
-      <button id="adm-rev-reject-btn" onclick="adminSaveAndReject()" style="flex:1;background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✗ Reject</button>
-      <button id="adm-rev-delete-btn" onclick="adminSaveAndDelete()" style="background:#F5F5F7;color:#9A9AB0;border:1.5px solid #E8E8EC;border-radius:12px;padding:14px 16px;font-size:18px;cursor:pointer;font-family:Inter,sans-serif;">🗑️</button>
+      <button id="adm-rev-save-btn" onclick="adminSaveEditsOnly()" style="display:none;flex:1;background:#1A1A1A;color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">💾 Save (& Approve)</button>
+      <button id="adm-rev-approve-btn" onclick="adminSaveAndApprove()" style="flex:1;background:#12A150;color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;display:none;">✓ Approve</button>
+      <button id="adm-rev-reject-btn" onclick="rejectDealMistake(_admReviewDealId)" style="flex:1;background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;display:none;">✗ Reject</button>
+      <button id="adm-rev-delete-btn" onclick="rejectDealMistake(_admReviewDealId)" style="background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:12px;padding:14px 16px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;display:none;">✗ Reject</button>
     </div>
   </div>
 </div>
