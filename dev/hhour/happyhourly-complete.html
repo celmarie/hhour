@@ -2851,6 +2851,8 @@ function dbUCToLocal(row) {
     emoji: row.emoji || '📣',
     imgClass: row.img_class || 'uc1',
     img: row.image_url || '',
+    img2: row.image_url_2 || '',
+    img3: row.image_url_3 || '',
     name: row.venue_name,
     address: row.address || 'Carrer de Sòria 11, Ciutat Vella, 08003 Barcelona',
     deal: row.title,
@@ -6723,7 +6725,7 @@ async function loadAdminData(){
   try {
     // Community deals (all statuses so dashboard/deals tabs both work)
     var { data: dbCD, error: cdErr } = await db.from('community_deals')
-      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,user_name,image_url,currency,discount_pct,dist_km,time_from,time_to')
+      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,user_name,image_url,image_url_2,image_url_3,currency,discount_pct,dist_km,time_from,time_to')
       .order('created_at', {ascending:false});
     if(cdErr) console.error('[loadAdminData] community_deals error:', cdErr.message, cdErr);
     if(dbCD && dbCD.length){
@@ -6747,6 +6749,8 @@ async function loadAdminData(){
           status: r.status||'pending',
           submittedAt: dbAgo(r.created_at), ago: dbAgo(r.created_at),
           img: r.image_url || '',
+          img2: r.image_url_2 || '',
+          img3: r.image_url_3 || '',
           timeFrom: r.time_from || 17, timeTo: r.time_to || 22,
           discPct: r.discount_pct || 0,
           rating: 0, timeLeft: '3h 00m'
@@ -9638,17 +9642,12 @@ function adminReviewDeal(id){
 
   // Store photo if exists
   console.log('[adminReviewDeal] Photo from deal.img:', deal.img ? 'EXISTS (length: '+deal.img.length+')' : 'NULL');
-  if(deal.img) {
-    // Photo exists - store it for editing
-    _admEditPhotoDataUrl = deal.img;
-    _admPhotos = [deal.img];
-    console.log('[adminReviewDeal] ✅ Stored photo in _admEditPhotoDataUrl');
-    console.log('[adminReviewDeal] Photo is', deal.img.substring(0, 50) + '...');
-  } else {
-    _admEditPhotoDataUrl = '';
-    _admPhotos = [];
-    console.log('[adminReviewDeal] No photo for this deal');
-  }
+  // Load all photos into the grid slots
+  _admPhotos = [];
+  if(deal.img)  _admPhotos[0] = deal.img;
+  if(deal.img2) _admPhotos[1] = deal.img2;
+  if(deal.img3) _admPhotos[2] = deal.img3;
+  _admEditPhotoDataUrl = deal.img || '';
 
   // Clear and re-render the photo grid
   var photoGrid = document.getElementById('adm-photo-grid');
@@ -9904,27 +9903,18 @@ async function adminSaveEditsOnly(){
   // - new photo added to slot 1/2 → _admPhotos has extra items
   // - slot 0 replaced → _admPhotos[0] differs from _admEditPhotoDataUrl
 
-  var newImgUrl = undefined; // undefined = don't update DB field at all
-
-  if(_admPhotos.length === 0){
-    // User deleted all photos
-    newImgUrl = '';
-  } else {
-    // Find any photo that is NEW (not the original loaded photo)
-    var newPhoto = null;
-    for(var pi = 0; pi < _admPhotos.length; pi++){
-      if(_admPhotos[pi] && _admPhotos[pi] !== _admEditPhotoDataUrl){
-        newPhoto = _admPhotos[pi];
-        break;
-      }
+  // Compress any new photos (data URLs that differ from what was originally loaded)
+  async function compressIfNew(photo, original){
+    if(!photo) return '';
+    if(photo === original) return photo; // unchanged, no compression needed
+    if(photo.startsWith('data:')){
+      try { return await compressImage(photo, 800, 0.8); } catch(e){ return photo; }
     }
-    if(newPhoto){
-      // Compress and save the new photo
-      try { newImgUrl = await compressImage(newPhoto, 800, 0.8); }
-      catch(e){ newImgUrl = newPhoto; }
-    }
-    // else: no new photo → newImgUrl stays undefined → DB field won't be touched
+    return photo;
   }
+  var savedImg1 = await compressIfNew(_admPhotos[0]||'', _admEditPhotoDataUrl);
+  var savedImg2 = await compressIfNew(_admPhotos[1]||'', '');
+  var savedImg3 = await compressIfNew(_admPhotos[2]||'', '');
 
   try {
     if(_admReviewSource === 'merchant'){
@@ -9947,9 +9937,9 @@ async function adminSaveEditsOnly(){
         currency: edits.currency||'EUR',
         discount_pct: edits.discPct||0
       };
-      if(newImgUrl !== undefined){
-        mUpdate.image_url = newImgUrl;
-      }
+      mUpdate.image_url   = savedImg1;
+      mUpdate.image_url_2 = savedImg2;
+      mUpdate.image_url_3 = savedImg3;
       console.log('[adminSaveEditsOnly] Full update object:', mUpdate);
       var { error } = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
       if(error){
@@ -9997,10 +9987,9 @@ async function adminSaveEditsOnly(){
         off_label: edits.off||undefined,
         discount_pct: edits.discPct||0
       };
-      if(newImgUrl !== undefined){
-        // undefined = no change; '' = deleted; string = new photo
-        cUpdate.image_url = newImgUrl;
-      }
+      cUpdate.image_url   = savedImg1;
+      cUpdate.image_url_2 = savedImg2;
+      cUpdate.image_url_3 = savedImg3;
       console.log('[adminSaveEditsOnly] Query: UPDATE community_deals SET ... WHERE id =', dbId);
 
       var { error, data } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
@@ -10093,9 +10082,12 @@ async function adminSaveEditsOnly(){
       if(tfEl) tfEl.value = String(tf).padStart(2, '0') + ':00';
       if(ttEl) ttEl.value = String(tt).padStart(2, '0') + ':00';
 
-      // Set photo
+      // Set all photos
       _admEditPhotoDataUrl = freshDeal.image_url || '';
-      _admPhotos = freshDeal.image_url ? [freshDeal.image_url] : [];
+      _admPhotos = [];
+      if(freshDeal.image_url)   _admPhotos[0] = freshDeal.image_url;
+      if(freshDeal.image_url_2) _admPhotos[1] = freshDeal.image_url_2;
+      if(freshDeal.image_url_3) _admPhotos[2] = freshDeal.image_url_3;
       var pg = document.getElementById('adm-photo-grid');
       if(pg) pg.innerHTML = '';
       renderPhotoGrid('adm');
