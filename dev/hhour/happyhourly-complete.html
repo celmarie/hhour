@@ -9471,7 +9471,7 @@ function adminOpenDealReview(id, source){
     // Buttons: only Save + Delete (no approve/reject for merchant)
     document.getElementById('adm-rev-approve-btn').style.display = 'none';
     document.getElementById('adm-rev-reject-btn').style.display = '';
-    document.getElementById('adm-rev-delete-btn').style.display = '';
+    document.getElementById('adm-rev-delete-btn').style.display = 'none'; // Hide duplicate - use reject button instead
     document.getElementById('adm-rev-save-btn').style.display = '';
     document.getElementById('adm-rev-delete-btn').style.background = 'rgba(220,38,38,.08)';
     document.getElementById('adm-rev-delete-btn').style.color = '#dc2626';
