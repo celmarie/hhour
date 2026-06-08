@@ -10037,14 +10037,22 @@ async function adminSaveEditsOnly(){
         console.log('[adminSaveEditsOnly] Fresh currency:', freshDeal.currency);
         console.log('[adminSaveEditsOnly] Fresh image_url exists:', !!freshDeal.image_url);
 
-        // Update local deal in ucDeals
-        var existingDeal = ucDeals.find(function(d){ return d._dbId === dbId; });
+        // Search ALL arrays to find and update the deal
+        var converted = dbUCToLocal(freshDeal);
+        console.log('[adminSaveEditsOnly] Converted deal currency:', converted.currency);
+
+        // Check all arrays where deal might be
+        var existingDeal = pendingCommunityDeals.find(function(d){ return d.id === _admReviewDealId || d._dbId === dbId; })
+          || removedCommunityDeals.find(function(d){ return d.id === _admReviewDealId || d._dbId === dbId; })
+          || ucDeals.find(function(d){ return d.id === _admReviewDealId || d._dbId === dbId; });
+
         if(existingDeal){
-          console.log('[adminSaveEditsOnly] Found deal in ucDeals, updating...');
-          var converted = dbUCToLocal(freshDeal);
-          console.log('[adminSaveEditsOnly] Converted deal currency:', converted.currency);
+          console.log('[adminSaveEditsOnly] Found deal in array, updating...');
           Object.assign(existingDeal, converted);
-          console.log('[adminSaveEditsOnly] ✅ Local deal fully updated');
+          console.log('[adminSaveEditsOnly] ✅ Local deal fully updated with fresh DB data');
+        } else {
+          console.warn('[adminSaveEditsOnly] Deal not found in any array, creating in ucDeals');
+          ucDeals.push(converted);
         }
       }
     } catch(e){
