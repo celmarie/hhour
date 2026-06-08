@@ -6723,7 +6723,7 @@ async function loadAdminData(){
   try {
     // Community deals (all statuses so dashboard/deals tabs both work)
     var { data: dbCD, error: cdErr } = await db.from('community_deals')
-      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,user_name,image_url')
+      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,user_name,image_url,currency,discount_pct,dist_km,time_from,time_to')
       .order('created_at', {ascending:false});
     if(cdErr) console.error('[loadAdminData] community_deals error:', cdErr.message, cdErr);
     if(dbCD && dbCD.length){
@@ -6742,10 +6742,13 @@ async function loadAdminData(){
           userAv: (r.user_name||'??').substring(0,2).toUpperCase(), userCol: '#9A9AB0',
           hours: r.hours||'', days: r.days||'',
           price: r.price || null, wasPrice: r.was_price || null,
+          currency: r.currency || 'EUR',
           isFree: !!r.is_free, off: offVal,
           status: r.status||'pending',
           submittedAt: dbAgo(r.created_at), ago: dbAgo(r.created_at),
           img: r.image_url || '',
+          timeFrom: r.time_from || 17, timeTo: r.time_to || 22,
+          discPct: r.discount_pct || 0,
           rating: 0, timeLeft: '3h 00m'
         };
       });
@@ -9841,15 +9844,8 @@ function admCollectEdits(){
   if(!isNaN(priceN)&&!isNaN(wasN)&&wasN>priceN&&wasN>0) off=Math.round((wasN-priceN)/wasN*100)+'% OFF';
   else if(priceRaw.toLowerCase()==='free') off='FREE';
 
-  // Save NEW photo (data URL) if added, otherwise use existing photo
-  var photoToSave = null;
-  for(var i = 0; i < _admPhotos.length; i++){
-    if(_admPhotos[i] && _admPhotos[i].startsWith('data:')){
-      photoToSave = _admPhotos[i];
-      break;
-    }
-  }
-  if(!photoToSave) photoToSave = _admPhotos[0] || _admEditPhotoDataUrl || null;
+  // Always use slot 0 as the main photo (user replaces it by clicking slot 0)
+  var photoToSave = _admPhotos[0] || _admEditPhotoDataUrl || null;
 
   return {
     deal:     document.getElementById('adm-edit-title').value.trim(),
