@@ -9812,7 +9812,7 @@ async function adminSaveEditsOnly(){
     var { error } = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
     if(error){ showToast('⚠️ DB error: '+error.message); return; }
     if(typeof renderAllDeals==='function') renderAllDeals(typeof _adCurTab!=='undefined'?_adCurTab:'all');
-    showToast('✅ Merchant deal updated');
+    showToast('✅ Deal updated & correction approved');
   } else {
     var deal = pendingCommunityDeals.find(function(d){ return d.id===_admReviewDealId; })
       || removedCommunityDeals.find(function(d){ return d.id===_admReviewDealId; });
@@ -9823,13 +9823,27 @@ async function adminSaveEditsOnly(){
       description: edits.desc, address: edits.address,
       price: edits.price, was_price: edits.wasPrice,
       hours: edits.hours, days: edits.days,
-      category: edits.cat, emoji: edits.emoji||undefined
+      category: edits.cat, emoji: edits.emoji||undefined,
+      currency: edits.currency
     };
     if(newImgUrl) cUpdate.image_url = newImgUrl;
     var { error } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
     if(error){ showToast('⚠️ DB error: '+error.message); return; }
-    showToast('✅ Deal updated');
+    showToast('✅ Deal updated & correction approved');
   }
+
+  // Auto-approve the correction report when admin saves
+  if(_admReviewDealId){
+    var {error:updateErr}=await db.from('deal_mistake_reports').update({status:'approved'}).eq('deal_id',_admReviewDealId);
+    if(updateErr){console.warn('Failed to auto-approve report:',updateErr);}
+    // Update local data
+    if(adminMistakeReports){
+      adminMistakeReports.forEach(function(r){
+        if(r.deal_id===_admReviewDealId) r.status='approved';
+      });
+    }
+  }
+
   adminCloseReview();
   adminPage(adminCurrentPage, null);
 }
