@@ -4910,29 +4910,34 @@ function adminEditDealFromCorrection(dealId){
   adminReviewDeal(dealId);
 }
 async function adminSaveDealEdits(dealId){
-  var emoji=document.getElementById('edit-deal-emoji').value.trim();
-  var image_url=document.getElementById('edit-deal-photo').value.trim();
-  var title=document.getElementById('edit-deal-name').value.trim();
-  var currency=document.getElementById('edit-deal-currency').value.trim()||'EUR';
-  var price=document.getElementById('edit-deal-price').value.trim();
-  var was_price=document.getElementById('edit-deal-wasprice').value.trim();
-  var days=document.getElementById('edit-deal-days').value.trim();
-  var hours=document.getElementById('edit-deal-time').value.trim();
-  var address=document.getElementById('edit-deal-address').value.trim();
-  var category=document.getElementById('edit-deal-cat').value.trim();
-  var description=document.getElementById('edit-deal-desc').value.trim();
+  // Get values from admin form (adm-edit-* IDs, not edit-deal-* IDs)
+  var emoji=(document.getElementById('adm-edit-emoji')||{value:''}).value.trim();
+  var image_url=(document.getElementById('adm-edit-img')||{value:''}).value.trim();
+  var title=(document.getElementById('adm-edit-title')||{value:''}).value.trim();
+  var currency=(document.getElementById('adm-edit-currency')||{value:'EUR'}).value.trim()||'EUR';
+  var price=(document.getElementById('adm-edit-price')||{value:''}).value.trim();
+  var was_price=(document.getElementById('adm-edit-was')||{value:''}).value.trim();
+  var days='';var hours='';
+  var address=(document.getElementById('adm-edit-address')||{value:''}).value.trim();
+  var category=(document.getElementById('adm-edit-cat')||{value:''}).value.trim();
+  var description=(document.getElementById('adm-edit-desc')||{value:''}).value.trim();
 
   if(!title){showToast('Deal title required');return;}
 
   try{
-    // Determine if it's a verified deal or community deal
+    // Admin has super access - save everything
     var isVerified=vouchers.find(function(d){return d.id===dealId;});
     var isCommunity=ucDeals.find(function(d){return d.id===dealId||d._dbId===dealId;});
 
     var update={
-      emoji:emoji,image_url:image_url,title:title,price:price,
-      was_price:was_price,days:days,hours:hours,address:address,
-      description:description,currency:currency
+      emoji:emoji||'📣',
+      image_url:image_url,
+      title:title,
+      price:price||'0',
+      was_price:was_price||'0',
+      address:address||'',
+      description:description||'',
+      currency:currency
     };
 
     if(category){
