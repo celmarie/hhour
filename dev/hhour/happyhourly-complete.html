@@ -9847,18 +9847,33 @@ async function adminSaveEditsOnly(){
       var deal = vouchers.find(function(d){ return d.id===_admReviewDealId; })
         || deletedVouchers.find(function(d){ return d.id===_admReviewDealId; });
       if(deal) Object.assign(deal, edits);
+
+      // Build complete update object with ALL editable fields
       var mUpdate = {
-        title: edits.deal, description: edits.desc,
+        title: edits.deal,
+        description: edits.desc,
         address: edits.address,
-        price: edits.price, was_price: edits.wasPrice,
-        hours: edits.hours, days: edits.days,
-        off_label: edits.off, category: edits.cat,
-        emoji: edits.emoji||undefined
+        price: edits.price,
+        was_price: edits.wasPrice,
+        hours: edits.hours,
+        days: edits.days,
+        off_label: edits.off,
+        category: edits.cat,
+        emoji: edits.emoji||undefined,
+        currency: edits.currency||'EUR',
+        discount_pct: edits.discPct||0
       };
       if(newImgUrl) mUpdate.image_url = newImgUrl;
+
       console.log('[adminSaveEditsOnly] Updating merchant deal:', mUpdate);
       var { error } = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
-      if(error){ console.error('Merchant update error:', error); showToast('❌ Failed to save: '+error.message); return; }
+      if(error){
+        console.error('Merchant update error:', error);
+        console.error('Update object was:', mUpdate);
+        showToast('❌ Failed to save: '+error.message);
+        return;
+      }
+      console.log('[adminSaveEditsOnly] Merchant deal updated successfully');
       if(typeof renderAllDeals==='function') renderAllDeals(typeof _adCurTab!=='undefined'?_adCurTab:'all');
       showToast('✅ Deal updated & correction approved');
     } else {
@@ -9867,18 +9882,34 @@ async function adminSaveEditsOnly(){
         || ucDeals.find(function(d){ return d.id===_admReviewDealId||d._dbId===_admReviewDealId; });
       if(deal) Object.assign(deal, edits);
       var dbId = deal ? (deal._dbId||(deal.id>9999?deal.id-10000:deal.id)) : _admReviewDealId;
+
+      // Build complete update object with ALL editable fields
       var cUpdate = {
-        title: edits.deal, venue_name: edits.venue,
-        description: edits.desc, address: edits.address,
-        price: edits.price, was_price: edits.wasPrice,
-        hours: edits.hours, days: edits.days,
-        category: edits.cat, emoji: edits.emoji||undefined,
-        currency: edits.currency
+        title: edits.deal,
+        venue_name: edits.venue,
+        description: edits.desc,
+        address: edits.address,
+        price: edits.price,
+        was_price: edits.wasPrice,
+        hours: edits.hours,
+        days: edits.days,
+        category: edits.cat,
+        emoji: edits.emoji||undefined,
+        currency: edits.currency||'EUR',
+        off_label: edits.off||undefined,
+        discount_pct: edits.discPct||0
       };
       if(newImgUrl) cUpdate.image_url = newImgUrl;
-      console.log('[adminSaveEditsOnly] Updating community deal:', dbId, cUpdate);
+
+      console.log('[adminSaveEditsOnly] Updating community deal:', dbId, 'with fields:', cUpdate);
       var { error } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
-      if(error){ console.error('Community update error:', error); showToast('❌ Failed to save: '+error.message); return; }
+      if(error){
+        console.error('Community update error:', error);
+        console.error('Update object was:', cUpdate);
+        showToast('❌ Failed to save: '+error.message);
+        return;
+      }
+      console.log('[adminSaveEditsOnly] Community deal updated successfully');
       showToast('✅ Deal updated & correction approved');
     }
 
