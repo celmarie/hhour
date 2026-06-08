@@ -10021,48 +10021,49 @@ async function adminSaveEditsOnly(){
       }
     }
 
-    console.log('[adminSaveEditsOnly] Save successful!');
+    console.log('[adminSaveEditsOnly] ✅ Saved! Loading fresh data directly from database...');
 
-    // Force reload the specific deal directly from database
+    // Fetch fresh data and populate form directly
     try {
       var { data: freshDeal, error: fetchErr } = await db.from('community_deals')
         .select('*')
         .eq('id', dbId)
         .single();
 
-      if(fetchErr){
-        console.error('[adminSaveEditsOnly] Failed to fetch fresh deal:', fetchErr);
-      } else if(freshDeal){
-        console.log('[adminSaveEditsOnly] ✅ Fresh deal from DB:', freshDeal);
-        console.log('[adminSaveEditsOnly] Fresh currency:', freshDeal.currency);
-        console.log('[adminSaveEditsOnly] Fresh image_url exists:', !!freshDeal.image_url);
-
-        // Search ALL arrays to find and update the deal
-        var converted = dbUCToLocal(freshDeal);
-        console.log('[adminSaveEditsOnly] Converted deal currency:', converted.currency);
-
-        // Check all arrays where deal might be
-        var existingDeal = pendingCommunityDeals.find(function(d){ return d.id === _admReviewDealId || d._dbId === dbId; })
-          || removedCommunityDeals.find(function(d){ return d.id === _admReviewDealId || d._dbId === dbId; })
-          || ucDeals.find(function(d){ return d.id === _admReviewDealId || d._dbId === dbId; });
-
-        if(existingDeal){
-          console.log('[adminSaveEditsOnly] Found deal in array, updating...');
-          Object.assign(existingDeal, converted);
-          console.log('[adminSaveEditsOnly] ✅ Local deal fully updated with fresh DB data');
-        } else {
-          console.warn('[adminSaveEditsOnly] Deal not found in any array, creating in ucDeals');
-          ucDeals.push(converted);
-        }
+      if(fetchErr || !freshDeal){
+        console.error('[adminSaveEditsOnly] Failed to fetch:', fetchErr);
+        return;
       }
-    } catch(e){
-      console.error('[adminSaveEditsOnly] Error reloading deal:', e);
-    }
 
-    // Refresh the form with the updated deal
-    console.log('[adminSaveEditsOnly] Calling adminReviewDeal to refresh form...');
-    adminReviewDeal(_admReviewDealId);
-    console.log('[adminSaveEditsOnly] ✅ Form refresh complete - DO NOT reload deals!');
+      console.log('[adminSaveEditsOnly] Fresh data: currency=' + freshDeal.currency + ', photo=' + (!!freshDeal.image_url));
+
+      // DIRECTLY populate every form field from fresh database data
+      document.getElementById('adm-edit-venue').value = freshDeal.venue_name || '';
+      document.getElementById('adm-edit-title').value = freshDeal.title || '';
+      document.getElementById('adm-edit-address').value = freshDeal.address || '';
+      document.getElementById('adm-edit-category').value = freshDeal.category || 'bars';
+      document.getElementById('adm-edit-emoji').value = freshDeal.emoji || '📣';
+      document.getElementById('adm-edit-price').value = freshDeal.price || '';
+      document.getElementById('adm-edit-was-price').value = freshDeal.was_price || '';
+      document.getElementById('adm-edit-currency').value = freshDeal.currency || 'EUR';
+      document.getElementById('adm-edit-description').value = freshDeal.description || '';
+      document.getElementById('adm-edit-discount').value = freshDeal.discount_pct || '';
+      document.getElementById('adm-edit-days').value = freshDeal.days || 'Daily';
+
+      // Set time fields
+      var tf = freshDeal.time_from || 17;
+      var tt = freshDeal.time_to || 22;
+      document.getElementById('adm-edit-time-from').value = String(tf).padStart(2, '0') + ':00';
+      document.getElementById('adm-edit-time-to').value = String(tt).padStart(2, '0') + ':00';
+
+      // Set photo
+      _admEditPhotoDataUrl = freshDeal.image_url || '';
+      _admPhotos = freshDeal.image_url ? [freshDeal.image_url] : [];
+      var pg = document.getElementById('adm-photo-grid');
+      if(pg) pg.innerHTML = '';
+      renderPhotoGrid('adm');
+
+      console.log('[adminSaveEditsOnly] ✅ All fields populated from fresh database data');
   } catch(e) {
     console.error('[adminSaveEditsOnly] Exception:', e);
     showToast('❌ Error: '+e.message);
