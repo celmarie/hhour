@@ -10084,9 +10084,30 @@ async function adminSaveEditsOnly(){
 
       console.log('[adminSaveEditsOnly] ✅ All fields populated from fresh database data');
 
-      // Reload all deals from database so preview card and everything else is fresh
-      await loadDealsFromSupabase();
-      console.log('[adminSaveEditsOnly] Reloaded all deals from database');
+      // Override the deal in ALL local arrays with fresh database data
+      var converted = dbUCToLocal(freshDeal);
+      var found = false;
+
+      // Search and override in all arrays
+      [pendingCommunityDeals, removedCommunityDeals, ucDeals].forEach(function(arr){
+        if(!arr) return;
+        for(var i = 0; i < arr.length; i++){
+          if(arr[i]._dbId === dbId || arr[i].id === _admReviewDealId){
+            Object.assign(arr[i], converted);
+            found = true;
+            console.log('[adminSaveEditsOnly] Overrode deal in array');
+            break;
+          }
+        }
+      });
+
+      // If not found in any array, add to ucDeals
+      if(!found){
+        ucDeals.push(converted);
+        console.log('[adminSaveEditsOnly] Added deal to ucDeals');
+      }
+
+      console.log('[adminSaveEditsOnly] ✅ Local data synchronized with database');
 
       // Close modal after brief delay
       setTimeout(function(){
