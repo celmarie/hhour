@@ -9844,8 +9844,9 @@ function admCollectEdits(){
   if(!isNaN(priceN)&&!isNaN(wasN)&&wasN>priceN&&wasN>0) off=Math.round((wasN-priceN)/wasN*100)+'% OFF';
   else if(priceRaw.toLowerCase()==='free') off='FREE';
 
-  // Always use slot 0 as the main photo (user replaces it by clicking slot 0)
-  var photoToSave = _admPhotos[0] || _admEditPhotoDataUrl || null;
+  // Use the last photo in the array — when user adds a new photo it goes to slot 1+
+  // so the newest addition is always the last item. If only one photo, that's slot 0.
+  var photoToSave = _admPhotos[_admPhotos.length - 1] || _admEditPhotoDataUrl || null;
 
   return {
     deal:     document.getElementById('adm-edit-title').value.trim(),
@@ -9905,22 +9906,14 @@ async function adminSaveEditsOnly(){
   // Compress new photo if provided
   var newImgUrl = null;
   if(edits.img && edits.img.startsWith('data:')){
-    console.log('[adminSaveEditsOnly] ✅ Photo is data URL, compressing...');
     try {
-      newImgUrl = await compressImage(edits.img, 400, 0.65);
-      console.log('[adminSaveEditsOnly] ✅ Photo compressed successfully, length:', newImgUrl.length);
-    }
-    catch(e){
-      console.error('[adminSaveEditsOnly] ❌ Photo compression FAILED:', e);
+      newImgUrl = await compressImage(edits.img, 800, 0.8);
+    } catch(e){
       newImgUrl = edits.img;
     }
     edits.img = newImgUrl;
-  } else if(edits.img) {
-    console.log('[adminSaveEditsOnly] Photo exists but NOT data URL (already saved URL from DB)');
-    // If photo is already a URL from database, don't update it unless user added a NEW photo
-    newImgUrl = null;
   } else {
-    console.log('[adminSaveEditsOnly] ❌ NO PHOTO - edits.img is null/empty');
+    newImgUrl = null; // no new photo
   }
 
   try {
