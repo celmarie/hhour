@@ -6725,7 +6725,7 @@ async function loadAdminData(){
   try {
     // Community deals (all statuses so dashboard/deals tabs both work)
     var { data: dbCD, error: cdErr } = await db.from('community_deals')
-      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,user_name,image_url,image_url_2,image_url_3,currency,discount_pct,dist_km,time_from,time_to')
+      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,user_name,image_url,currency,discount_pct,dist_km,time_from,time_to')
       .order('created_at', {ascending:false});
     if(cdErr) console.error('[loadAdminData] community_deals error:', cdErr.message, cdErr);
     if(dbCD && dbCD.length){
@@ -9987,12 +9987,14 @@ async function adminSaveEditsOnly(){
         off_label: edits.off||undefined,
         discount_pct: edits.discPct||0
       };
-      cUpdate.image_url   = savedImg1;
-      cUpdate.image_url_2 = savedImg2;
-      cUpdate.image_url_3 = savedImg3;
-      console.log('[adminSaveEditsOnly] Query: UPDATE community_deals SET ... WHERE id =', dbId);
-
-      var { error, data } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
+      cUpdate.image_url = savedImg1;
+      // Try saving with multi-photo columns; fallback to single photo if columns don't exist
+      var cUpdateMulti = Object.assign({}, cUpdate, { image_url_2: savedImg2, image_url_3: savedImg3 });
+      var { error, data } = await db.from('community_deals').update(cUpdateMulti).eq('id', dbId);
+      // If multi-photo update failed (columns may not exist yet), fall back to single photo
+      if(error && error.message && error.message.includes('image_url')){
+        var { error, data } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
+      }
 
       console.log('[adminSaveEditsOnly] Database response:');
       console.log('  - error:', error ? error.message : 'NONE');
