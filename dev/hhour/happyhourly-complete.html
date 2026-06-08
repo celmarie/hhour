@@ -9565,32 +9565,51 @@ function adminReviewDeal(id){
 
   // Populate EDIT FORM with deal data
   console.log('[adminReviewDeal] Populating edit form with deal:', deal);
-  document.getElementById('adm-edit-title').value = deal.deal||'';
-  document.getElementById('adm-edit-venue').value = deal.venue||deal.name||'';
-  document.getElementById('adm-edit-address').value = deal.address||'';
-  document.getElementById('adm-edit-emoji').value = deal.emoji||'';
-  document.getElementById('adm-edit-cat').value = deal.cat||'bars';
-  document.getElementById('adm-edit-currency').value = deal.currency||'EUR';
-  document.getElementById('adm-edit-price').value = deal.price||'';
-  document.getElementById('adm-edit-was').value = deal.wasPrice||'';
-  document.getElementById('adm-edit-desc').value = deal.desc||'';
+  console.log('[adminReviewDeal] Currency value:', deal.currency, 'Price:', deal.price, 'Photo:', deal.img);
+
+  try{
+    document.getElementById('adm-edit-title').value = deal.deal||'';
+    document.getElementById('adm-edit-venue').value = deal.venue||deal.name||'';
+    document.getElementById('adm-edit-address').value = deal.address||'';
+    document.getElementById('adm-edit-emoji').value = deal.emoji||'';
+    document.getElementById('adm-edit-cat').value = deal.cat||'bars';
+    document.getElementById('adm-edit-currency').value = deal.currency||'EUR';
+    document.getElementById('adm-edit-price').value = deal.price||'';
+    document.getElementById('adm-edit-was').value = deal.wasPrice||'';
+    document.getElementById('adm-edit-desc').value = deal.desc||'';
+    console.log('[adminReviewDeal] Form fields populated successfully');
+  }catch(e){
+    console.error('[adminReviewDeal] Error populating form:', e);
+  }
 
   // Populate times if available
-  var times = deal.hours ? deal.hours.split('–') : ['5:00PM', '9:00PM'];
+  var times = deal.hours ? deal.hours.split('–') : ['17:00', '21:00'];
   var ts = times[0]?times[0].trim():'17:00';
   var te = times[1]?times[1].trim():'21:00';
   // Convert 12-hour to 24-hour format
   var convert12to24=function(t){
     if(!t) return '17:00';
+    // Already in 24-hour format (HH:mm)?
+    if(/^\d{2}:\d{2}$/.test(t.trim())) return t.trim();
+    // Convert from 12-hour (e.g., "5:00PM")
     var p=t.match(/(\d+):?(\d*)([AP]M)?/i);
     if(!p) return '17:00';
     var h=parseInt(p[1]),m=p[2]||'00',ap=(p[3]||'').toUpperCase();
     if(ap==='PM'&&h!==12) h+=12;
     else if(ap==='AM'&&h===12) h=0;
-    return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+    var hh=(h<10?'0':'')+h;
+    var mm=(parseInt(m)<10?'0':'')+m;
+    return hh+':'+mm;
   };
-  document.getElementById('adm-edit-time-start').value = convert12to24(ts);
-  document.getElementById('adm-edit-time-end').value = convert12to24(te);
+  try{
+    var startVal = convert12to24(ts);
+    var endVal = convert12to24(te);
+    console.log('[adminReviewDeal] Setting times - start:', startVal, 'end:', endVal);
+    document.getElementById('adm-edit-time-start').value = startVal;
+    document.getElementById('adm-edit-time-end').value = endVal;
+  }catch(e){
+    console.warn('[adminReviewDeal] Time setting failed:', e);
+  }
 
   // Set active days
   var activeDays = deal.days ? deal.days.split(',').map(function(d){ return d.trim(); }) : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -9602,9 +9621,21 @@ function adminReviewDeal(id){
   });
 
   // Store photo if exists
-  if(deal.img) _admEditPhotoDataUrl = deal.img;
-  else _admEditPhotoDataUrl = '';
-  renderPhotoGrid('adm');
+  console.log('[adminReviewDeal] Photo from deal.img:', deal.img ? 'EXISTS (length: '+deal.img.length+')' : 'NULL');
+  if(deal.img) {
+    _admEditPhotoDataUrl = deal.img;
+    _admPhotos = [deal.img];
+    console.log('[adminReviewDeal] Stored photo in _admEditPhotoDataUrl and _admPhotos');
+  } else {
+    _admEditPhotoDataUrl = '';
+    _admPhotos = [];
+  }
+  try{
+    renderPhotoGrid('adm');
+    console.log('[adminReviewDeal] Photo grid rendered');
+  }catch(e){
+    console.error('[adminReviewDeal] Error rendering photo grid:', e);
+  }
 
   // Hide approve/reject if already decided
   var isDecided = s !== 'pending';
