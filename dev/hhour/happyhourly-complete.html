@@ -4850,7 +4850,40 @@ async function adminApproveMistakeModal(reportId,dealId,field,correction){
   await approveDealMistake(reportId,dealId,field,correction);
 }
 function adminShowAllMistakeReports(){
-  adminPage('deals',document.querySelectorAll('.adm-nav-btn')[3]);
+  // Show all mistake reports in a dedicated view
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+  var reports=adminMistakeReports||[];
+  var html='<div style="background:white;border-radius:16px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);padding:24px;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">'
+      +'<div style="font-size:20px;font-weight:900;color:#1A1A1A;">Deal Information Corrections</div>'
+      +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>'
+    +'</div>'
+    +'<div style="color:#9A9AB0;margin-bottom:16px;font-size:13px;">Total: <strong>'+reports.length+'</strong> pending corrections</div>';
+
+  if(reports.length===0){
+    html+='<div style="text-align:center;color:#9A9AB0;padding:40px 0;">No pending corrections</div>';
+  } else {
+    reports.forEach(function(r){
+      html+='<div style="border:1.5px solid #E8E8EC;border-radius:12px;padding:14px;margin-bottom:12px;cursor:pointer;transition:background .2s;background:#F5F5F7;" onmouseenter="this.style.background=\'#ECECF1\'" onmouseleave="this.style.background=\'#F5F5F7\'" onclick="adminReviewMistakeReport('+r.id+');this.closest(\'[style*=fixed]\').remove()">'
+        +'<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">'
+          +'<div>'
+            +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;">Deal #'+r.deal_id+' — '+r.field_reported+'</div>'
+            +'<div style="font-size:12px;color:#9A9AB0;margin-top:2px;">by '+r.reporter_name+'</div>'
+          +'</div>'
+          +'<div style="font-size:11px;font-weight:700;background:#fff3cd;color:#856404;padding:4px 10px;border-radius:6px;">pending</div>'
+        +'</div>'
+        +'<div style="font-size:13px;color:#555;margin-top:8px;">'
+          +'<strong>Suggested:</strong> '+r.suggested_correction
+        +'</div>'
+      +'</div>';
+    });
+  }
+
+  html+='</div>';
+  overlay.innerHTML=html;
+  document.body.appendChild(overlay);
 }
 function adminEditDealFromCorrection(dealId){
   // Search in verified deals first
