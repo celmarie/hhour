@@ -10014,6 +10014,21 @@ async function adminSaveEditsOnly(){
         return;
       }
 
+      // VERIFY the update actually worked by fetching the fresh deal
+      var { data: verifyDeal, error: verifyErr } = await db.from('community_deals')
+        .select('currency, image_url')
+        .eq('id', dbId)
+        .single();
+
+      if(!verifyErr && verifyDeal){
+        console.log('[adminSaveEditsOnly] ✅ VERIFIED in database - currency:', verifyDeal.currency, 'photo exists:', !!verifyDeal.image_url);
+        if(verifyDeal.currency !== (cUpdate.currency || 'EUR')){
+          console.warn('[adminSaveEditsOnly] ⚠️ WARNING: Currency in DB does not match what we tried to save!');
+        }
+      } else {
+        console.warn('[adminSaveEditsOnly] Could not verify save:', verifyErr);
+      }
+
       console.log('✅ Community deal ID', dbId, 'updated successfully');
       showToast('✅ Deal updated & correction approved');
     }
