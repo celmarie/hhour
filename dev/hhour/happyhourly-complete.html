@@ -2928,7 +2928,7 @@ async function loadDealsFromSupabase() {
       db.from('reviews').select('deal_id,deal_kind,rating')
     ]);
     if (dr.error) console.error('[Supabase] deals fetch error:', dr.error.message);
-    if (ur.error) console.error('[Supabase] community_deals fetch error:', ur.error.message);
+    if (ur.error){ console.error('[Supabase] community_deals fetch error:', ur.error.message); ucDeals = []; }
 
     // Build rating lookup: { "verified:1": {sum, count}, "community:5": ... }
     var ratingMap = {};
