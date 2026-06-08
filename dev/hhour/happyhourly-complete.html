@@ -9927,7 +9927,9 @@ async function adminSaveEditsOnly(){
         || removedCommunityDeals.find(function(d){ return d.id===_admReviewDealId; })
         || ucDeals.find(function(d){ return d.id===_admReviewDealId||d._dbId===_admReviewDealId; });
       if(deal) Object.assign(deal, edits);
-      var dbId = deal ? (deal._dbId||(deal.id>9999?deal.id-10000:deal.id)) : _admReviewDealId;
+      // Use the CORRECT database ID - prefer _dbId, fallback to id
+      var dbId = deal ? (deal._dbId || deal.id) : _admReviewDealId;
+      console.log('[adminSaveEditsOnly] Deal found:', deal ? 'YES' : 'NO', 'ID:', dbId, '_dbId:', deal?deal._dbId:'N/A');
 
       // Build complete update object with ALL editable fields
       var cUpdate = {
@@ -9952,18 +9954,26 @@ async function adminSaveEditsOnly(){
         console.log('[adminSaveEditsOnly] NO PHOTO: image_url NOT in update (newImgUrl is null/falsy)');
       }
 
-      console.log('[adminSaveEditsOnly] Updating community deal:', dbId);
-      console.log('[adminSaveEditsOnly] CURRENCY in update:', cUpdate.currency);
-      console.log('[adminSaveEditsOnly] IMAGE_URL in update:', cUpdate.image_url || 'NOT SET');
-      console.log('[adminSaveEditsOnly] Full update object:', cUpdate);
-      var { error } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
+      console.log('[adminSaveEditsOnly] Updating community deal ID:', dbId);
+      console.log('[adminSaveEditsOnly] CURRENCY value being saved:', cUpdate.currency);
+      console.log('[adminSaveEditsOnly] IMAGE_URL in update:', cUpdate.image_url ? 'YES (length: '+cUpdate.image_url.length+')' : 'NOT SET');
+      console.log('[adminSaveEditsOnly] Query: UPDATE community_deals SET ... WHERE id =', dbId);
+
+      var { error, data } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
+
+      console.log('[adminSaveEditsOnly] Database response:');
+      console.log('  - error:', error ? error.message : 'NONE');
+      console.log('  - data returned:', data);
+
       if(error){
-        console.error('Community update error:', error);
-        console.error('Update object was:', cUpdate);
+        console.error('❌ UPDATE FAILED for ID:', dbId);
+        console.error('Error message:', error.message);
+        console.error('Update object:', cUpdate);
         showToast('❌ Failed to save: '+error.message);
         return;
       }
-      console.log('[adminSaveEditsOnly] Community deal updated successfully');
+
+      console.log('✅ Community deal ID', dbId, 'updated successfully');
       showToast('✅ Deal updated & correction approved');
     }
 
