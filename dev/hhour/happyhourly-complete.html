@@ -9567,7 +9567,7 @@ function adminReviewDeal(id){
   var isDecided = s !== 'pending';
   document.getElementById('adm-rev-approve-btn').style.display = 'none'; // Always hidden - Save button does both
   document.getElementById('adm-rev-reject-btn').style.display = isDecided ? 'none' : '';
-  document.getElementById('adm-rev-delete-btn').style.display = isDecided ? 'none' : '';
+  document.getElementById('adm-rev-delete-btn').style.display = 'none'; // Always hidden - use reject button instead
   document.getElementById('adm-rev-save-btn').style.display = 'none'; // hidden until edit toggled
   // Reset edit toggle button
   var ef = document.getElementById('adm-rev-edit-form');
