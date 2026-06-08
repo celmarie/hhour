@@ -9833,13 +9833,20 @@ async function adminSaveEditsOnly(){
   console.log('[adminSaveEditsOnly] Starting save for deal:', _admReviewDealId, 'source:', _admReviewSource);
   var edits = admCollectEdits();
   console.log('[adminSaveEditsOnly] Collected edits:', edits);
+  console.log('[adminSaveEditsOnly] PHOTO CHECK - edits.img:', edits.img ? 'EXISTS (length: '+edits.img.length+')' : 'NULL/EMPTY');
+  console.log('[adminSaveEditsOnly] CURRENCY CHECK - edits.currency:', edits.currency);
 
   // Compress new photo if provided
   var newImgUrl = null;
   if(edits.img && edits.img.startsWith('data:')){
-    try { newImgUrl = await compressImage(edits.img, 400, 0.65); }
-    catch(e){ newImgUrl = edits.img; }
+    console.log('[adminSaveEditsOnly] Photo is data URL, compressing...');
+    try { newImgUrl = await compressImage(edits.img, 400, 0.65); console.log('[adminSaveEditsOnly] Photo compressed successfully'); }
+    catch(e){ console.error('[adminSaveEditsOnly] Photo compression failed:', e); newImgUrl = edits.img; }
     edits.img = newImgUrl;
+  } else if(edits.img) {
+    console.log('[adminSaveEditsOnly] Photo exists but not data URL (probably already URL)');
+  } else {
+    console.log('[adminSaveEditsOnly] No photo to save');
   }
 
   try {
@@ -9863,9 +9870,17 @@ async function adminSaveEditsOnly(){
         currency: edits.currency||'EUR',
         discount_pct: edits.discPct||0
       };
-      if(newImgUrl) mUpdate.image_url = newImgUrl;
+      if(newImgUrl){
+        mUpdate.image_url = newImgUrl;
+        console.log('[adminSaveEditsOnly] PHOTO BEING SAVED: image_url will be updated');
+      } else {
+        console.log('[adminSaveEditsOnly] NO PHOTO: image_url NOT in update');
+      }
 
-      console.log('[adminSaveEditsOnly] Updating merchant deal:', mUpdate);
+      console.log('[adminSaveEditsOnly] Updating merchant deal');
+      console.log('[adminSaveEditsOnly] CURRENCY in update:', mUpdate.currency);
+      console.log('[adminSaveEditsOnly] IMAGE_URL in update:', mUpdate.image_url || 'NOT SET');
+      console.log('[adminSaveEditsOnly] Full update object:', mUpdate);
       var { error } = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
       if(error){
         console.error('Merchant update error:', error);
@@ -9899,9 +9914,17 @@ async function adminSaveEditsOnly(){
         off_label: edits.off||undefined,
         discount_pct: edits.discPct||0
       };
-      if(newImgUrl) cUpdate.image_url = newImgUrl;
+      if(newImgUrl){
+        cUpdate.image_url = newImgUrl;
+        console.log('[adminSaveEditsOnly] PHOTO BEING SAVED: image_url will be updated');
+      } else {
+        console.log('[adminSaveEditsOnly] NO PHOTO: image_url NOT in update (newImgUrl is null/falsy)');
+      }
 
-      console.log('[adminSaveEditsOnly] Updating community deal:', dbId, 'with fields:', cUpdate);
+      console.log('[adminSaveEditsOnly] Updating community deal:', dbId);
+      console.log('[adminSaveEditsOnly] CURRENCY in update:', cUpdate.currency);
+      console.log('[adminSaveEditsOnly] IMAGE_URL in update:', cUpdate.image_url || 'NOT SET');
+      console.log('[adminSaveEditsOnly] Full update object:', cUpdate);
       var { error } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
       if(error){
         console.error('Community update error:', error);
