@@ -10072,6 +10072,18 @@ async function adminSaveEditsOnly(){
       renderPhotoGrid('adm');
 
       console.log('[adminSaveEditsOnly] ✅ All fields populated from fresh database data');
+
+      // Refresh the preview card display at top
+      var previewCard = document.querySelector('[data-deal-id="' + _admReviewDealId + '"]')
+        || document.querySelector('[data-db-id="' + dbId + '"]');
+      if(previewCard){
+        previewCard.outerHTML = renderDealCardHTML(freshDeal, 'community');
+      }
+
+      // Close modal after brief delay to show success
+      setTimeout(function(){
+        adminCloseReview();
+      }, 500);
     } catch(e){
       console.error('[adminSaveEditsOnly] Error loading fresh data:', e);
     }
