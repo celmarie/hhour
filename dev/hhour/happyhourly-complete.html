@@ -6503,6 +6503,14 @@ function switchLoginTab(role){
   });
   var gb=document.getElementById('guest-btn');
   if(gb) gb.style.display=role==='customer'?'block':'none';
+
+  // Clear error message and inputs when switching tabs
+  var errEl=document.getElementById('login-error');
+  if(errEl) errEl.textContent='';
+  var userInp=document.getElementById('login-user');
+  var passInp=document.getElementById('login-pass');
+  if(userInp) userInp.value='';
+  if(passInp) passInp.value='';
 }
 
 function doGuestLogin(){
