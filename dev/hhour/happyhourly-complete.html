@@ -4174,14 +4174,15 @@ function renderUC(cat){
   el.innerHTML = shown.map(function(u){
     var imgTag = u.img ? '<img src="'+u.img+'" alt="'+u.name+'" loading="lazy" onerror="this.style.display=\'none\'">' : '';
     var freeTag = (u.isFree||u.off==='FREE') ? '<div style="position:absolute;top:8px;left:8px;background:rgba(18,161,80,.9);color:white;font-size:9px;font-weight:900;padding:2px 7px;border-radius:5px;z-index:3;">FREE</div>' : '';
-    var wasTxt = u.wasPrice ? '<div class="cimg-was">€'+u.wasPrice+'</div>' : '';
+    var uSym = getCurrencySymbol(u.currency||'EUR');
+    var wasTxt = u.wasPrice ? '<div class="cimg-was">'+uSym+u.wasPrice+'</div>' : '';
     var todayAttr = isDealActiveToday(u) ? '1' : '0';
     return '<div class="uccard" onclick="openUCDeal('+u.id+')">'
       +'<div class="ucimg '+u.imgClass+'">'+imgTag+'<div class="cimg-overlay"></div>'
       +'<div class="off-badge" style="font-size:10px;z-index:3;">'+u.off+'</div>'+freeTag
       +'<div style="position:absolute;bottom:0;left:0;right:0;z-index:2;padding:6px 10px;display:flex;align-items:flex-end;justify-content:flex-end;flex-direction:column;">'
       +wasTxt
-      +'<div style="font-size:20px;font-weight:900;color:white;font-family:Inter,sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.5);">€'+u.price+'</div></div></div>'
+      +'<div style="font-size:20px;font-weight:900;color:white;font-family:Inter,sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.5);">'+uSym+u.price+'</div></div></div>'
       +'<div class="ucbody"><div class="ucname">'+u.name+'</div>'
       +'<div class="ucmeta">📍 '+u.dist+' · <span class="deck-cd" data-from="'+u.timeFrom+'" data-to="'+u.timeTo+'" data-today="'+todayAttr+'"></span></div>'
       +(function(){ var avg=getDealAvgRating(u.id)||u.rating||0; return '<div style="display:flex;align-items:center;justify-content:space-between;"><div class="ucdeal">'+u.deal+'</div>'+(avg>0?'<div class="cimg-rating" style="color:var(--t2);">⭐ '+avg+'</div>':'')+'</div></div></div>'; })();
@@ -4243,7 +4244,7 @@ function renderAllDeals(tab){
           +'<div class="cimg-overlay"></div>'
           +badgeHtml+freeTag
           +'<div style="position:absolute;bottom:6px;right:8px;z-index:3;background:rgba(0,0,0,.55);color:white;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;">'+d.off+'</div>'
-          +'<div style="position:absolute;bottom:6px;left:8px;z-index:3;font-size:15px;font-weight:900;color:white;font-family:Inter,sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.6);">'+d.price+'</div>'
+          +'<div style="position:absolute;bottom:6px;left:8px;z-index:3;font-size:15px;font-weight:900;color:white;font-family:Inter,sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.6);">'+(function(){ var sym=getCurrencySymbol(d.currency||'EUR'); var n=parseFloat(d.price); return !isNaN(n)&&n>0?sym+n.toFixed(2):d.price||''; })()+'</div>'
         +'</div>'
         +'<div style="padding:10px 10px 12px;">'
           +'<div style="font-size:12px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+d.name+'</div>'
@@ -4597,12 +4598,15 @@ function openDeal(deal){
   var heroWas     = document.getElementById('vd-hero-was');
   var heroRating  = document.getElementById('vd-hero-rating');
   var heroReviews = document.getElementById('vd-hero-reviews');
+  var dealSym = getCurrencySymbol(deal.currency||'EUR');
   if(heroPrice){
-    heroPrice.textContent = deal.price || '';
+    var priceN = parseFloat(deal.price);
+    heroPrice.textContent = !isNaN(priceN) && priceN > 0 ? dealSym + priceN.toFixed(2) : (deal.price || '');
   }
   if(heroWas){
     if(deal.wasPrice && deal.wasPrice !== deal.price){
-      heroWas.textContent = deal.wasPrice;
+      var wasN = parseFloat(deal.wasPrice);
+      heroWas.textContent = !isNaN(wasN) && wasN > 0 ? dealSym + wasN.toFixed(2) : deal.wasPrice;
       heroWas.style.display = 'block';
     } else {
       heroWas.style.display = 'none';
@@ -9734,9 +9738,11 @@ function getCurrencySymbol(currency) {
   var symbols = {
     'EUR': '€', 'USD': '$', 'GBP': '£', 'CAD': 'CA$', 'AUD': 'A$',
     'CHF': 'CHF', 'JPY': '¥', 'SEK': 'kr', 'NOK': 'kr', 'DKK': 'kr',
-    'MXN': 'MX$', 'BRL': 'R$', 'SGD': 'S$', 'AED': 'د.إ', 'FREE': '🆓'
+    'MXN': 'MX$', 'BRL': 'R$', 'SGD': 'S$', 'AED': 'د.إ', 'FREE': '🆓',
+    'KRW': '₩', 'CNY': '¥', 'THB': '฿', 'VND': '₫', 'PHP': '₱',
+    'MYR': 'RM', 'IDR': 'Rp', 'INR': '₹', 'PKR': '₨', 'BDT': '৳'
   };
-  return symbols[currency] || '€';
+  return symbols[currency] || currency || '€';
 }
 
 function admToggleStartDate() {
