@@ -9884,20 +9884,30 @@ async function adminSaveEditsOnly(){
   console.log('[adminSaveEditsOnly] Starting save for deal:', _admReviewDealId, 'source:', _admReviewSource);
   var edits = admCollectEdits();
   console.log('[adminSaveEditsOnly] Collected edits:', edits);
+  console.log('[adminSaveEditsOnly] _admPhotos array:', _admPhotos);
+  console.log('[adminSaveEditsOnly] _admEditPhotoDataUrl:', _admEditPhotoDataUrl ? 'EXISTS' : 'EMPTY');
   console.log('[adminSaveEditsOnly] PHOTO CHECK - edits.img:', edits.img ? 'EXISTS (length: '+edits.img.length+')' : 'NULL/EMPTY');
   console.log('[adminSaveEditsOnly] CURRENCY CHECK - edits.currency:', edits.currency);
 
   // Compress new photo if provided
   var newImgUrl = null;
   if(edits.img && edits.img.startsWith('data:')){
-    console.log('[adminSaveEditsOnly] Photo is data URL, compressing...');
-    try { newImgUrl = await compressImage(edits.img, 400, 0.65); console.log('[adminSaveEditsOnly] Photo compressed successfully'); }
-    catch(e){ console.error('[adminSaveEditsOnly] Photo compression failed:', e); newImgUrl = edits.img; }
+    console.log('[adminSaveEditsOnly] ✅ Photo is data URL, compressing...');
+    try {
+      newImgUrl = await compressImage(edits.img, 400, 0.65);
+      console.log('[adminSaveEditsOnly] ✅ Photo compressed successfully, length:', newImgUrl.length);
+    }
+    catch(e){
+      console.error('[adminSaveEditsOnly] ❌ Photo compression FAILED:', e);
+      newImgUrl = edits.img;
+    }
     edits.img = newImgUrl;
   } else if(edits.img) {
-    console.log('[adminSaveEditsOnly] Photo exists but not data URL (probably already URL)');
+    console.log('[adminSaveEditsOnly] Photo exists but NOT data URL (already saved URL from DB)');
+    // If photo is already a URL from database, don't update it unless user added a NEW photo
+    newImgUrl = null;
   } else {
-    console.log('[adminSaveEditsOnly] No photo to save');
+    console.log('[adminSaveEditsOnly] ❌ NO PHOTO - edits.img is null/empty');
   }
 
   try {
@@ -9969,9 +9979,9 @@ async function adminSaveEditsOnly(){
       };
       if(newImgUrl){
         cUpdate.image_url = newImgUrl;
-        console.log('[adminSaveEditsOnly] PHOTO BEING SAVED: image_url will be updated');
+        console.log('[adminSaveEditsOnly] ✅ PHOTO BEING SAVED: image_url length =', newImgUrl.length);
       } else {
-        console.log('[adminSaveEditsOnly] NO PHOTO: image_url NOT in update (newImgUrl is null/falsy)');
+        console.log('[adminSaveEditsOnly] ⚠️ NO NEW PHOTO - image_url NOT being updated');
       }
 
       console.log('[adminSaveEditsOnly] Updating community deal ID:', dbId);
