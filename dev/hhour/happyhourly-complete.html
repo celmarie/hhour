@@ -9589,16 +9589,24 @@ function adminReviewDeal(id){
   // Convert 12-hour to 24-hour format
   var convert12to24=function(t){
     if(!t) return '17:00';
+    var trimmed = t.trim();
     // Already in 24-hour format (HH:mm)?
-    if(/^\d{2}:\d{2}$/.test(t.trim())) return t.trim();
-    // Convert from 12-hour (e.g., "5:00PM")
-    var p=t.match(/(\d+):?(\d*)([AP]M)?/i);
+    if(/^\d{1,2}:\d{2}$/.test(trimmed)){
+      var parts = trimmed.split(':');
+      var h = parseInt(parts[0]);
+      var m = parseInt(parts[1]);
+      return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+    }
+    // Convert from 12-hour (e.g., "5:00PM" or "5PM")
+    var p=trimmed.match(/(\d+):?(\d*)([AP]M)?/i);
     if(!p) return '17:00';
-    var h=parseInt(p[1]),m=p[2]||'00',ap=(p[3]||'').toUpperCase();
+    var h=parseInt(p[1]);
+    var m=parseInt(p[2]||'0');
+    var ap=(p[3]||'').toUpperCase();
     if(ap==='PM'&&h!==12) h+=12;
     else if(ap==='AM'&&h===12) h=0;
     var hh=(h<10?'0':'')+h;
-    var mm=(parseInt(m)<10?'0':'')+m;
+    var mm=(m<10?'0':'')+m;
     return hh+':'+mm;
   };
   try{
