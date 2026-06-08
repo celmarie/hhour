@@ -9940,25 +9940,28 @@ async function adminSaveEditsOnly(){
 
   var edits = admCollectEdits();
 
-  // Photo logic:
-  // _admEditPhotoDataUrl = original photo when form was opened
-  // _admPhotos = current photo slots after user edits
-  // - photos deleted → _admPhotos is shorter or empty
-  // - new photo added to slot 1/2 → _admPhotos has extra items
-  // - slot 0 replaced → _admPhotos[0] differs from _admEditPhotoDataUrl
+  // Collect all photos and compress new ones
+  var savedImg1 = '', savedImg2 = '', savedImg3 = '';
+  var p0 = _admPhotos[0]||'', p1 = _admPhotos[1]||'', p2 = _admPhotos[2]||'';
 
-  // Compress any new photos (data URLs that differ from what was originally loaded)
-  async function compressIfNew(photo, original){
-    if(!photo) return '';
-    if(photo === original) return photo; // unchanged, no compression needed
-    if(photo.startsWith('data:')){
-      try { return await compressImage(photo, 800, 0.8); } catch(e){ return photo; }
-    }
-    return photo;
+  // slot 0: compress only if changed from original
+  if(p0 && p0 !== _admEditPhotoDataUrl && p0.startsWith('data:')){
+    try { savedImg1 = await compressImage(p0, 800, 0.8); } catch(e){ savedImg1 = p0; }
+  } else {
+    savedImg1 = p0;
   }
-  var savedImg1 = await compressIfNew(_admPhotos[0]||'', _admEditPhotoDataUrl);
-  var savedImg2 = await compressIfNew(_admPhotos[1]||'', '');
-  var savedImg3 = await compressIfNew(_admPhotos[2]||'', '');
+  // slot 1: always compress if it's a new data URL
+  if(p1 && p1.startsWith('data:')){
+    try { savedImg2 = await compressImage(p1, 800, 0.8); } catch(e){ savedImg2 = p1; }
+  } else {
+    savedImg2 = p1;
+  }
+  // slot 2: always compress if it's a new data URL
+  if(p2 && p2.startsWith('data:')){
+    try { savedImg3 = await compressImage(p2, 800, 0.8); } catch(e){ savedImg3 = p2; }
+  } else {
+    savedImg3 = p2;
+  }
 
   try {
     if(_admReviewSource === 'merchant'){
