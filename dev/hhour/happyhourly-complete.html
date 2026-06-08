@@ -9785,8 +9785,11 @@ async function adminSaveAndDelete(){
 }
 
 async function adminSaveEditsOnly(){
-  if(!_admReviewDealId) return;
+  if(!_admReviewDealId){console.error('No deal ID');showToast('❌ No deal selected');return;}
+
+  console.log('[adminSaveEditsOnly] Starting save for deal:', _admReviewDealId, 'source:', _admReviewSource);
   var edits = admCollectEdits();
+  console.log('[adminSaveEditsOnly] Collected edits:', edits);
 
   // Compress new photo if provided
   var newImgUrl = null;
@@ -9796,56 +9799,67 @@ async function adminSaveEditsOnly(){
     edits.img = newImgUrl;
   }
 
-  if(_admReviewSource === 'merchant'){
-    var deal = vouchers.find(function(d){ return d.id===_admReviewDealId; })
-      || deletedVouchers.find(function(d){ return d.id===_admReviewDealId; });
-    if(deal) Object.assign(deal, edits);
-    var mUpdate = {
-      title: edits.deal, description: edits.desc,
-      address: edits.address,
-      price: edits.price, was_price: edits.wasPrice,
-      hours: edits.hours, days: edits.days,
-      off_label: edits.off, category: edits.cat,
-      emoji: edits.emoji||undefined
-    };
-    if(newImgUrl) mUpdate.image_url = newImgUrl;
-    var { error } = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
-    if(error){ showToast('⚠️ DB error: '+error.message); return; }
-    if(typeof renderAllDeals==='function') renderAllDeals(typeof _adCurTab!=='undefined'?_adCurTab:'all');
-    showToast('✅ Deal updated & correction approved');
-  } else {
-    var deal = pendingCommunityDeals.find(function(d){ return d.id===_admReviewDealId; })
-      || removedCommunityDeals.find(function(d){ return d.id===_admReviewDealId; });
-    if(deal) Object.assign(deal, edits);
-    var dbId = deal ? (deal._dbId||(deal.id>9999?deal.id-10000:deal.id)) : _admReviewDealId;
-    var cUpdate = {
-      title: edits.deal, venue_name: edits.venue,
-      description: edits.desc, address: edits.address,
-      price: edits.price, was_price: edits.wasPrice,
-      hours: edits.hours, days: edits.days,
-      category: edits.cat, emoji: edits.emoji||undefined,
-      currency: edits.currency
-    };
-    if(newImgUrl) cUpdate.image_url = newImgUrl;
-    var { error } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
-    if(error){ showToast('⚠️ DB error: '+error.message); return; }
-    showToast('✅ Deal updated & correction approved');
-  }
-
-  // Auto-approve the correction report when admin saves
-  if(_admReviewDealId){
-    var {error:updateErr}=await db.from('deal_mistake_reports').update({status:'approved'}).eq('deal_id',_admReviewDealId);
-    if(updateErr){console.warn('Failed to auto-approve report:',updateErr);}
-    // Update local data
-    if(adminMistakeReports){
-      adminMistakeReports.forEach(function(r){
-        if(r.deal_id===_admReviewDealId) r.status='approved';
-      });
+  try {
+    if(_admReviewSource === 'merchant'){
+      var deal = vouchers.find(function(d){ return d.id===_admReviewDealId; })
+        || deletedVouchers.find(function(d){ return d.id===_admReviewDealId; });
+      if(deal) Object.assign(deal, edits);
+      var mUpdate = {
+        title: edits.deal, description: edits.desc,
+        address: edits.address,
+        price: edits.price, was_price: edits.wasPrice,
+        hours: edits.hours, days: edits.days,
+        off_label: edits.off, category: edits.cat,
+        emoji: edits.emoji||undefined
+      };
+      if(newImgUrl) mUpdate.image_url = newImgUrl;
+      console.log('[adminSaveEditsOnly] Updating merchant deal:', mUpdate);
+      var { error } = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
+      if(error){ console.error('Merchant update error:', error); showToast('❌ Failed to save: '+error.message); return; }
+      if(typeof renderAllDeals==='function') renderAllDeals(typeof _adCurTab!=='undefined'?_adCurTab:'all');
+      showToast('✅ Deal updated & correction approved');
+    } else {
+      var deal = pendingCommunityDeals.find(function(d){ return d.id===_admReviewDealId; })
+        || removedCommunityDeals.find(function(d){ return d.id===_admReviewDealId; })
+        || ucDeals.find(function(d){ return d.id===_admReviewDealId||d._dbId===_admReviewDealId; });
+      if(deal) Object.assign(deal, edits);
+      var dbId = deal ? (deal._dbId||(deal.id>9999?deal.id-10000:deal.id)) : _admReviewDealId;
+      var cUpdate = {
+        title: edits.deal, venue_name: edits.venue,
+        description: edits.desc, address: edits.address,
+        price: edits.price, was_price: edits.wasPrice,
+        hours: edits.hours, days: edits.days,
+        category: edits.cat, emoji: edits.emoji||undefined,
+        currency: edits.currency
+      };
+      if(newImgUrl) cUpdate.image_url = newImgUrl;
+      console.log('[adminSaveEditsOnly] Updating community deal:', dbId, cUpdate);
+      var { error } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
+      if(error){ console.error('Community update error:', error); showToast('❌ Failed to save: '+error.message); return; }
+      showToast('✅ Deal updated & correction approved');
     }
-  }
 
-  adminCloseReview();
-  adminPage(adminCurrentPage, null);
+    // Auto-approve the correction report when admin saves
+    if(_admReviewDealId){
+      console.log('[adminSaveEditsOnly] Auto-approving correction for deal:', _admReviewDealId);
+      var {error:updateErr}=await db.from('deal_mistake_reports').update({status:'approved'}).eq('deal_id',_admReviewDealId);
+      if(updateErr){console.error('Failed to auto-approve report:',updateErr);}
+      else { console.log('[adminSaveEditsOnly] Correction approved'); }
+      // Update local data
+      if(adminMistakeReports){
+        adminMistakeReports.forEach(function(r){
+          if(r.deal_id===_admReviewDealId) r.status='approved';
+        });
+      }
+    }
+
+    console.log('[adminSaveEditsOnly] Save successful!');
+    adminCloseReview();
+    adminPage(adminCurrentPage, null);
+  } catch(e) {
+    console.error('[adminSaveEditsOnly] Exception:', e);
+    showToast('❌ Error: '+e.message);
+  }
 }
 
 function adminCloseReview(){
