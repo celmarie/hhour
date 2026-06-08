@@ -4548,10 +4548,11 @@ async function removeSaved(id){
 }
 
 // unified open — works for both vouchers and ucDeals
-var _fsPhotos = [], _fsCurIdx = 0, _fsTouchX = 0;
-var _fsScale = 1, _fsOriginX = 0, _fsOriginY = 0;
-var _fsPinchStart = 0, _fsPinchScale = 1;
-var _fsLastTap = 0, _fsDragX = 0, _fsDragY = 0, _fsIsPinching = false;
+var _fsPhotos = [], _fsCurIdx = 0;
+var _fsScale = 1, _fsPanX = 0, _fsPanY = 0;
+var _fsPinchDist0 = 0, _fsPinchScale0 = 1;
+var _fsDragStartX = 0, _fsDragStartY = 0, _fsPanX0 = 0, _fsPanY0 = 0;
+var _fsLastTap = 0, _fsIsPinching = false, _fsSwipeStartX = 0;
 
 function openPhotoFullscreen(startIdx){
   var ov = document.getElementById('photo-fullscreen');
@@ -4599,51 +4600,65 @@ function openPhotoFullscreen(startIdx){
   ov.style.display = 'flex';
   ov.style.alignItems = 'center';
 
-  // Touch: pinch-zoom + swipe + double-tap
+  // Touch: pinch-zoom + pan + swipe + double-tap
   ov.ontouchstart = function(e){
     if(e.touches.length === 2){
       _fsIsPinching = true;
-      _fsPinchStart = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      _fsPinchScale = _fsScale;
+      _fsPinchDist0 = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+      _fsPinchScale0 = _fsScale;
     } else if(e.touches.length === 1){
       _fsIsPinching = false;
-      _fsTouchX = e.touches[0].clientX;
-      // Double-tap detection
+      var tx = e.touches[0].clientX, ty = e.touches[0].clientY;
+      _fsDragStartX = tx; _fsDragStartY = ty;
+      _fsPanX0 = _fsPanX; _fsPanY0 = _fsPanY;
+      _fsSwipeStartX = tx;
+      // Double-tap
       var now = Date.now();
       if(now - _fsLastTap < 300){
-        _fsScale === 1 ? _fsZoomAt(e.touches[0].clientX, e.touches[0].clientY, 2.5) : _fsResetZoom();
         _fsLastTap = 0;
-      } else {
-        _fsLastTap = now;
-      }
+        _fsScale === 1 ? _fsZoomTo(2.5, tx, ty) : _fsResetZoom();
+      } else { _fsLastTap = now; }
     }
   };
   ov.ontouchmove = function(e){
+    e.preventDefault();
     if(e.touches.length === 2 && _fsIsPinching){
-      e.preventDefault();
-      var dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      var newScale = Math.max(1, Math.min(5, _fsPinchScale * (dist / _fsPinchStart)));
-      _fsApplyZoom(newScale);
+      var dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+      var cx = (e.touches[0].clientX+e.touches[1].clientX)/2;
+      var cy = (e.touches[0].clientY+e.touches[1].clientY)/2;
+      var s = Math.max(1, Math.min(5, _fsPinchScale0 * (dist/_fsPinchDist0)));
+      _fsScale = s; _fsApplyTransform();
+    } else if(e.touches.length === 1 && !_fsIsPinching && _fsScale > 1){
+      // Pan when zoomed
+      _fsPanX = _fsPanX0 + (e.touches[0].clientX - _fsDragStartX);
+      _fsPanY = _fsPanY0 + (e.touches[0].clientY - _fsDragStartY);
+      _fsClampPan();
+      _fsApplyTransform();
     }
   };
   ov.ontouchend = function(e){
-    if(_fsIsPinching){ _fsIsPinching = false; return; }
-    if(_fsScale > 1) return; // don't swipe when zoomed
-    var dx = e.changedTouches[0].clientX - _fsTouchX;
+    if(_fsIsPinching){ _fsIsPinching = false; if(_fsScale < 1.05) _fsResetZoom(); return; }
+    if(_fsScale > 1) return; // no swipe when zoomed
+    var dx = e.changedTouches[0].clientX - _fsSwipeStartX;
     if(Math.abs(dx) > 40) fsNav(dx < 0 ? 1 : -1);
   };
 
-  // Mouse wheel zoom
+  // Mouse: drag to pan when zoomed, wheel to zoom
+  ov.onmousedown = function(e){
+    if(_fsScale <= 1) return;
+    _fsDragStartX = e.clientX; _fsDragStartY = e.clientY;
+    _fsPanX0 = _fsPanX; _fsPanY0 = _fsPanY;
+    ov.onmousemove = function(ev){
+      _fsPanX = _fsPanX0 + (ev.clientX - _fsDragStartX);
+      _fsPanY = _fsPanY0 + (ev.clientY - _fsDragStartY);
+      _fsClampPan(); _fsApplyTransform();
+    };
+    ov.onmouseup = ov.onmouseleave = function(){ ov.onmousemove = null; ov.onmouseup = null; };
+  };
   ov.onwheel = function(e){
     e.preventDefault();
-    var newScale = Math.max(1, Math.min(5, _fsScale * (e.deltaY < 0 ? 1.15 : 0.87)));
-    newScale === 1 ? _fsResetZoom() : _fsZoomAt(e.clientX, e.clientY, newScale);
+    var s = Math.max(1, Math.min(5, _fsScale * (e.deltaY < 0 ? 1.15 : 0.87)));
+    s <= 1 ? _fsResetZoom() : _fsZoomTo(s, e.clientX, e.clientY);
   };
 
   document.addEventListener('keydown', _fsKeyHandler);
@@ -4671,40 +4686,55 @@ function _fsCurImg(){
   var slides = document.querySelectorAll('#fs-track > div');
   return slides[_fsCurIdx] ? slides[_fsCurIdx].querySelector('img') : null;
 }
-function _fsApplyZoom(scale){
-  _fsScale = scale;
-  var img = _fsCurImg();
-  if(img) img.style.transform = 'scale('+scale+')';
-}
-function _fsZoomAt(clientX, clientY, scale){
-  _fsScale = scale;
+function _fsApplyTransform(){
   var img = _fsCurImg();
   if(!img) return;
-  var r = img.getBoundingClientRect();
-  var ox = ((clientX - r.left) / r.width  * 100).toFixed(1) + '%';
-  var oy = ((clientY - r.top)  / r.height * 100).toFixed(1) + '%';
-  img.style.transformOrigin = ox + ' ' + oy;
-  img.style.transform = 'scale('+scale+')';
-  img.style.cursor = 'zoom-out';
+  img.style.transform = 'translate('+_fsPanX+'px,'+_fsPanY+'px) scale('+_fsScale+')';
+  img.style.cursor = _fsScale > 1 ? 'grab' : 'zoom-in';
+}
+function _fsClampPan(){
+  var img = _fsCurImg();
+  if(!img || _fsScale <= 1){ _fsPanX = 0; _fsPanY = 0; return; }
+  var w = img.offsetWidth, h = img.offsetHeight;
+  var maxX = (w * (_fsScale - 1)) / 2;
+  var maxY = (h * (_fsScale - 1)) / 2;
+  _fsPanX = Math.max(-maxX, Math.min(maxX, _fsPanX));
+  _fsPanY = Math.max(-maxY, Math.min(maxY, _fsPanY));
+}
+function _fsZoomTo(scale, clientX, clientY){
+  // Adjust pan so zoom stays centered on pointer
+  var img = _fsCurImg();
+  if(img){
+    var r = img.getBoundingClientRect();
+    var cx = clientX - (r.left + r.width/2);
+    var cy = clientY - (r.top  + r.height/2);
+    _fsPanX += cx * (1 - scale/_fsScale);
+    _fsPanY += cy * (1 - scale/_fsScale);
+  }
+  _fsScale = scale;
+  _fsClampPan();
+  _fsApplyTransform();
 }
 function _fsResetZoom(){
-  _fsScale = 1;
+  _fsScale = 1; _fsPanX = 0; _fsPanY = 0;
   var img = _fsCurImg();
-  if(img){ img.style.transform = 'scale(1)'; img.style.transformOrigin = 'center center'; img.style.cursor = 'zoom-in'; }
+  if(img){ img.style.transform = 'translate(0,0) scale(1)'; img.style.transformOrigin = 'center center'; img.style.cursor = 'zoom-in'; }
 }
 
 function closePhotoFullscreen(){
   var ov = document.getElementById('photo-fullscreen');
-  if(ov){ ov.style.display = 'none'; ov.ontouchstart = null; ov.ontouchmove = null; ov.ontouchend = null; ov.onwheel = null; }
+  if(ov){ ov.style.display='none'; ov.ontouchstart=null; ov.ontouchmove=null; ov.ontouchend=null; ov.onwheel=null; ov.onmousedown=null; }
   _fsResetZoom();
   document.removeEventListener('keydown', _fsKeyHandler);
 }
 function _fsKeyHandler(e){
-  if(e.key === 'Escape') closePhotoFullscreen();
-  if(e.key === 'ArrowRight') fsNav(1);
-  if(e.key === 'ArrowLeft')  fsNav(-1);
-  if(e.key === '+' || e.key === '=') _fsApplyZoom(Math.min(5, _fsScale * 1.2));
-  if(e.key === '-') { var ns = Math.max(1, _fsScale * 0.85); ns === 1 ? _fsResetZoom() : _fsApplyZoom(ns); }
+  if(e.key==='Escape') closePhotoFullscreen();
+  if(e.key==='ArrowRight' && _fsScale<=1) fsNav(1);
+  if(e.key==='ArrowLeft'  && _fsScale<=1) fsNav(-1);
+  if(e.key==='+' || e.key==='=') _fsZoomTo(Math.min(5,_fsScale*1.2), window.innerWidth/2, window.innerHeight/2);
+  if(e.key==='-'){ var ns=Math.max(1,_fsScale*0.85); ns<=1?_fsResetZoom():_fsZoomTo(ns,window.innerWidth/2,window.innerHeight/2); }
+  if(e.key==='ArrowUp'   && _fsScale>1){ _fsPanY+=60; _fsClampPan(); _fsApplyTransform(); }
+  if(e.key==='ArrowDown' && _fsScale>1){ _fsPanY-=60; _fsClampPan(); _fsApplyTransform(); }
 }
 
 function openDeal(deal){
