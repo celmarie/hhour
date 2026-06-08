@@ -2850,9 +2850,9 @@ function dbUCToLocal(row) {
     _dbId: row.id,
     emoji: row.emoji || '📣',
     imgClass: row.img_class || 'uc1',
-    img: row.image_url || '',
-    img2: row.image_url_2 || '',
-    img3: row.image_url_3 || '',
+    img: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[0]||''; }catch(e){} } return u; })(),
+    img2: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[1]||''; }catch(e){} } return row.image_url_2||''; })(),
+    img3: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return row.image_url_3||''; })(),
     name: row.venue_name,
     address: row.address || 'Carrer de Sòria 11, Ciutat Vella, 08003 Barcelona',
     deal: row.title,
@@ -6748,9 +6748,9 @@ async function loadAdminData(){
           isFree: !!r.is_free, off: offVal,
           status: r.status||'pending',
           submittedAt: dbAgo(r.created_at), ago: dbAgo(r.created_at),
-          img: r.image_url || '',
-          img2: r.image_url_2 || '',
-          img3: r.image_url_3 || '',
+          img: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[0]||''; }catch(e){} } return u; })(),
+          img2: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[1]||''; }catch(e){} } return ''; })(),
+          img3: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return ''; })(),
           timeFrom: r.time_from || 17, timeTo: r.time_to || 22,
           discPct: r.discount_pct || 0,
           rating: 0, timeLeft: '3h 00m'
@@ -9937,9 +9937,8 @@ async function adminSaveEditsOnly(){
         currency: edits.currency||'EUR',
         discount_pct: edits.discPct||0
       };
-      mUpdate.image_url   = savedImg1;
-      mUpdate.image_url_2 = savedImg2;
-      mUpdate.image_url_3 = savedImg3;
+      var allPhotosM = [savedImg1, savedImg2, savedImg3].filter(Boolean);
+      mUpdate.image_url = allPhotosM.length > 1 ? JSON.stringify(allPhotosM) : (allPhotosM[0] || '');
       console.log('[adminSaveEditsOnly] Full update object:', mUpdate);
       var { error } = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
       if(error){
@@ -9987,14 +9986,10 @@ async function adminSaveEditsOnly(){
         off_label: edits.off||undefined,
         discount_pct: edits.discPct||0
       };
-      cUpdate.image_url = savedImg1;
-      // Try saving with multi-photo columns; fallback to single photo if columns don't exist
-      var cUpdateMulti = Object.assign({}, cUpdate, { image_url_2: savedImg2, image_url_3: savedImg3 });
-      var { error, data } = await db.from('community_deals').update(cUpdateMulti).eq('id', dbId);
-      // If multi-photo update failed (columns may not exist yet), fall back to single photo
-      if(error && error.message && error.message.includes('image_url')){
-        var { error, data } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
-      }
+      // Store all photos as JSON array in image_url — no extra columns needed
+      var allPhotos = [savedImg1, savedImg2, savedImg3].filter(Boolean);
+      cUpdate.image_url = allPhotos.length > 1 ? JSON.stringify(allPhotos) : (allPhotos[0] || '');
+      var { error, data } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
 
       console.log('[adminSaveEditsOnly] Database response:');
       console.log('  - error:', error ? error.message : 'NONE');
@@ -10084,12 +10079,17 @@ async function adminSaveEditsOnly(){
       if(tfEl) tfEl.value = String(tf).padStart(2, '0') + ':00';
       if(ttEl) ttEl.value = String(tt).padStart(2, '0') + ':00';
 
-      // Set all photos
-      _admEditPhotoDataUrl = freshDeal.image_url || '';
+      // Parse photos — may be JSON array or single URL
       _admPhotos = [];
-      if(freshDeal.image_url)   _admPhotos[0] = freshDeal.image_url;
-      if(freshDeal.image_url_2) _admPhotos[1] = freshDeal.image_url_2;
-      if(freshDeal.image_url_3) _admPhotos[2] = freshDeal.image_url_3;
+      var rawImg = freshDeal.image_url || '';
+      if(rawImg.startsWith('[')){
+        try { _admPhotos = JSON.parse(rawImg).filter(Boolean); } catch(e){ _admPhotos = rawImg ? [rawImg] : []; }
+      } else {
+        if(rawImg) _admPhotos[0] = rawImg;
+        if(freshDeal.image_url_2) _admPhotos[1] = freshDeal.image_url_2;
+        if(freshDeal.image_url_3) _admPhotos[2] = freshDeal.image_url_3;
+      }
+      _admEditPhotoDataUrl = _admPhotos[0] || '';
       var pg = document.getElementById('adm-photo-grid');
       if(pg) pg.innerHTML = '';
       renderPhotoGrid('adm');
