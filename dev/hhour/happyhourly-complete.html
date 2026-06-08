@@ -4698,20 +4698,18 @@ function openReportMistakeModal(){
     showToast('🔒 Sign in to report');
     return;
   }
-  // Scroll to top immediately
-  window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
 
   var modal=document.getElementById('report-mistake-modal');
   if(!modal){showToast('Modal not found');return;}
   modal.style.display='flex';
-  modal.style.flexDirection='column';
-  modal.style.alignItems='center';
-  modal.style.justifyContent='center';
   document.getElementById('mistake-field').value='';
   document.getElementById('mistake-correction').value='';
   document.getElementById('mistake-comments').value='';
+
+  // Scroll to top after modal appears
+  setTimeout(function(){
+    window.scrollTo({top:0,behavior:'smooth'});
+  },50);
 }
 async function submitMistakeReport(){
   if(!currentUser){showToast('🔒 Sign in first');return;}
