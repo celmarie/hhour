@@ -4707,7 +4707,7 @@ function openReportMistakeModal(){
   document.getElementById('mistake-field').value='';
   document.getElementById('mistake-correction').value='';
   document.getElementById('mistake-comments').value='';
-  setTimeout(function(){window.scrollTo({top:0,behavior:'smooth'});},50);
+  setTimeout(function(){window.scrollTo({top:0,behavior:'smooth'});},100);
 }
 async function submitMistakeReport(){
   if(!currentUser){showToast('🔒 Sign in first');return;}
