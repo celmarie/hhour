@@ -9968,9 +9968,20 @@ async function adminSaveEditsOnly(){
         || removedCommunityDeals.find(function(d){ return d.id===_admReviewDealId; })
         || ucDeals.find(function(d){ return d.id===_admReviewDealId||d._dbId===_admReviewDealId; });
       if(deal) Object.assign(deal, edits);
-      // Use the CORRECT database ID - prefer _dbId, fallback to id
-      var dbId = deal ? (deal._dbId || deal.id) : _admReviewDealId;
-      console.log('[adminSaveEditsOnly] Deal found:', deal ? 'YES' : 'NO', 'ID:', dbId, '_dbId:', deal?deal._dbId:'N/A');
+
+      // Calculate CORRECT database ID for community deals
+      // For community deals: frontend ID = database ID + 10000
+      // So: database ID = frontend ID - 10000 (only if > 10000)
+      var dbId;
+      if(deal && deal._dbId){
+        dbId = deal._dbId;
+      } else if(_admReviewDealId > 10000){
+        dbId = _admReviewDealId - 10000; // Frontend ID to Database ID
+      } else {
+        dbId = _admReviewDealId; // Already a database ID
+      }
+      console.log('[adminSaveEditsOnly] Deal found:', deal ? 'YES' : 'NO');
+      console.log('[adminSaveEditsOnly] Using database ID:', dbId, '(frontend was:', _admReviewDealId, ')');
 
       // Build complete update object with ALL editable fields
       var cUpdate = {
