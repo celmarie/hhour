@@ -1196,7 +1196,7 @@ function googleTranslateElementInit(){
         </div>
       </div>
       <!-- Fullscreen photo overlay -->
-      <div id="photo-fullscreen" style="display:none;position:fixed;inset:0;z-index:999990;background:black;touch-action:pan-y;">
+      <div id="photo-fullscreen" style="display:none;position:fixed;inset:0;z-index:999990;background:black;touch-action:none;overflow:hidden;">
         <!-- Close button -->
         <button onclick="closePhotoFullscreen()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,.18);border:none;border-radius:50%;width:40px;height:40px;font-size:20px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;">✕</button>
         <!-- Counter -->
@@ -4579,8 +4579,8 @@ function openPhotoFullscreen(startIdx){
   var track = document.getElementById('fs-track');
   track.style.transition = 'none';
   track.innerHTML = _fsPhotos.map(function(src){
-    return '<div style="flex:0 0 100vw;width:100vw;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">'
-      + '<img src="'+src+'" style="max-width:100%;max-height:100%;object-fit:contain;display:block;cursor:zoom-in;transition:transform .2s ease;transform-origin:center center;">'
+    return '<div style="flex:0 0 100vw;width:100vw;height:100%;display:flex;align-items:center;justify-content:center;overflow:visible;position:relative;">'
+      + '<img src="'+src+'" style="max-width:100vw;max-height:100vh;object-fit:contain;display:block;cursor:zoom-in;will-change:transform;transform:translate3d(0,0,0) scale(1);transform-origin:center center;-webkit-user-drag:none;user-select:none;">'
       + '</div>';
   }).join('');
 
@@ -4602,21 +4602,22 @@ function openPhotoFullscreen(startIdx){
 
   // Touch: pinch-zoom + pan + swipe + double-tap
   ov.ontouchstart = function(e){
+    e.preventDefault();
     if(e.touches.length === 2){
       _fsIsPinching = true;
       _fsPinchDist0 = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
       _fsPinchScale0 = _fsScale;
+      _fsPanX0 = _fsPanX; _fsPanY0 = _fsPanY;
     } else if(e.touches.length === 1){
       _fsIsPinching = false;
       var tx = e.touches[0].clientX, ty = e.touches[0].clientY;
       _fsDragStartX = tx; _fsDragStartY = ty;
       _fsPanX0 = _fsPanX; _fsPanY0 = _fsPanY;
       _fsSwipeStartX = tx;
-      // Double-tap
       var now = Date.now();
-      if(now - _fsLastTap < 300){
+      if(now - _fsLastTap < 280){
         _fsLastTap = 0;
-        _fsScale === 1 ? _fsZoomTo(2.5, tx, ty) : _fsResetZoom();
+        _fsScale > 1 ? _fsResetZoom() : _fsZoomTo(2.5, tx, ty);
       } else { _fsLastTap = now; }
     }
   };
@@ -4624,21 +4625,35 @@ function openPhotoFullscreen(startIdx){
     e.preventDefault();
     if(e.touches.length === 2 && _fsIsPinching){
       var dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
-      var cx = (e.touches[0].clientX+e.touches[1].clientX)/2;
-      var cy = (e.touches[0].clientY+e.touches[1].clientY)/2;
+      var midX = (e.touches[0].clientX+e.touches[1].clientX)/2;
+      var midY = (e.touches[0].clientY+e.touches[1].clientY)/2;
       var s = Math.max(1, Math.min(5, _fsPinchScale0 * (dist/_fsPinchDist0)));
-      _fsScale = s; _fsApplyTransform();
+      // Adjust pan to keep midpoint stable
+      var img = _fsCurImg();
+      if(img){
+        var r = img.getBoundingClientRect();
+        var cx = midX - (r.left + r.width/2);
+        var cy = midY - (r.top  + r.height/2);
+        _fsPanX = _fsPanX0 + cx * (1 - s/_fsPinchScale0);
+        _fsPanY = _fsPanY0 + cy * (1 - s/_fsPinchScale0);
+      }
+      _fsScale = s;
+      _fsClampPan();
+      _fsApplyTransform(false); // no transition during gesture
     } else if(e.touches.length === 1 && !_fsIsPinching && _fsScale > 1){
-      // Pan when zoomed
       _fsPanX = _fsPanX0 + (e.touches[0].clientX - _fsDragStartX);
       _fsPanY = _fsPanY0 + (e.touches[0].clientY - _fsDragStartY);
       _fsClampPan();
-      _fsApplyTransform();
+      _fsApplyTransform(false); // no transition during drag
     }
   };
   ov.ontouchend = function(e){
-    if(_fsIsPinching){ _fsIsPinching = false; if(_fsScale < 1.05) _fsResetZoom(); return; }
-    if(_fsScale > 1) return; // no swipe when zoomed
+    if(_fsIsPinching){
+      _fsIsPinching = false;
+      if(_fsScale < 1.08){ _fsResetZoom(); }
+      return;
+    }
+    if(_fsScale > 1) return;
     var dx = e.changedTouches[0].clientX - _fsSwipeStartX;
     if(Math.abs(dx) > 40) fsNav(dx < 0 ? 1 : -1);
   };
@@ -4646,14 +4661,17 @@ function openPhotoFullscreen(startIdx){
   // Mouse: drag to pan when zoomed, wheel to zoom
   ov.onmousedown = function(e){
     if(_fsScale <= 1) return;
+    e.preventDefault();
     _fsDragStartX = e.clientX; _fsDragStartY = e.clientY;
     _fsPanX0 = _fsPanX; _fsPanY0 = _fsPanY;
-    ov.onmousemove = function(ev){
+    var onMove = function(ev){
       _fsPanX = _fsPanX0 + (ev.clientX - _fsDragStartX);
       _fsPanY = _fsPanY0 + (ev.clientY - _fsDragStartY);
-      _fsClampPan(); _fsApplyTransform();
+      _fsClampPan(); _fsApplyTransform(false);
     };
-    ov.onmouseup = ov.onmouseleave = function(){ ov.onmousemove = null; ov.onmouseup = null; };
+    var onUp = function(){ document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   };
   ov.onwheel = function(e){
     e.preventDefault();
@@ -4667,8 +4685,8 @@ function openPhotoFullscreen(startIdx){
 function _fsGoTo(idx, animate){
   _fsCurIdx = Math.max(0, Math.min(_fsPhotos.length - 1, idx));
   var track = document.getElementById('fs-track');
-  track.style.transition = animate === false ? 'none' : 'transform .3s ease';
-  track.style.transform  = 'translateX(-' + (_fsCurIdx * 100) + 'vw)';
+  track.style.transition = animate === false ? 'none' : 'transform .32s cubic-bezier(.25,.46,.45,.94)';
+  track.style.transform  = 'translate3d(-' + (_fsCurIdx * 100) + 'vw,0,0)';
   // Update dots
   var dots = document.querySelectorAll('#fs-dots div');
   dots.forEach(function(d, i){ d.style.background = i === _fsCurIdx ? 'white' : 'rgba(255,255,255,.4)'; });
@@ -4686,39 +4704,38 @@ function _fsCurImg(){
   var slides = document.querySelectorAll('#fs-track > div');
   return slides[_fsCurIdx] ? slides[_fsCurIdx].querySelector('img') : null;
 }
-function _fsApplyTransform(){
+function _fsApplyTransform(animate){
   var img = _fsCurImg();
   if(!img) return;
-  img.style.transform = 'translate('+_fsPanX+'px,'+_fsPanY+'px) scale('+_fsScale+')';
+  img.style.transition = animate ? 'transform .25s cubic-bezier(.25,.46,.45,.94)' : 'none';
+  img.style.transform = 'translate3d('+_fsPanX+'px,'+_fsPanY+'px,0) scale('+_fsScale+')';
   img.style.cursor = _fsScale > 1 ? 'grab' : 'zoom-in';
 }
 function _fsClampPan(){
+  if(_fsScale <= 1){ _fsPanX = 0; _fsPanY = 0; return; }
   var img = _fsCurImg();
-  if(!img || _fsScale <= 1){ _fsPanX = 0; _fsPanY = 0; return; }
-  var w = img.offsetWidth, h = img.offsetHeight;
-  var maxX = (w * (_fsScale - 1)) / 2;
-  var maxY = (h * (_fsScale - 1)) / 2;
+  if(!img) return;
+  var maxX = (img.offsetWidth  * (_fsScale - 1)) / 2;
+  var maxY = (img.offsetHeight * (_fsScale - 1)) / 2;
   _fsPanX = Math.max(-maxX, Math.min(maxX, _fsPanX));
   _fsPanY = Math.max(-maxY, Math.min(maxY, _fsPanY));
 }
 function _fsZoomTo(scale, clientX, clientY){
-  // Adjust pan so zoom stays centered on pointer
   var img = _fsCurImg();
-  if(img){
+  if(img && _fsScale !== scale){
     var r = img.getBoundingClientRect();
     var cx = clientX - (r.left + r.width/2);
     var cy = clientY - (r.top  + r.height/2);
-    _fsPanX += cx * (1 - scale/_fsScale);
-    _fsPanY += cy * (1 - scale/_fsScale);
+    _fsPanX += cx * (1 - scale / _fsScale);
+    _fsPanY += cy * (1 - scale / _fsScale);
   }
   _fsScale = scale;
   _fsClampPan();
-  _fsApplyTransform();
+  _fsApplyTransform(true);
 }
-function _fsResetZoom(){
+function _fsResetZoom(animate){
   _fsScale = 1; _fsPanX = 0; _fsPanY = 0;
-  var img = _fsCurImg();
-  if(img){ img.style.transform = 'translate(0,0) scale(1)'; img.style.transformOrigin = 'center center'; img.style.cursor = 'zoom-in'; }
+  _fsApplyTransform(animate !== false);
 }
 
 function closePhotoFullscreen(){
