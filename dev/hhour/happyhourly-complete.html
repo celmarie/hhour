@@ -1637,24 +1637,32 @@ function googleTranslateElementInit(){
                 <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Deal Price <span style="color:#E8192C;">*</span></label>
                 <div style="display:flex;gap:0;border:2px solid #E8E8EC;border-radius:12px;overflow:hidden;background:#F5F5F7;" id="uc-price-wrap" onfocusin="this.style.borderColor='#E8192C'" onfocusout="this.style.borderColor='#E8E8EC'">
                   <select id="uc-deal-currency" onchange="ucUpdateCurrencyPreview()" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 8px 0 10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:#E8192C;outline:none;cursor:pointer;flex-shrink:0;height:50px;">
-                    <option value="EUR">€ EUR</option>
-                    <option value="USD">$ USD</option>
-                    <option value="GBP">£ GBP</option>
-                    <option value="CAD">CA$ CAD</option>
-                    <option value="AUD">A$ AUD</option>
-                    <option value="CHF">CHF</option>
-                    <option value="JPY">¥ JPY</option>
-                    <option value="CNY">¥ CNY</option>
-                    <option value="INR">₹ INR</option>
-                    <option value="KRW">₩ KRW</option>
-                    <option value="PHP">₱ PHP</option>
-                    <option value="SEK">kr SEK</option>
-                    <option value="NOK">kr NOK</option>
-                    <option value="DKK">kr DKK</option>
-                    <option value="MXN">MX$ MXN</option>
-                    <option value="BRL">R$ BRL</option>
-                    <option value="SGD">S$ SGD</option>
-                    <option value="AED">د.إ AED</option>
+                    <option value="EUR">€ EUR - Europe</option>
+                    <option value="USD">$ USD - USA</option>
+                    <option value="GBP">£ GBP - UK</option>
+                    <option value="CAD">CA$ CAD - Canada</option>
+                    <option value="AUD">A$ AUD - Australia</option>
+                    <option value="CHF">CHF - Switzerland</option>
+                    <option value="SEK">kr SEK - Sweden</option>
+                    <option value="NOK">kr NOK - Norway</option>
+                    <option value="DKK">kr DKK - Denmark</option>
+                    <option value="MXN">MX$ MXN - Mexico</option>
+                    <option value="BRL">R$ BRL - Brazil</option>
+                    <option value="AED">د.إ AED - UAE</option>
+                    <optgroup label="━━━━ ASIA ━━━━">
+                    <option value="JPY">¥ JPY - Japan</option>
+                    <option value="KRW">₩ KRW - Korea</option>
+                    <option value="CNY">¥ CNY - China</option>
+                    <option value="THB">฿ THB - Thailand</option>
+                    <option value="VND">₫ VND - Vietnam</option>
+                    <option value="PHP">₱ PHP - Philippines</option>
+                    <option value="MYR">RM MYR - Malaysia</option>
+                    <option value="IDR">Rp IDR - Indonesia</option>
+                    <option value="SGD">S$ SGD - Singapore</option>
+                    <option value="INR">₹ INR - India</option>
+                    <option value="PKR">₨ PKR - Pakistan</option>
+                    <option value="BDT">৳ BDT - Bangladesh</option>
+                    </optgroup>
                     <option value="FREE">🆓 FREE</option>
                   </select>
                   <input id="uc-deal-price" type="number" min="0" step="0.01" placeholder="4.99" oninput="ucUpdateCurrencyPreview()" style="flex:1;min-width:0;background:#F5F5F7;border:none;padding:13px 12px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;">
@@ -1857,24 +1865,32 @@ function googleTranslateElementInit(){
               <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Ticket price</label>
               <div style="display:flex;gap:0;border:2px solid #E8E8EC;border-radius:12px;overflow:hidden;background:#F5F5F7;">
                 <select id="com-ev-currency" onchange="comUpdateCurrencyPreview()" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 8px 0 10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:#E8192C;outline:none;cursor:pointer;flex-shrink:0;height:48px;">
-                  <option value="EUR">€ EUR</option>
-                  <option value="USD">$ USD</option>
-                  <option value="GBP">£ GBP</option>
-                  <option value="CAD">CA$ CAD</option>
-                  <option value="AUD">A$ AUD</option>
-                  <option value="CHF">CHF</option>
-                  <option value="JPY">¥ JPY</option>
-                  <option value="CNY">¥ CNY</option>
-                  <option value="INR">₹ INR</option>
-                  <option value="KRW">₩ KRW</option>
-                  <option value="PHP">₱ PHP</option>
-                  <option value="SEK">kr SEK</option>
-                  <option value="NOK">kr NOK</option>
-                  <option value="DKK">kr DKK</option>
-                  <option value="MXN">MX$ MXN</option>
-                  <option value="BRL">R$ BRL</option>
-                  <option value="SGD">S$ SGD</option>
-                  <option value="AED">د.إ AED</option>
+                  <option value="EUR">€ EUR - Europe</option>
+                  <option value="USD">$ USD - USA</option>
+                  <option value="GBP">£ GBP - UK</option>
+                  <option value="CAD">CA$ CAD - Canada</option>
+                  <option value="AUD">A$ AUD - Australia</option>
+                  <option value="CHF">CHF - Switzerland</option>
+                  <option value="SEK">kr SEK - Sweden</option>
+                  <option value="NOK">kr NOK - Norway</option>
+                  <option value="DKK">kr DKK - Denmark</option>
+                  <option value="MXN">MX$ MXN - Mexico</option>
+                  <option value="BRL">R$ BRL - Brazil</option>
+                  <option value="AED">د.إ AED - UAE</option>
+                  <optgroup label="━━━━ ASIA ━━━━">
+                  <option value="JPY">¥ JPY - Japan</option>
+                  <option value="KRW">₩ KRW - Korea</option>
+                  <option value="CNY">¥ CNY - China</option>
+                  <option value="THB">฿ THB - Thailand</option>
+                  <option value="VND">₫ VND - Vietnam</option>
+                  <option value="PHP">₱ PHP - Philippines</option>
+                  <option value="MYR">RM MYR - Malaysia</option>
+                  <option value="IDR">Rp IDR - Indonesia</option>
+                  <option value="SGD">S$ SGD - Singapore</option>
+                  <option value="INR">₹ INR - India</option>
+                  <option value="PKR">₨ PKR - Pakistan</option>
+                  <option value="BDT">৳ BDT - Bangladesh</option>
+                  </optgroup>
                 </select>
                 <input id="com-ev-price" type="number" min="0.50" step="0.50" style="flex:1;background:#F5F5F7;border:none;padding:13px 12px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:var(--text);outline:none;" placeholder="e.g. 5.00">
               </div>
@@ -14682,20 +14698,32 @@ function _setupDealMap() {
             <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Deal Price <span style="color:#E8192C;">*</span></label>
             <div style="display:flex;gap:0;border:2px solid #E8E8EC;border-radius:12px;overflow:hidden;background:#F5F5F7;" id="me-price-wrap" onfocusin="this.style.borderColor='#E8192C'" onfocusout="this.style.borderColor='#E8E8EC'">
               <select id="me-deal-currency" onchange="meUpdateCurrencyPreview()" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 8px 0 10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:#E8192C;outline:none;cursor:pointer;flex-shrink:0;height:50px;">
-                <option value="EUR">€ EUR</option>
-                <option value="USD">$ USD</option>
-                <option value="GBP">£ GBP</option>
-                <option value="CAD">CA$ CAD</option>
-                <option value="AUD">A$ AUD</option>
-                <option value="CHF">CHF</option>
-                <option value="JPY">¥ JPY</option>
-                <option value="SEK">kr SEK</option>
-                <option value="NOK">kr NOK</option>
-                <option value="DKK">kr DKK</option>
-                <option value="MXN">MX$ MXN</option>
-                <option value="BRL">R$ BRL</option>
-                <option value="SGD">S$ SGD</option>
-                <option value="AED">د.إ AED</option>
+                <option value="EUR">€ EUR - Europe</option>
+                <option value="USD">$ USD - USA</option>
+                <option value="GBP">£ GBP - UK</option>
+                <option value="CAD">CA$ CAD - Canada</option>
+                <option value="AUD">A$ AUD - Australia</option>
+                <option value="CHF">CHF - Switzerland</option>
+                <option value="SEK">kr SEK - Sweden</option>
+                <option value="NOK">kr NOK - Norway</option>
+                <option value="DKK">kr DKK - Denmark</option>
+                <option value="MXN">MX$ MXN - Mexico</option>
+                <option value="BRL">R$ BRL - Brazil</option>
+                <option value="AED">د.إ AED - UAE</option>
+                <optgroup label="━━━━ ASIA ━━━━">
+                <option value="JPY">¥ JPY - Japan</option>
+                <option value="KRW">₩ KRW - Korea</option>
+                <option value="CNY">¥ CNY - China</option>
+                <option value="THB">฿ THB - Thailand</option>
+                <option value="VND">₫ VND - Vietnam</option>
+                <option value="PHP">₱ PHP - Philippines</option>
+                <option value="MYR">RM MYR - Malaysia</option>
+                <option value="IDR">Rp IDR - Indonesia</option>
+                <option value="SGD">S$ SGD - Singapore</option>
+                <option value="INR">₹ INR - India</option>
+                <option value="PKR">₨ PKR - Pakistan</option>
+                <option value="BDT">৳ BDT - Bangladesh</option>
+                </optgroup>
                 <option value="FREE">🆓 FREE</option>
               </select>
               <input id="me-deal-price" type="number" min="0" step="0.01" placeholder="4.99" oninput="meUpdateCurrencyPreview()" style="flex:1;min-width:0;background:#F5F5F7;border:none;padding:13px 12px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;">
@@ -15012,20 +15040,32 @@ function _setupDealMap() {
           <div>
             <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Currency</label>
             <select id="adm-edit-currency" onchange="adminRefreshPreview()" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
-              <option value="EUR">€ EUR</option>
-              <option value="USD">$ USD</option>
-              <option value="GBP">£ GBP</option>
-              <option value="CAD">CA$ CAD</option>
-              <option value="AUD">A$ AUD</option>
-              <option value="CHF">CHF</option>
-              <option value="JPY">¥ JPY</option>
-              <option value="SEK">kr SEK</option>
-              <option value="NOK">kr NOK</option>
-              <option value="DKK">kr DKK</option>
-              <option value="MXN">MX$ MXN</option>
-              <option value="BRL">R$ BRL</option>
-              <option value="SGD">S$ SGD</option>
-              <option value="AED">د.إ AED</option>
+              <option value="EUR">€ EUR - Europe</option>
+              <option value="USD">$ USD - USA</option>
+              <option value="GBP">£ GBP - UK</option>
+              <option value="CAD">CA$ CAD - Canada</option>
+              <option value="AUD">A$ AUD - Australia</option>
+              <option value="CHF">CHF - Switzerland</option>
+              <option value="SEK">kr SEK - Sweden</option>
+              <option value="NOK">kr NOK - Norway</option>
+              <option value="DKK">kr DKK - Denmark</option>
+              <option value="MXN">MX$ MXN - Mexico</option>
+              <option value="BRL">R$ BRL - Brazil</option>
+              <option value="AED">د.إ AED - UAE</option>
+              <optgroup label="━━━━ ASIA ━━━━">
+              <option value="JPY">¥ JPY - Japan</option>
+              <option value="KRW">₩ KRW - Korea</option>
+              <option value="CNY">¥ CNY - China</option>
+              <option value="THB">฿ THB - Thailand</option>
+              <option value="VND">₫ VND - Vietnam</option>
+              <option value="PHP">₱ PHP - Philippines</option>
+              <option value="MYR">RM MYR - Malaysia</option>
+              <option value="IDR">Rp IDR - Indonesia</option>
+              <option value="SGD">S$ SGD - Singapore</option>
+              <option value="INR">₹ INR - India</option>
+              <option value="PKR">₨ PKR - Pakistan</option>
+              <option value="BDT">৳ BDT - Bangladesh</option>
+              </optgroup>
               <option value="FREE">🆓 FREE</option>
             </select>
           </div>
