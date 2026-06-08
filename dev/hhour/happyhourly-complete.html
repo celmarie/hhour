@@ -9533,7 +9533,7 @@ function adminOpenDealReview(id, source){
     document.getElementById('adm-rev-delete-btn').style.color = '#dc2626';
     document.getElementById('adm-rev-delete-btn').title = 'Reject correction';
     // Seed photo preview in edit form
-    admSeedEditPhotoPreview(deal.img||'');
+    admSeedEditPhotoPreview(deal.img||'', deal.img2||'', deal.img3||'');
     // Auto-open edit form for merchant deals
     var ef = document.getElementById('adm-rev-edit-form');
     if(ef) ef.style.display='block';
@@ -9684,28 +9684,7 @@ function adminReviewDeal(id){
     btn.style.borderColor = isActive ? '#E8192C' : '#E8E8EC';
   });
 
-  // Store photo if exists
-  console.log('[adminReviewDeal] Photo from deal.img:', deal.img ? 'EXISTS (length: '+deal.img.length+')' : 'NULL');
-  // Load all photos into the grid slots
-  _admPhotos = [];
-  if(deal.img)  _admPhotos[0] = deal.img;
-  if(deal.img2) _admPhotos[1] = deal.img2;
-  if(deal.img3) _admPhotos[2] = deal.img3;
-  _admEditPhotoDataUrl = deal.img || '';
-
-  // Clear and re-render the photo grid
-  var photoGrid = document.getElementById('adm-photo-grid');
-  if(photoGrid) {
-    photoGrid.innerHTML = '';
-    console.log('[adminReviewDeal] Cleared photo grid');
-  }
-
-  try{
-    renderPhotoGrid('adm');
-    console.log('[adminReviewDeal] ✅ Photo grid rendered with', _admPhotos.length, 'photos');
-  }catch(e){
-    console.error('[adminReviewDeal] Error rendering photo grid:', e);
-  }
+  // Photos are loaded via admSeedEditPhotoPreview below (line ~9753)
 
   // Hide approve/reject if already decided
   var isDecided = s !== 'pending';
@@ -9750,7 +9729,7 @@ function adminReviewDeal(id){
   });
 
   // Seed photo preview in edit form
-  admSeedEditPhotoPreview(deal.img||'');
+  admSeedEditPhotoPreview(deal.img||'', deal.img2||'', deal.img3||'');
 
   // Show overlay
   var ov = document.getElementById('admin-review-ov');
@@ -10228,9 +10207,12 @@ function admOpenEditIfClosed(){
   }
 }
 
-function admSeedEditPhotoPreview(imgSrc){
-  _admEditPhotoDataUrl = '';
-  _admPhotos = imgSrc ? [imgSrc] : [];
+function admSeedEditPhotoPreview(imgSrc, img2, img3){
+  _admEditPhotoDataUrl = imgSrc || '';
+  _admPhotos = [];
+  if(imgSrc) _admPhotos[0] = imgSrc;
+  if(img2)   _admPhotos[1] = img2;
+  if(img3)   _admPhotos[2] = img3;
   renderPhotoGrid('adm');
 }
 
