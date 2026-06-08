@@ -9955,6 +9955,11 @@ async function adminSaveEditsOnly(){
     // Reload the deal data from database to refresh admin view
     await loadAdminData();
 
+    // Refresh the review form with the newly loaded data
+    console.log('[adminSaveEditsOnly] Refreshing form with fresh data...');
+    adminReviewDeal(_admReviewDealId);
+
+    // Close and navigate
     adminCloseReview();
     adminPage(adminCurrentPage, null);
   } catch(e) {
