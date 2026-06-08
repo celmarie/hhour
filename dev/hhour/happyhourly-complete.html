@@ -1198,16 +1198,16 @@ function googleTranslateElementInit(){
       <!-- Fullscreen photo overlay -->
       <div id="photo-fullscreen" style="display:none;position:fixed;inset:0;z-index:999990;background:black;touch-action:none;overflow:hidden;">
         <!-- Close button -->
-        <button onclick="closePhotoFullscreen()" style="position:absolute;top:16px;left:16px;background:rgba(255,255,255,.18);border:none;border-radius:14px;width:44px;height:44px;font-size:22px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;-webkit-tap-highlight-color:transparent;touch-action:manipulation;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">‹</button>
-        <!-- Counter -->
-        <div id="fs-counter" style="position:absolute;top:18px;left:50%;transform:translateX(-50%);color:white;font-size:13px;font-weight:700;z-index:10;background:rgba(0,0,0,.4);padding:3px 12px;border-radius:20px;"></div>
-        <!-- Track -->
+        <!-- Track (touch/zoom area) -->
         <div id="fs-track" style="display:flex;height:100%;transition:transform .3s ease;"></div>
-        <!-- Dots -->
-        <div id="fs-dots" style="position:absolute;bottom:24px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:10;"></div>
-        <!-- Arrows (desktop) -->
-        <button id="fs-prev" onclick="fsNav(-1)" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.18);border:none;border-radius:50%;width:40px;height:40px;font-size:20px;color:white;cursor:pointer;z-index:10;display:none;">‹</button>
-        <button id="fs-next" onclick="fsNav(1)"  style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.18);border:none;border-radius:50%;width:40px;height:40px;font-size:20px;color:white;cursor:pointer;z-index:10;display:none;">›</button>
+        <!-- UI controls — outside touch area, always on top -->
+        <div id="fs-ui" style="position:absolute;inset:0;pointer-events:none;z-index:20;">
+          <button ontouchstart="event.stopPropagation()" ontouchend="event.stopPropagation();closePhotoFullscreen()" onclick="closePhotoFullscreen()" style="pointer-events:all;position:absolute;top:16px;left:16px;background:rgba(255,255,255,.18);border:none;border-radius:14px;width:48px;height:48px;font-size:24px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">‹</button>
+          <div id="fs-counter" style="position:absolute;top:22px;left:50%;transform:translateX(-50%);color:white;font-size:13px;font-weight:700;background:rgba(0,0,0,.4);padding:3px 12px;border-radius:20px;"></div>
+          <div id="fs-dots" style="position:absolute;bottom:24px;left:0;right:0;display:flex;justify-content:center;gap:6px;"></div>
+          <button id="fs-prev" ontouchstart="event.stopPropagation()" ontouchend="event.stopPropagation();fsNav(-1)" onclick="fsNav(-1)" style="pointer-events:all;position:absolute;left:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.18);border:none;border-radius:50%;width:40px;height:40px;font-size:20px;color:white;cursor:pointer;display:none;touch-action:manipulation;">‹</button>
+          <button id="fs-next" ontouchstart="event.stopPropagation()" ontouchend="event.stopPropagation();fsNav(1)"  onclick="fsNav(1)"  style="pointer-events:all;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.18);border:none;border-radius:50%;width:40px;height:40px;font-size:20px;color:white;cursor:pointer;display:none;touch-action:manipulation;">›</button>
+        </div>
       </div>
       <div style="height:20px;background:var(--red);margin-top:-1px;"></div>
       <div class="vd-body">
