@@ -4699,17 +4699,17 @@ function openReportMistakeModal(){
     return;
   }
 
+  // Scroll to top immediately with multiple methods
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+
   var modal=document.getElementById('report-mistake-modal');
   if(!modal){showToast('Modal not found');return;}
   modal.style.display='flex';
   document.getElementById('mistake-field').value='';
   document.getElementById('mistake-correction').value='';
   document.getElementById('mistake-comments').value='';
-
-  // Scroll to top after modal appears
-  setTimeout(function(){
-    window.scrollTo({top:0,behavior:'smooth'});
-  },50);
 }
 async function submitMistakeReport(){
   if(!currentUser){showToast('🔒 Sign in first');return;}
