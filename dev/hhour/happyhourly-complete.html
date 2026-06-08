@@ -9632,16 +9632,27 @@ function adminReviewDeal(id){
   // Store photo if exists
   console.log('[adminReviewDeal] Photo from deal.img:', deal.img ? 'EXISTS (length: '+deal.img.length+')' : 'NULL');
   if(deal.img) {
+    // Photo exists - store it for editing
     _admEditPhotoDataUrl = deal.img;
     _admPhotos = [deal.img];
-    console.log('[adminReviewDeal] Stored photo in _admEditPhotoDataUrl and _admPhotos');
+    console.log('[adminReviewDeal] ✅ Stored photo in _admEditPhotoDataUrl');
+    console.log('[adminReviewDeal] Photo is', deal.img.substring(0, 50) + '...');
   } else {
     _admEditPhotoDataUrl = '';
     _admPhotos = [];
+    console.log('[adminReviewDeal] No photo for this deal');
   }
+
+  // Clear and re-render the photo grid
+  var photoGrid = document.getElementById('adm-photo-grid');
+  if(photoGrid) {
+    photoGrid.innerHTML = '';
+    console.log('[adminReviewDeal] Cleared photo grid');
+  }
+
   try{
     renderPhotoGrid('adm');
-    console.log('[adminReviewDeal] Photo grid rendered');
+    console.log('[adminReviewDeal] ✅ Photo grid rendered with', _admPhotos.length, 'photos');
   }catch(e){
     console.error('[adminReviewDeal] Error rendering photo grid:', e);
   }
