@@ -2856,6 +2856,7 @@ function dbUCToLocal(row) {
     deal: row.title,
     price: row.price || null,
     wasPrice: row.was_price || null,
+    currency: row.currency || 'EUR',
     isFree: !!row.is_free,
     off: computeOffBadge(row),
     dist: dk < 1 ? Math.round(dk * 1000) + 'm' : dk.toFixed(1) + ' km',
