@@ -4549,6 +4549,9 @@ async function removeSaved(id){
 
 // unified open — works for both vouchers and ucDeals
 var _fsPhotos = [], _fsCurIdx = 0, _fsTouchX = 0;
+var _fsScale = 1, _fsOriginX = 0, _fsOriginY = 0;
+var _fsPinchStart = 0, _fsPinchScale = 1;
+var _fsLastTap = 0, _fsDragX = 0, _fsDragY = 0, _fsIsPinching = false;
 
 function openPhotoFullscreen(startIdx){
   var ov = document.getElementById('photo-fullscreen');
@@ -4575,8 +4578,8 @@ function openPhotoFullscreen(startIdx){
   var track = document.getElementById('fs-track');
   track.style.transition = 'none';
   track.innerHTML = _fsPhotos.map(function(src){
-    return '<div style="flex:0 0 100vw;width:100vw;height:100%;display:flex;align-items:center;justify-content:center;">'
-      + '<img src="'+src+'" style="max-width:100%;max-height:100%;object-fit:contain;display:block;">'
+    return '<div style="flex:0 0 100vw;width:100vw;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">'
+      + '<img src="'+src+'" style="max-width:100%;max-height:100%;object-fit:contain;display:block;cursor:zoom-in;transition:transform .2s ease;transform-origin:center center;">'
       + '</div>';
   }).join('');
 
@@ -4591,15 +4594,56 @@ function openPhotoFullscreen(startIdx){
   document.getElementById('fs-next').style.display = _fsPhotos.length > 1 ? 'flex' : 'none';
 
   _fsGoTo(_fsCurIdx, false);
+  _fsResetZoom();
 
   ov.style.display = 'flex';
   ov.style.alignItems = 'center';
 
-  // Swipe support
-  ov.ontouchstart = function(e){ _fsTouchX = e.touches[0].clientX; };
-  ov.ontouchend   = function(e){
+  // Touch: pinch-zoom + swipe + double-tap
+  ov.ontouchstart = function(e){
+    if(e.touches.length === 2){
+      _fsIsPinching = true;
+      _fsPinchStart = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      _fsPinchScale = _fsScale;
+    } else if(e.touches.length === 1){
+      _fsIsPinching = false;
+      _fsTouchX = e.touches[0].clientX;
+      // Double-tap detection
+      var now = Date.now();
+      if(now - _fsLastTap < 300){
+        _fsScale === 1 ? _fsZoomAt(e.touches[0].clientX, e.touches[0].clientY, 2.5) : _fsResetZoom();
+        _fsLastTap = 0;
+      } else {
+        _fsLastTap = now;
+      }
+    }
+  };
+  ov.ontouchmove = function(e){
+    if(e.touches.length === 2 && _fsIsPinching){
+      e.preventDefault();
+      var dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      var newScale = Math.max(1, Math.min(5, _fsPinchScale * (dist / _fsPinchStart)));
+      _fsApplyZoom(newScale);
+    }
+  };
+  ov.ontouchend = function(e){
+    if(_fsIsPinching){ _fsIsPinching = false; return; }
+    if(_fsScale > 1) return; // don't swipe when zoomed
     var dx = e.changedTouches[0].clientX - _fsTouchX;
     if(Math.abs(dx) > 40) fsNav(dx < 0 ? 1 : -1);
+  };
+
+  // Mouse wheel zoom
+  ov.onwheel = function(e){
+    e.preventDefault();
+    var newScale = Math.max(1, Math.min(5, _fsScale * (e.deltaY < 0 ? 1.15 : 0.87)));
+    newScale === 1 ? _fsResetZoom() : _fsZoomAt(e.clientX, e.clientY, newScale);
   };
 
   document.addEventListener('keydown', _fsKeyHandler);
@@ -4619,18 +4663,48 @@ function _fsGoTo(idx, animate){
 }
 
 function fsNav(dir){
+  _fsResetZoom();
   _fsGoTo(_fsCurIdx + dir, true);
+}
+
+function _fsCurImg(){
+  var slides = document.querySelectorAll('#fs-track > div');
+  return slides[_fsCurIdx] ? slides[_fsCurIdx].querySelector('img') : null;
+}
+function _fsApplyZoom(scale){
+  _fsScale = scale;
+  var img = _fsCurImg();
+  if(img) img.style.transform = 'scale('+scale+')';
+}
+function _fsZoomAt(clientX, clientY, scale){
+  _fsScale = scale;
+  var img = _fsCurImg();
+  if(!img) return;
+  var r = img.getBoundingClientRect();
+  var ox = ((clientX - r.left) / r.width  * 100).toFixed(1) + '%';
+  var oy = ((clientY - r.top)  / r.height * 100).toFixed(1) + '%';
+  img.style.transformOrigin = ox + ' ' + oy;
+  img.style.transform = 'scale('+scale+')';
+  img.style.cursor = 'zoom-out';
+}
+function _fsResetZoom(){
+  _fsScale = 1;
+  var img = _fsCurImg();
+  if(img){ img.style.transform = 'scale(1)'; img.style.transformOrigin = 'center center'; img.style.cursor = 'zoom-in'; }
 }
 
 function closePhotoFullscreen(){
   var ov = document.getElementById('photo-fullscreen');
-  if(ov){ ov.style.display = 'none'; ov.ontouchstart = null; ov.ontouchend = null; }
+  if(ov){ ov.style.display = 'none'; ov.ontouchstart = null; ov.ontouchmove = null; ov.ontouchend = null; ov.onwheel = null; }
+  _fsResetZoom();
   document.removeEventListener('keydown', _fsKeyHandler);
 }
 function _fsKeyHandler(e){
   if(e.key === 'Escape') closePhotoFullscreen();
   if(e.key === 'ArrowRight') fsNav(1);
   if(e.key === 'ArrowLeft')  fsNav(-1);
+  if(e.key === '+' || e.key === '=') _fsApplyZoom(Math.min(5, _fsScale * 1.2));
+  if(e.key === '-') { var ns = Math.max(1, _fsScale * 0.85); ns === 1 ? _fsResetZoom() : _fsApplyZoom(ns); }
 }
 
 function openDeal(deal){
