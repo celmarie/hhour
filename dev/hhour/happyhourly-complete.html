@@ -10033,11 +10033,7 @@ async function adminSaveEditsOnly(){
     // Refresh the form with the updated deal
     console.log('[adminSaveEditsOnly] Calling adminReviewDeal to refresh form...');
     adminReviewDeal(_admReviewDealId);
-    console.log('[adminSaveEditsOnly] ✅ Form refresh complete');
-
-    // Close and navigate
-    adminCloseReview();
-    adminPage(adminCurrentPage, null);
+    console.log('[adminSaveEditsOnly] ✅ Form refresh complete - DO NOT reload deals!');
   } catch(e) {
     console.error('[adminSaveEditsOnly] Exception:', e);
     showToast('❌ Error: '+e.message);
