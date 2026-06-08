@@ -10064,6 +10064,9 @@ async function adminSaveEditsOnly(){
       renderPhotoGrid('adm');
 
       console.log('[adminSaveEditsOnly] ✅ All fields populated from fresh database data');
+    } catch(e){
+      console.error('[adminSaveEditsOnly] Error loading fresh data:', e);
+    }
   } catch(e) {
     console.error('[adminSaveEditsOnly] Exception:', e);
     showToast('❌ Error: '+e.message);
