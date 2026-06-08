@@ -9944,6 +9944,9 @@ async function adminSaveEditsOnly(){
   var savedImg1 = '', savedImg2 = '', savedImg3 = '';
   var p0 = _admPhotos[0]||'', p1 = _admPhotos[1]||'', p2 = _admPhotos[2]||'';
 
+  // DIAGNOSTIC: Show exactly what photos we have at save time
+  showToast('Photos at save: slot0='+(p0?'YES':'NO')+' slot1='+(p1?'YES':'NO')+' slot2='+(p2?'YES':'NO'));
+
   // slot 0: compress only if changed from original
   if(p0 && p0 !== _admEditPhotoDataUrl && p0.startsWith('data:')){
     try { savedImg1 = await compressImage(p0, 800, 0.8); } catch(e){ savedImg1 = p0; }
