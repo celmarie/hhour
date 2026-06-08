@@ -4706,23 +4706,15 @@ function openReportMistakeModal(){
   document.getElementById('mistake-correction').value='';
   document.getElementById('mistake-comments').value='';
 
-  // Smooth scroll up to top with animation
-  var startPos = window.pageYOffset;
-  var startTime = null;
-  var duration = 600; // 600ms animation
-
-  function smoothScroll(currentTime) {
-    if (startTime === null) startTime = currentTime;
-    var elapsed = currentTime - startTime;
-    var progress = Math.min(elapsed / duration, 1);
-    window.scrollTo(0, startPos * (1 - progress));
-
-    if (progress < 1) {
-      requestAnimationFrame(smoothScroll);
-    }
+  // Scroll current screen to top (same as when clicking Buy Now)
+  var currentScreen = document.getElementById('screen-' + curScreen);
+  if(currentScreen) {
+    currentScreen.scrollTop = 0;
   }
-
-  requestAnimationFrame(smoothScroll);
+  // Also scroll window to top
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 }
 async function submitMistakeReport(){
   if(!currentUser){showToast('🔒 Sign in first');return;}
