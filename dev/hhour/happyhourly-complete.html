@@ -9834,6 +9834,17 @@ function admCollectEdits(){
   var off = '';
   if(!isNaN(priceN)&&!isNaN(wasN)&&wasN>priceN&&wasN>0) off=Math.round((wasN-priceN)/wasN*100)+'% OFF';
   else if(priceRaw.toLowerCase()==='free') off='FREE';
+
+  // Save NEW photo (data URL) if added, otherwise use existing photo
+  var photoToSave = null;
+  for(var i = 0; i < _admPhotos.length; i++){
+    if(_admPhotos[i] && _admPhotos[i].startsWith('data:')){
+      photoToSave = _admPhotos[i];
+      break;
+    }
+  }
+  if(!photoToSave) photoToSave = _admPhotos[0] || _admEditPhotoDataUrl || null;
+
   return {
     deal:     document.getElementById('adm-edit-title').value.trim(),
     name:     document.getElementById('adm-edit-venue').value.trim(),
@@ -9849,7 +9860,7 @@ function admCollectEdits(){
     days:     activeDays.length ? activeDays.join(', ') : 'Daily',
     off:      off,
     discPct:  (!isNaN(priceN)&&!isNaN(wasN)&&wasN>0) ? Math.round((wasN-priceN)/wasN*100) : 0,
-    img:      _admPhotos[0] || _admEditPhotoDataUrl || null,
+    img:      photoToSave,
   };
 }
 
