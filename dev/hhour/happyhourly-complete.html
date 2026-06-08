@@ -2861,6 +2861,8 @@ function dbUCToLocal(row) {
     img: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[0]||''; }catch(e){} } return u; })(),
     img2: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[1]||''; }catch(e){} } return row.image_url_2||''; })(),
     img3: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return row.image_url_3||''; })(),
+    _createdAt: row.created_at || '',
+    _updatedAt: row.updated_at || row.created_at || '',
     name: row.venue_name,
     address: row.address || 'Carrer de Sòria 11, Ciutat Vella, 08003 Barcelona',
     deal: row.title,
@@ -2922,7 +2924,7 @@ async function loadDealsFromSupabase() {
         .eq('status', 'active')
         .or('end_date.is.null,end_date.gte.' + today)
         .order('claimed', { ascending: false }),
-      db.from('community_deals').select('*').eq('status', 'approved').order('created_at', { ascending: false }),
+      db.from('community_deals').select('*').eq('status', 'approved').order('updated_at', { ascending: false, nullsFirst: false }),
       db.from('reviews').select('deal_id,deal_kind,rating')
     ]);
     if (dr.error) console.error('[Supabase] deals fetch error:', dr.error.message);
@@ -6999,7 +7001,7 @@ async function loadAdminData(){
   try {
     // Community deals (all statuses so dashboard/deals tabs both work)
     var { data: dbCD, error: cdErr } = await db.from('community_deals')
-      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,user_name,image_url,currency,discount_pct,dist_km,time_from,time_to')
+      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,updated_at,user_name,image_url,currency,discount_pct,dist_km,time_from,time_to')
       .order('created_at', {ascending:false});
     if(cdErr) console.error('[loadAdminData] community_deals error:', cdErr.message, cdErr);
     if(dbCD && dbCD.length){
@@ -7025,6 +7027,8 @@ async function loadAdminData(){
           img: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[0]||''; }catch(e){} } return u; })(),
           img2: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[1]||''; }catch(e){} } return ''; })(),
           img3: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return ''; })(),
+          _createdAt: r.created_at || '',
+          _updatedAt: r.updated_at || r.created_at || '',
           timeFrom: r.time_from || 17, timeTo: r.time_to || 22,
           discPct: r.discount_pct || 0,
           rating: 0, timeLeft: '3h 00m'
@@ -8637,9 +8641,18 @@ function adminPage(page,btn){
       +'</div>';
     }
   } else if(page==='deals'){
-    var pending = pendingCommunityDeals.filter(function(d){ return d.status==='pending'; });
-    var approved = pendingCommunityDeals.filter(function(d){ return d.status==='approved'; });
-    var rejected = pendingCommunityDeals.filter(function(d){ return d.status==='rejected'; });
+    // Sort by most recently edited or added (updated_at > created_at fallback)
+    function byRecent(a, b){
+      var ta = a.updated_at || a.submittedAt || a.ago || '';
+      var tb = b.updated_at || b.submittedAt || b.ago || '';
+      // Use raw date string comparison (ISO strings sort correctly)
+      var da = a._updatedAt || a._createdAt || ta;
+      var db2 = b._updatedAt || b._createdAt || tb;
+      return da > db2 ? -1 : da < db2 ? 1 : 0;
+    }
+    var pending  = pendingCommunityDeals.filter(function(d){ return d.status==='pending';  }).sort(byRecent);
+    var approved = pendingCommunityDeals.filter(function(d){ return d.status==='approved'; }).sort(byRecent);
+    var rejected = pendingCommunityDeals.filter(function(d){ return d.status==='rejected'; }).sort(byRecent);
     var dHtml = '';
 
     // ── REPORTED DEALS (customer flagged) ──────────────────────────────────────
@@ -8742,7 +8755,7 @@ function adminPage(page,btn){
           +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;">🏪 Merchant Deals</div>'
           +'<span style="background:rgba(37,99,235,.08);color:#1D4ED8;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+vouchers.length+' active</span>'
         +'</div>'
-        +vouchers.map(function(deal){
+        +vouchers.slice().sort(function(a,b){ return (b._updatedAt||b._createdAt||'') > (a._updatedAt||a._createdAt||'') ? 1 : -1; }).map(function(deal){
           return '<div onclick="adminPreviewDeal('+deal.id+',\'merchant\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #E8E8EC;cursor:pointer;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
             +'<div style="font-size:22px;flex-shrink:0;">'+deal.emoji+'</div>'
             +'<div style="flex:1;min-width:0;">'
