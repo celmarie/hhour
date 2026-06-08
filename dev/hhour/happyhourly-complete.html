@@ -4991,7 +4991,19 @@ async function adminSaveDealEdits(dealId){
       return;
     }
 
-    showToast('✅ Deal updated successfully');
+    // Auto-approve the correction report when admin saves
+    if(_admReviewDealId){
+      var {error:updateErr}=await db.from('deal_mistake_reports').update({status:'approved'}).eq('deal_id',_admReviewDealId);
+      if(updateErr){console.warn('Failed to auto-approve report:',updateErr);}
+      // Update local data
+      if(adminMistakeReports){
+        adminMistakeReports.forEach(function(r){
+          if(r.deal_id===_admReviewDealId) r.status='approved';
+        });
+      }
+    }
+
+    showToast('✅ Deal updated & correction approved');
     adminPage('deals',document.querySelectorAll('.adm-nav-btn')[3]);
   }catch(e){console.warn('[adminSaveDealEdits]',e);showToast('Error saving');}
 }
