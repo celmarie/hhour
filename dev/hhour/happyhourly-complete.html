@@ -9895,25 +9895,35 @@ async function adminSaveAndDelete(){
 async function adminSaveEditsOnly(){
   if(!_admReviewDealId){console.error('No deal ID');showToast('❌ No deal selected');return;}
 
-  console.log('[adminSaveEditsOnly] Starting save for deal:', _admReviewDealId, 'source:', _admReviewSource);
   var edits = admCollectEdits();
-  console.log('[adminSaveEditsOnly] Collected edits:', edits);
-  console.log('[adminSaveEditsOnly] _admPhotos array:', _admPhotos);
-  console.log('[adminSaveEditsOnly] _admEditPhotoDataUrl:', _admEditPhotoDataUrl ? 'EXISTS' : 'EMPTY');
-  console.log('[adminSaveEditsOnly] PHOTO CHECK - edits.img:', edits.img ? 'EXISTS (length: '+edits.img.length+')' : 'NULL/EMPTY');
-  console.log('[adminSaveEditsOnly] CURRENCY CHECK - edits.currency:', edits.currency);
 
-  // Compress new photo if provided
-  var newImgUrl = null;
-  if(edits.img && edits.img.startsWith('data:')){
-    try {
-      newImgUrl = await compressImage(edits.img, 800, 0.8);
-    } catch(e){
-      newImgUrl = edits.img;
-    }
-    edits.img = newImgUrl;
+  // Photo logic:
+  // _admEditPhotoDataUrl = original photo when form was opened
+  // _admPhotos = current photo slots after user edits
+  // - photos deleted → _admPhotos is shorter or empty
+  // - new photo added to slot 1/2 → _admPhotos has extra items
+  // - slot 0 replaced → _admPhotos[0] differs from _admEditPhotoDataUrl
+
+  var newImgUrl = undefined; // undefined = don't update DB field at all
+
+  if(_admPhotos.length === 0){
+    // User deleted all photos
+    newImgUrl = '';
   } else {
-    newImgUrl = null; // no new photo
+    // Find any photo that is NEW (not the original loaded photo)
+    var newPhoto = null;
+    for(var pi = 0; pi < _admPhotos.length; pi++){
+      if(_admPhotos[pi] && _admPhotos[pi] !== _admEditPhotoDataUrl){
+        newPhoto = _admPhotos[pi];
+        break;
+      }
+    }
+    if(newPhoto){
+      // Compress and save the new photo
+      try { newImgUrl = await compressImage(newPhoto, 800, 0.8); }
+      catch(e){ newImgUrl = newPhoto; }
+    }
+    // else: no new photo → newImgUrl stays undefined → DB field won't be touched
   }
 
   try {
@@ -9937,16 +9947,9 @@ async function adminSaveEditsOnly(){
         currency: edits.currency||'EUR',
         discount_pct: edits.discPct||0
       };
-      if(newImgUrl){
+      if(newImgUrl !== undefined){
         mUpdate.image_url = newImgUrl;
-        console.log('[adminSaveEditsOnly] PHOTO BEING SAVED: image_url will be updated');
-      } else {
-        console.log('[adminSaveEditsOnly] NO PHOTO: image_url NOT in update');
       }
-
-      console.log('[adminSaveEditsOnly] Updating merchant deal');
-      console.log('[adminSaveEditsOnly] CURRENCY in update:', mUpdate.currency);
-      console.log('[adminSaveEditsOnly] IMAGE_URL in update:', mUpdate.image_url || 'NOT SET');
       console.log('[adminSaveEditsOnly] Full update object:', mUpdate);
       var { error } = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
       if(error){
@@ -9994,16 +9997,10 @@ async function adminSaveEditsOnly(){
         off_label: edits.off||undefined,
         discount_pct: edits.discPct||0
       };
-      if(newImgUrl){
+      if(newImgUrl !== undefined){
+        // undefined = no change; '' = deleted; string = new photo
         cUpdate.image_url = newImgUrl;
-        console.log('[adminSaveEditsOnly] ✅ PHOTO BEING SAVED: image_url length =', newImgUrl.length);
-      } else {
-        console.log('[adminSaveEditsOnly] ⚠️ NO NEW PHOTO - image_url NOT being updated');
       }
-
-      console.log('[adminSaveEditsOnly] Updating community deal ID:', dbId);
-      console.log('[adminSaveEditsOnly] CURRENCY value being saved:', cUpdate.currency);
-      console.log('[adminSaveEditsOnly] IMAGE_URL in update:', cUpdate.image_url ? 'YES (length: '+cUpdate.image_url.length+')' : 'NOT SET');
       console.log('[adminSaveEditsOnly] Query: UPDATE community_deals SET ... WHERE id =', dbId);
 
       var { error, data } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
