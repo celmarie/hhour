@@ -10084,14 +10084,11 @@ async function adminSaveEditsOnly(){
 
       console.log('[adminSaveEditsOnly] ✅ All fields populated from fresh database data');
 
-      // Refresh the preview card display at top
-      var previewCard = document.querySelector('[data-deal-id="' + _admReviewDealId + '"]')
-        || document.querySelector('[data-db-id="' + dbId + '"]');
-      if(previewCard){
-        previewCard.outerHTML = renderDealCardHTML(freshDeal, 'community');
-      }
+      // Reload all deals from database so preview card and everything else is fresh
+      await loadDealsFromSupabase();
+      console.log('[adminSaveEditsOnly] Reloaded all deals from database');
 
-      // Close modal after brief delay to show success
+      // Close modal after brief delay
       setTimeout(function(){
         adminCloseReview();
       }, 500);
