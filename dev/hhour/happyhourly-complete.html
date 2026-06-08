@@ -4706,8 +4706,23 @@ function openReportMistakeModal(){
   document.getElementById('mistake-correction').value='';
   document.getElementById('mistake-comments').value='';
 
-  // Smooth scroll up to top
-  window.scrollTo({top:0, behavior:'smooth'});
+  // Smooth scroll up to top with animation
+  var startPos = window.pageYOffset;
+  var startTime = null;
+  var duration = 600; // 600ms animation
+
+  function smoothScroll(currentTime) {
+    if (startTime === null) startTime = currentTime;
+    var elapsed = currentTime - startTime;
+    var progress = Math.min(elapsed / duration, 1);
+    window.scrollTo(0, startPos * (1 - progress));
+
+    if (progress < 1) {
+      requestAnimationFrame(smoothScroll);
+    }
+  }
+
+  requestAnimationFrame(smoothScroll);
 }
 async function submitMistakeReport(){
   if(!currentUser){showToast('🔒 Sign in first');return;}
