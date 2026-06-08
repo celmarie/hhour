@@ -10037,24 +10037,32 @@ async function adminSaveEditsOnly(){
 
       console.log('[adminSaveEditsOnly] Fresh data: currency=' + freshDeal.currency + ', photo=' + (!!freshDeal.image_url));
 
-      // DIRECTLY populate every form field from fresh database data
-      document.getElementById('adm-edit-venue').value = freshDeal.venue_name || '';
-      document.getElementById('adm-edit-title').value = freshDeal.title || '';
-      document.getElementById('adm-edit-address').value = freshDeal.address || '';
-      document.getElementById('adm-edit-category').value = freshDeal.category || 'bars';
-      document.getElementById('adm-edit-emoji').value = freshDeal.emoji || '📣';
-      document.getElementById('adm-edit-price').value = freshDeal.price || '';
-      document.getElementById('adm-edit-was-price').value = freshDeal.was_price || '';
-      document.getElementById('adm-edit-currency').value = freshDeal.currency || 'EUR';
-      document.getElementById('adm-edit-description').value = freshDeal.description || '';
-      document.getElementById('adm-edit-discount').value = freshDeal.discount_pct || '';
-      document.getElementById('adm-edit-days').value = freshDeal.days || 'Daily';
+      // DIRECTLY populate every form field from fresh database data (with null checks)
+      var fields = {
+        'adm-edit-venue': freshDeal.venue_name || '',
+        'adm-edit-title': freshDeal.title || '',
+        'adm-edit-address': freshDeal.address || '',
+        'adm-edit-category': freshDeal.category || 'bars',
+        'adm-edit-emoji': freshDeal.emoji || '📣',
+        'adm-edit-price': freshDeal.price || '',
+        'adm-edit-was-price': freshDeal.was_price || '',
+        'adm-edit-currency': freshDeal.currency || 'EUR',
+        'adm-edit-description': freshDeal.description || '',
+        'adm-edit-discount': freshDeal.discount_pct || '',
+        'adm-edit-days': freshDeal.days || 'Daily'
+      };
+      for(var fid in fields){
+        var el = document.getElementById(fid);
+        if(el) el.value = fields[fid];
+      }
 
       // Set time fields
       var tf = freshDeal.time_from || 17;
       var tt = freshDeal.time_to || 22;
-      document.getElementById('adm-edit-time-from').value = String(tf).padStart(2, '0') + ':00';
-      document.getElementById('adm-edit-time-to').value = String(tt).padStart(2, '0') + ':00';
+      var tfEl = document.getElementById('adm-edit-time-from');
+      var ttEl = document.getElementById('adm-edit-time-to');
+      if(tfEl) tfEl.value = String(tf).padStart(2, '0') + ':00';
+      if(ttEl) ttEl.value = String(tt).padStart(2, '0') + ':00';
 
       // Set photo
       _admEditPhotoDataUrl = freshDeal.image_url || '';
