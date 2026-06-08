@@ -9950,7 +9950,11 @@ async function adminSaveEditsOnly(){
       }
     }
 
-    console.log('[adminSaveEditsOnly] Save successful!');
+    console.log('[adminSaveEditsOnly] Save successful! Reloading data...');
+
+    // Reload the deal data from database to refresh admin view
+    await loadAdminData();
+
     adminCloseReview();
     adminPage(adminCurrentPage, null);
   } catch(e) {
