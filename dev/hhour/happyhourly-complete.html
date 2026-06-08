@@ -9416,7 +9416,9 @@ function adminOpenDealReview(id, source){
 
 function adminReviewDeal(id){
   var deal = pendingCommunityDeals.find(function(d){ return d.id===id; })
-    || removedCommunityDeals.find(function(d){ return d.id===id; });
+    || removedCommunityDeals.find(function(d){ return d.id===id; })
+    || ucDeals.find(function(d){ return d.id===id||d._dbId===id; })
+    || vouchers.find(function(d){ return d.id===id; });
   if(!deal) return;
   _admReviewSource = 'community';
   _admReviewDealId = id;
