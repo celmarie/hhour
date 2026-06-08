@@ -4552,7 +4552,7 @@ var _fsPhotos = [], _fsCurIdx = 0;
 var _fsScale = 1, _fsPanX = 0, _fsPanY = 0;
 var _fsPinchDist0 = 0, _fsPinchScale0 = 1;
 var _fsDragStartX = 0, _fsDragStartY = 0, _fsPanX0 = 0, _fsPanY0 = 0;
-var _fsLastTap = 0, _fsIsPinching = false, _fsSwipeStartX = 0;
+var _fsLastTap = 0, _fsIsPinching = false, _fsSwipeStartX = 0, _fsSwipeStartY = 0;
 
 function openPhotoFullscreen(startIdx){
   var ov = document.getElementById('photo-fullscreen');
@@ -4613,7 +4613,7 @@ function openPhotoFullscreen(startIdx){
       var tx = e.touches[0].clientX, ty = e.touches[0].clientY;
       _fsDragStartX = tx; _fsDragStartY = ty;
       _fsPanX0 = _fsPanX; _fsPanY0 = _fsPanY;
-      _fsSwipeStartX = tx;
+      _fsSwipeStartX = tx; _fsSwipeStartY = ty;
       var now = Date.now();
       if(now - _fsLastTap < 280){
         _fsLastTap = 0;
@@ -4628,7 +4628,6 @@ function openPhotoFullscreen(startIdx){
       var midX = (e.touches[0].clientX+e.touches[1].clientX)/2;
       var midY = (e.touches[0].clientY+e.touches[1].clientY)/2;
       var s = Math.max(1, Math.min(5, _fsPinchScale0 * (dist/_fsPinchDist0)));
-      // Adjust pan to keep midpoint stable
       var img = _fsCurImg();
       if(img){
         var r = img.getBoundingClientRect();
@@ -4639,23 +4638,63 @@ function openPhotoFullscreen(startIdx){
       }
       _fsScale = s;
       _fsClampPan();
-      _fsApplyTransform(false); // no transition during gesture
-    } else if(e.touches.length === 1 && !_fsIsPinching && _fsScale > 1){
-      _fsPanX = _fsPanX0 + (e.touches[0].clientX - _fsDragStartX);
-      _fsPanY = _fsPanY0 + (e.touches[0].clientY - _fsDragStartY);
-      _fsClampPan();
-      _fsApplyTransform(false); // no transition during drag
+      _fsApplyTransform(false);
+    } else if(e.touches.length === 1 && !_fsIsPinching){
+      var dx = e.touches[0].clientX - _fsDragStartX;
+      var dy = e.touches[0].clientY - _fsDragStartY;
+      if(_fsScale > 1){
+        // Pan when zoomed
+        _fsPanX = _fsPanX0 + dx;
+        _fsPanY = _fsPanY0 + dy;
+        _fsClampPan();
+        _fsApplyTransform(false);
+      } else if(dy > 0 && Math.abs(dy) > Math.abs(dx)){
+        // Swipe down to dismiss — follow finger
+        var img = _fsCurImg();
+        if(img){
+          var progress = Math.min(dy / 250, 1);
+          img.style.transition = 'none';
+          img.style.transform = 'translate3d(0,'+dy+'px,0) scale('+(1 - progress * 0.3)+')';
+          ov.style.background = 'rgba(0,0,0,'+(1 - progress * 0.6)+')';
+        }
+      }
     }
   };
   ov.ontouchend = function(e){
     if(_fsIsPinching){
       _fsIsPinching = false;
-      if(_fsScale < 1.08){ _fsResetZoom(); }
+      if(_fsScale < 1.08) _fsResetZoom();
       return;
     }
-    if(_fsScale > 1) return;
     var dx = e.changedTouches[0].clientX - _fsSwipeStartX;
-    if(Math.abs(dx) > 40) fsNav(dx < 0 ? 1 : -1);
+    var dy = e.changedTouches[0].clientY - _fsSwipeStartY;
+
+    // Swipe down to close (when not zoomed)
+    if(_fsScale <= 1 && dy > 80 && Math.abs(dy) > Math.abs(dx)){
+      // Animate out then close
+      var img = _fsCurImg();
+      if(img){
+        img.style.transition = 'transform .22s ease, opacity .22s ease';
+        img.style.transform = 'translate3d(0,'+window.innerHeight+'px,0) scale(.8)';
+        img.style.opacity = '0';
+      }
+      ov.style.transition = 'background .22s ease';
+      ov.style.background = 'rgba(0,0,0,0)';
+      setTimeout(function(){ closePhotoFullscreen(); ov.style.transition=''; ov.style.background='black'; }, 230);
+      return;
+    }
+
+    // Snap back if not enough swipe
+    if(_fsScale <= 1 && dy > 0){
+      var img = _fsCurImg();
+      if(img){ img.style.transition = 'transform .2s ease'; img.style.transform = 'translate3d(0,0,0) scale(1)'; }
+      ov.style.transition = 'background .2s';
+      ov.style.background = 'black';
+      setTimeout(function(){ ov.style.transition=''; }, 220);
+    }
+
+    if(_fsScale > 1) return;
+    if(Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) fsNav(dx < 0 ? 1 : -1);
   };
 
   // Mouse: drag to pan when zoomed, wheel to zoom
