@@ -4789,10 +4789,18 @@ async function approveDealMistake(reportId,dealId,field,correction){
 }
 async function rejectDealMistake(reportId){
   try{
-    await db.from('deal_mistake_reports').update({status:'rejected'}).eq('id',reportId);
-    showToast('Report rejected');
-    adminPage('deals',document.querySelector('.adm-nav-btn'));
-  }catch(e){console.warn('[rejectDealMistake]',e);}
+    var {error:err}=await db.from('deal_mistake_reports').update({status:'rejected'}).eq('id',reportId);
+    if(err){showToast('❌ Failed to reject: '+err.message);return;}
+
+    // Update local data
+    if(adminMistakeReports){
+      var report=adminMistakeReports.find(function(r){return r.id===reportId;});
+      if(report) report.status='rejected';
+    }
+
+    showToast('✅ Report rejected');
+    adminPage('deals',document.querySelectorAll('.adm-nav-btn')[3]);
+  }catch(e){console.warn('[rejectDealMistake]',e);showToast('Error rejecting report');}
 }
 function adminReviewMistakeReport(reportId){
   console.log('[adminReviewMistakeReport] reportId:', reportId, 'adminMistakeReports:', adminMistakeReports);
