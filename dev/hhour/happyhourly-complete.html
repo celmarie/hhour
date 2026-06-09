@@ -7001,7 +7001,7 @@ async function loadAdminData(){
   try {
     // Community deals (all statuses so dashboard/deals tabs both work)
     var { data: dbCD, error: cdErr } = await db.from('community_deals')
-      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,updated_at,user_name,image_url,currency,discount_pct,dist_km,time_from,time_to')
+      .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,user_name,image_url,currency,discount_pct,dist_km,time_from,time_to')
       .order('created_at', {ascending:false});
     if(cdErr) console.error('[loadAdminData] community_deals error:', cdErr.message, cdErr);
     if(dbCD && dbCD.length){
