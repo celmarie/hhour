@@ -5565,11 +5565,18 @@ async function handleAuthSession(user) {
   var { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
   currentProfile = profile;
 
-  // Determine role FIRST, before showing any UI
+  // Determine role FIRST, before showing any UI.
+  // Fall back to the last known role (persisted) so a slow/failed profile fetch
+  // on refresh can't demote an admin/merchant into the customer UI.
+  var _lastRole = null;
+  try{ _lastRole = localStorage.getItem('hh_last_role'); }catch(e){}
   var role = (profile && profile.role)
     || (user.user_metadata && user.user_metadata.role)
+    || _lastRole
     || loginRole
     || 'customer';
+  // Remember the authoritative role for future refreshes.
+  try{ if(profile && profile.role) localStorage.setItem('hh_last_role', profile.role); }catch(e){}
 
   // HIDE splash screen immediately
   var splash = document.getElementById('role-splash');
@@ -11527,6 +11534,7 @@ async function doLogout(){
 
   // Sign out and clear state
   await db.auth.signOut().catch(function(){});
+  try{ localStorage.removeItem('hh_last_role'); }catch(e){}
   currentUser = null; currentProfile = null; isGuest = false; _sessionRouted = false;
   updateGuestVisibility();
   myVouchers = []; savedDeals = [];
