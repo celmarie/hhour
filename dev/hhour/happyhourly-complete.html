@@ -10786,6 +10786,7 @@ function goScreen(name){
     if(typeof renderCoupons==='function') renderCoupons('all');
     if(typeof renderUC==='function') renderUC('all');
     renderAllDeals('all');
+    applyWatchVisibility(); // ensure banner state is current whenever home is shown
   }
   if(name==='invitedeals') renderUnlockedDeals();
   if(name==='alldeals') { _adCurTab='all'; _adCurCats=[]; _adInitCatChips(); renderAllDeals('all'); }
@@ -13272,10 +13273,17 @@ function loadWatchSettingFromDB(){
       .then(function(r){
         if(r && r.data && r.data.value !== undefined){
           _watchFeatureOn = r.data.value === true || r.data.value === 'true';
-          try { localStorage.setItem('hh_watch_feature_on', String(_watchFeatureOn)); } catch(e){}
-          applyWatchVisibility();
+        } else {
+          // No DB record → feature defaults to ON (never explicitly disabled)
+          _watchFeatureOn = true;
         }
-      }).catch(function(){});
+        try { localStorage.setItem('hh_watch_feature_on', String(_watchFeatureOn)); } catch(e){}
+        applyWatchVisibility();
+      }).catch(function(){
+        // DB unreachable — keep current value but force ON if nothing was cached
+        try { if(localStorage.getItem('hh_watch_feature_on') === null) _watchFeatureOn = true; } catch(e){}
+        applyWatchVisibility();
+      });
   } catch(e){}
 }
 function adminSaveWatchSetting(val){
