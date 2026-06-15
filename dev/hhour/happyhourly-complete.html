@@ -3930,6 +3930,29 @@ function googleTranslateElementInit(){
             <div id="cr-progress-bar" style="width:63%;height:100%;background:linear-gradient(90deg,#FF6B35,#E8192C);border-radius:6px;"></div>
           </div>
         </div>
+        <!-- HappyCash wallet -->
+        <div style="background:white;margin:12px 14px 0;border-radius:14px;border:1.5px solid var(--border);padding:16px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+            <div style="min-width:0;">
+              <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;">💶 HappyCash Wallet</div>
+              <div style="font-size:26px;font-weight:900;color:#12A150;margin-top:2px;line-height:1;" id="cr-wallet-balance">€0.00</div>
+              <div style="font-size:11px;color:#9A9AB0;font-weight:600;margin-top:3px;">Spend it at checkout to pay for deals</div>
+            </div>
+            <button onclick="crOpenConvert()" style="flex-shrink:0;background:#12A150;color:white;border:none;border-radius:12px;padding:11px 15px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Convert</button>
+          </div>
+          <div id="cr-convert-box" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+            <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Convert credits → HappyCash</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input id="cr-convert-input" type="number" min="0" step="1" placeholder="Credits to convert" oninput="crConvertPreview()" style="flex:1;min-width:0;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:12px;font-family:Inter,sans-serif;font-size:15px;font-weight:700;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E8E8EC'">
+              <button onclick="crConvertMax()" style="flex-shrink:0;background:#F0F0F4;border:none;border-radius:10px;padding:12px 14px;font-size:12px;font-weight:800;color:#555;cursor:pointer;font-family:Inter,sans-serif;">Max</button>
+            </div>
+            <div id="cr-convert-preview" style="font-size:12.5px;color:#12A150;font-weight:700;margin-top:8px;">= €0.00</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button onclick="crDoConvert()" style="flex:2;background:linear-gradient(135deg,#12A150,#0B7A3C);color:white;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Convert to wallet</button>
+              <button onclick="crCloseConvert()" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>
+            </div>
+          </div>
+        </div>
         <div style="padding:14px 14px 6px;font-size:14px;font-weight:800;color:var(--text);">Earn credits now</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px;margin-bottom:14px;" id="cr-earn-grid"></div>
         <div style="display:flex;background:#F5F5F7;border-radius:12px;padding:3px;margin:0 14px 14px;">
@@ -8561,8 +8584,32 @@ function getStripe(){
   return _stripeInstance;
 }
 
+var _walletApplied = 0, _payTotal = 0, _paySym = '€';
+function walletRecalc(){
+  var total=_payTotal, sym=_paySym, wallet=_walletBalance();
+  var apply=(document.getElementById('wallet-apply')||{}).checked;
+  var applied=apply?Math.min(wallet,total):0;
+  _walletApplied=applied;
+  var net=Math.max(0,total-applied);
+  var line=document.getElementById('wallet-applied-line');
+  if(line) line.textContent = applied>0 ? ('HappyCash applied: −'+sym+applied.toFixed(2)) : '';
+  var btn=document.getElementById('stripe-pay-btn');
+  if(btn) btn.textContent = net<=0 ? ('🔒 Pay '+sym+'0.00 with HappyCash') : ('🔒 Pay '+sym+net.toFixed(2));
+}
+async function walletPayClick(priceNum,currCode,dealName,venueName){
+  var total=priceNum*qty, applied=_walletApplied||0;
+  if(applied >= total-0.0001){
+    var btn=document.getElementById('stripe-pay-btn'); if(btn){ btn.textContent='⏳ Processing…'; btn.disabled=true; }
+    var modal=document.getElementById('stripe-pay-modal'); if(modal) modal.remove();
+    await _finishVoucherPurchase(null);
+    return;
+  }
+  stripeConfirmPayment(priceNum,currCode,dealName,venueName);
+}
+
 async function buyVoucher(){
   if (!requireLogin('purchase vouchers')) return;
+  _walletApplied = 0;
   var allDeals = [...vouchers, ...ucDeals];
   var deal = allDeals.find(function(d){ return d.id === curV; });
   if(!deal) return;
@@ -8596,6 +8643,10 @@ async function buyVoucher(){
     await _completeFreeVoucherPurchase(deal);
     return;
   }
+
+  // HappyCash wallet — make balance available to the checkout modal
+  _payTotal = priceNum*qty; _paySym = sym; _walletApplied = 0;
+  var wallet = _walletBalance();
 
   // Show Stripe payment modal
   var existing = document.getElementById('stripe-pay-modal');
@@ -8634,8 +8685,17 @@ async function buyVoucher(){
           +'<div style="font-family:monospace;font-size:12px;">4242 4242 4242 4242 · Any future date · Any CVC</div>'
         +'</div>'
       +'</div>'
+      // HappyCash wallet (if any) — apply toggle
+      +(wallet>0
+        ? '<label style="display:flex;align-items:center;justify-content:space-between;background:#F0FBF4;border:1.5px solid #B9E8CC;border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;">'
+            +'<div><div style="font-size:13px;font-weight:800;color:#0B7A3C;">💶 Use HappyCash</div>'
+            +'<div style="font-size:11px;color:#12A150;font-weight:600;">'+sym+wallet.toFixed(2)+' available</div></div>'
+            +'<input type="checkbox" id="wallet-apply" checked onchange="walletRecalc()" style="width:20px;height:20px;accent-color:#12A150;cursor:pointer;">'
+          +'</label>'
+          +'<div id="wallet-applied-line" style="font-size:11px;font-weight:700;color:#12A150;text-align:right;margin-bottom:10px;min-height:14px;"></div>'
+        : '')
       // Buttons
-      +'<button id="stripe-pay-btn" onclick="stripeConfirmPayment('+priceNum+',\''+currCode+'\',\''+deal.name.replace(/'/g,'').replace(/"/g,'')+'\',\''+deal.name.replace(/'/g,'').replace(/"/g,'')+'\')" style="width:100%;background:#E8192C;color:white;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:10px;">🔒 Pay '+sym+(priceNum*qty).toFixed(2)+'</button>'
+      +'<button id="stripe-pay-btn" onclick="walletPayClick('+priceNum+',\''+currCode+'\',\''+deal.name.replace(/'/g,'').replace(/"/g,'')+'\',\''+deal.name.replace(/'/g,'').replace(/"/g,'')+'\')" style="width:100%;background:#E8192C;color:white;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:10px;">🔒 Pay '+sym+(priceNum*qty).toFixed(2)+'</button>'
       +'<button onclick="document.getElementById(\'stripe-pay-modal\').remove()" style="width:100%;background:none;border:none;color:#9A9AB0;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;padding:8px;">Cancel</button>'
     +'</div>';
   document.body.appendChild(modal);
@@ -8648,6 +8708,7 @@ async function buyVoucher(){
     style: { base: { fontFamily:'Inter,sans-serif', fontSize:'15px', color:'#1A1A1A', '::placeholder':{ color:'#9A9AB0' } } }
   });
   _stripeCardEl.mount('#stripe-card-el');
+  if(wallet>0) walletRecalc();
   _stripeCardEl.on('change', function(e){
     var errEl = document.getElementById('stripe-card-err');
     if(errEl) errEl.textContent = e.error ? e.error.message : '';
@@ -8667,7 +8728,7 @@ async function stripeConfirmPayment(priceNum, currCode, dealName, venueName){
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        amount_cents: Math.round(priceNum * qty * 100),
+        amount_cents: Math.max(0, Math.round((priceNum * qty - (_walletApplied||0)) * 100)),
         currency: currCode,
         deal_name: dealName,
         venue_name: venueName,
@@ -8751,6 +8812,18 @@ async function _finishVoucherPurchase(paymentIntentId){
         currentProfile.credits = newCr;
         var cb = document.getElementById('prof-cr-balance'); if(cb) cb.textContent = newCr.toLocaleString();
       }
+      // Deduct any HappyCash applied to this purchase
+      if(_walletApplied > 0 && currentProfile){
+        var newW = +(((currentProfile.wallet_balance||0) - _walletApplied).toFixed(2));
+        if(newW < 0) newW = 0;
+        currentProfile.wallet_balance = newW;
+        try{
+          await db.from('profiles').update({ wallet_balance: newW }).eq('id', currentUser.id);
+          db.from('wallet_ledger').insert({ user_id: currentUser.id, kind:'spend', euros: -_walletApplied, ref: code }).then(function(){},function(){});
+        }catch(e){ console.warn('[wallet spend] save failed', e); }
+        if(typeof crUpdateWalletUI === 'function') crUpdateWalletUI();
+      }
+      _walletApplied = 0;
     } catch(e){ console.warn('[Supabase] buyVoucher failed', e); }
   }
   try { await db.rpc('increment_deal_slots_sold', { p_deal_id: curV, p_amount: qty }); } catch(e){}
@@ -15126,7 +15199,7 @@ function adminRenderCredits(){
 
     // Conversion rate + expiry
     html += '<div style="'+grid2+'margin-bottom:18px;">'
-      +'<div><label style="'+lbl+'">Conversion (Credits = €1)</label><input id="cc-conversion" type="number" min="1" style="'+inp+'" value="'+_ccGet('conversion',1000)+'"></div>'
+      +'<div><label style="'+lbl+'">Conversion (Credits = €1)</label><input id="cc-conversion" type="number" min="1" style="'+inp+'" value="'+_ccGet('conversion',100)+'"></div>'
       +'<div><label style="'+lbl+'">Credit Expiry (Days)</label><input id="cc-expiry" type="number" min="1" style="'+inp+'" value="'+_ccGet('expiryDays',365)+'"></div>'
     +'</div>';
 
@@ -15346,7 +15419,7 @@ function admCreditSelectUser(uid){
 function admSaveCreditsConfig(){
   function v(id, def){ var el=document.getElementById(id); return el?parseInt(el.value)||def:def; }
   _creditsConfig = {
-    conversion:       v('cc-conversion',1000),
+    conversion:       v('cc-conversion',100),
     expiryDays:       v('cc-expiry',365),
     earnBuyVoucher:   v('cc-earn-buyvoucher',88),
     earnRedeemVenue:  v('cc-earn-redeemvenue',50),
@@ -21843,8 +21916,72 @@ function crInitScreen(){
   // Sync balance from real profile
   if(currentProfile && typeof currentProfile.credits === 'number') crBalance = currentProfile.credits;
   crUpdateBalanceDisplay();
+  crUpdateWalletUI();
+  crCloseConvert();
   crRenderEarnGrid();
   crRenderRewards();
+}
+
+// ── HappyCash wallet (store credit) ─────────────────────────────────
+// Conversion rate: how many credits equal €1 (admin-set in Credits config).
+function _walletRate(){ var r=_ccGet('conversion',100); return (r&&r>0)?r:100; }
+function _walletBalance(){ return (currentProfile && +currentProfile.wallet_balance) || 0; }
+function _creditsNow(){ return (currentProfile && typeof currentProfile.credits==='number') ? currentProfile.credits : crBalance; }
+function crUpdateWalletUI(){
+  var el=document.getElementById('cr-wallet-balance');
+  if(el) el.textContent='€'+_walletBalance().toFixed(2);
+}
+function crOpenConvert(){
+  var box=document.getElementById('cr-convert-box'); if(box) box.style.display='block';
+  var inp=document.getElementById('cr-convert-input'); if(inp){ inp.value=''; inp.focus(); }
+  crConvertPreview();
+}
+function crCloseConvert(){
+  var box=document.getElementById('cr-convert-box'); if(box) box.style.display='none';
+}
+function crConvertMax(){
+  var inp=document.getElementById('cr-convert-input'); if(inp) inp.value=_creditsNow();
+  crConvertPreview();
+}
+function crConvertPreview(){
+  var rate=_walletRate();
+  var credits=parseInt((document.getElementById('cr-convert-input')||{}).value)||0;
+  var euros=credits>0 ? credits/rate : 0;
+  var p=document.getElementById('cr-convert-preview');
+  if(p) p.textContent='= €'+euros.toFixed(2)+'  ·  '+rate.toLocaleString()+' credits = €1';
+}
+async function crDoConvert(){
+  if(typeof currentUser!=='undefined' && !currentUser){ showToast('🔒 Sign in to convert credits'); return; }
+  var rate=_walletRate();
+  var credits=parseInt((document.getElementById('cr-convert-input')||{}).value)||0;
+  if(credits<1){ showToast('Enter how many credits to convert'); return; }
+  if(credits>_creditsNow()){ showToast('You don’t have that many credits'); return; }
+  if(credits%rate!==0){
+    // Round down to a whole-euro-friendly amount so no fractional credits are lost.
+    var usable=Math.floor(credits/rate)*rate;
+    if(usable<rate){ showToast('Need at least '+rate.toLocaleString()+' credits (= €1)'); return; }
+    credits=usable;
+  }
+  var euros=credits/rate;
+  var newCredits=_creditsNow()-credits;
+  var newWallet=+( _walletBalance()+euros ).toFixed(2);
+
+  // Optimistic local update
+  if(currentProfile){ currentProfile.credits=newCredits; currentProfile.wallet_balance=newWallet; }
+  crBalance=newCredits;
+  crUpdateBalanceDisplay();
+  crUpdateWalletUI();
+  crCloseConvert();
+  showToast('✅ Converted '+credits.toLocaleString()+' credits → €'+euros.toFixed(2)+' HappyCash');
+
+  // Persist
+  if(typeof currentUser!=='undefined' && currentUser && window.db){
+    try{
+      var r=await db.from('profiles').update({ credits:newCredits, wallet_balance:newWallet }).eq('id',currentUser.id);
+      if(r && r.error) console.warn('[crDoConvert] save:', r.error.message);
+      db.from('wallet_ledger').insert({ user_id:currentUser.id, kind:'convert_in', credits:credits, euros:euros, ref:'credit conversion' }).then(function(){},function(){});
+    }catch(e){ console.warn('[crDoConvert] failed', e); }
+  }
 }
 function crRenderAll(){crRenderEarnGrid();crRenderRewards();crRenderHistory();crRenderLeaderboard();}
 function crRenderEarnGrid(){
