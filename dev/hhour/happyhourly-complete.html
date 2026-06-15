@@ -3766,37 +3766,12 @@ function googleTranslateElementInit(){
             </div>
             <div style="display:grid;grid-template-columns:1fr;gap:12px;">
               <div>
-                <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Deal Price <span style="color:#E8192C;">*</span></label>
+                <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:8px;margin-bottom:6px;">Deal Price <span style="color:#E8192C;">*</span><button type="button" id="uc-free-btn" onclick="ucToggleFree()" style="background:#F0FFF4;border:1.5px solid #D1F0DD;border-radius:6px;padding:2px 9px;font-size:9px;font-weight:800;color:#12A150;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.4px;text-transform:uppercase;">🆓 FREE</button></label>
                 <div style="display:flex;gap:0;border:2px solid #E8E8EC;border-radius:12px;overflow:hidden;background:#F5F5F7;" id="uc-price-wrap" onfocusin="this.style.borderColor='#E8192C'" onfocusout="this.style.borderColor='#E8E8EC'">
-                  <select id="uc-deal-currency" onchange="ucUpdateCurrencyPreview()" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 8px 0 10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:#E8192C;outline:none;cursor:pointer;flex-shrink:0;height:50px;">
-                    <option value="EUR">€ EUR - Europe</option>
-                    <option value="USD">$ USD - USA</option>
-                    <option value="GBP">£ GBP - UK</option>
-                    <option value="CAD">CA$ CAD - Canada</option>
-                    <option value="AUD">A$ AUD - Australia</option>
-                    <option value="CHF">CHF - Switzerland</option>
-                    <option value="SEK">kr SEK - Sweden</option>
-                    <option value="NOK">kr NOK - Norway</option>
-                    <option value="DKK">kr DKK - Denmark</option>
-                    <option value="MXN">MX$ MXN - Mexico</option>
-                    <option value="BRL">R$ BRL - Brazil</option>
-                    <option value="AED">د.إ AED - UAE</option>
-                    <optgroup label="━━━━ ASIA ━━━━">
-                    <option value="JPY">¥ JPY - Japan</option>
-                    <option value="KRW">₩ KRW - Korea</option>
-                    <option value="CNY">¥ CNY - China</option>
-                    <option value="THB">฿ THB - Thailand</option>
-                    <option value="VND">₫ VND - Vietnam</option>
-                    <option value="PHP">₱ PHP - Philippines</option>
-                    <option value="MYR">RM MYR - Malaysia</option>
-                    <option value="IDR">Rp IDR - Indonesia</option>
-                    <option value="SGD">S$ SGD - Singapore</option>
-                    <option value="INR">₹ INR - India</option>
-                    <option value="PKR">₨ PKR - Pakistan</option>
-                    <option value="BDT">৳ BDT - Bangladesh</option>
-                    </optgroup>
-                    <option value="FREE">🆓 FREE</option>
-                  </select>
+                  <input type="hidden" id="uc-deal-currency" value="EUR">
+                  <div id="uc-currency-badge" title="Currency is auto-detected from the venue address" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 10px;font-family:'Inter',sans-serif;font-weight:800;color:#E8192C;display:flex;align-items:center;gap:3px;flex-shrink:0;cursor:default;min-width:52px;">
+                    <span id="uc-cur-sym" style="font-size:15px;">€</span><span id="uc-cur-code" style="font-size:10px;color:#9A9AB0;font-weight:700;">EUR</span>
+                  </div>
                   <input id="uc-deal-price" type="number" min="0" step="0.01" placeholder="4.99" oninput="ucUpdateCurrencyPreview()" style="flex:1;min-width:0;background:#F5F5F7;border:none;padding:13px 12px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;">
                 </div>
               </div>
@@ -11776,7 +11751,7 @@ async function loadAdminData(){
       } catch(e){}
       try {
         var d = await withTimeout(
-          db.from('venues').select('id,name,city,status,owner_id,profiles(id,name,email,role,created_at)').order('created_at',{ascending:false}),
+          db.from('venues').select('*,profiles(id,name,email,role,created_at)').order('created_at',{ascending:false}),
           6000
         );
         return (d.data||[]).map(function(v){ return { id:v.id,name:v.name,city:v.city,status:v.status,owner_id:v.owner_id,owner_name:v.profiles&&v.profiles.name||'',owner_email:v.profiles&&v.profiles.email||'',created_at:v.created_at }; });
@@ -11785,7 +11760,7 @@ async function loadAdminData(){
 
     var _pVenues = withTimeout(
       db.from('venues')
-        .select('id,name,city,status,active,address,category,owner_id,created_at,deleted_at,profiles(id,name,email)')
+        .select('*,profiles(id,name,email)')
         .order('created_at', {ascending:false}),
       8000
     ).catch(function(){ return { data: [] }; });
@@ -21339,6 +21314,22 @@ function ucUpdateSchedulePreview(){
   prevTxt.innerHTML=lines.join('<br>');
   prev.style.display='block';
 }
+var _ucAutoCurrency = 'EUR';
+
+function ucToggleFree(){
+  var hidEl = document.getElementById('uc-deal-currency');
+  var btn   = document.getElementById('uc-free-btn');
+  if(!hidEl) return;
+  if(hidEl.value === 'FREE'){
+    hidEl.value = _ucAutoCurrency;
+    if(btn){ btn.textContent='🆓 FREE'; btn.style.background='#F0FFF4'; btn.style.borderColor='#D1F0DD'; btn.style.color='#12A150'; }
+  } else {
+    hidEl.value = 'FREE';
+    if(btn){ btn.textContent='✕ PAID'; btn.style.background='#FFF0F0'; btn.style.borderColor='#FFD1D1'; btn.style.color='#E8192C'; }
+  }
+  ucUpdateCurrencyPreview();
+}
+
 function ucUpdateCurrencyPreview(){
   var cur=document.getElementById('uc-deal-currency');
   var priceInp=document.getElementById('uc-deal-price');
@@ -21348,8 +21339,11 @@ function ucUpdateCurrencyPreview(){
   var previewTxt=document.getElementById('uc-price-preview-text');
   if(!cur) return;
   var code=cur.value;
-  var syms={EUR:'€',USD:'$',GBP:'£',CAD:'CA$',AUD:'A$',CHF:'CHF',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',MXN:'MX$',BRL:'R$',SGD:'S$',AED:'د.إ',FREE:'🆓'};
+  var syms={EUR:'€',USD:'$',GBP:'£',CAD:'CA$',AUD:'A$',CHF:'CHF',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',MXN:'MX$',BRL:'R$',SGD:'S$',AED:'د.إ',FREE:'🆓',THB:'฿',VND:'₫',PHP:'₱',MYR:'RM',IDR:'Rp',INR:'₹',KRW:'₩',CNY:'¥',PKR:'₨',BDT:'৳',NZD:'NZ$',HKD:'HK$',TWD:'NT$',SAR:'﷼',QAR:'﷼',KWD:'د.ك',BHD:'.د.ب',OMR:'﷼',ILS:'₪',TRY:'₺',PLN:'zł',CZK:'Kč',HUF:'Ft',RON:'lei',BGN:'лв',ARS:'$',CLP:'$',COP:'$',PEN:'S/',ZAR:'R',NGN:'₦',KES:'KSh',GHS:'₵',EGP:'£',UAH:'₴',HRK:'kn',DKK:'kr'};
   var sym=syms[code]||code;
+  // Update the auto-currency badge
+  var bdgSym=document.getElementById('uc-cur-sym'); if(bdgSym) bdgSym.textContent=code==='FREE'?'🆓':sym;
+  var bdgCode=document.getElementById('uc-cur-code'); if(bdgCode) bdgCode.textContent=code==='FREE'?'':code;
   if(wasSym) wasSym.textContent=code==='FREE'?'':sym;
   if(priceInp){priceInp.style.display=code==='FREE'?'none':'block';if(code==='FREE')priceInp.value='';}
   var amt=priceInp?parseFloat(priceInp.value):NaN;
@@ -23862,46 +23856,22 @@ function suggestCurrencyFromCountryCode(countryCode){
   if(!countryCode) return;
   var code = countryCode.toUpperCase();
   var suggestedCurrency = _countryCurrencyMap[code];
-  if(!suggestedCurrency) return; // unknown country — don't touch
+  if(!suggestedCurrency) return; // unknown country — leave as-is
 
   var curEl = document.getElementById('uc-deal-currency');
   if(!curEl) return;
-  var currentCurrency = curEl.value || 'EUR';
+  var isFreeMode = curEl.value === 'FREE';
+  if(isFreeMode) { _ucAutoCurrency = suggestedCurrency; return; } // remember but don't override FREE
+
+  // Always force-set — no user prompt, no mismatch banner
+  _ucAutoCurrency = suggestedCurrency;
+  curEl.value = suggestedCurrency;
+  // Remove any stale mismatch banner from before this change
+  var old = document.getElementById('currency-mismatch-banner');
+  if(old) old.remove();
+  if(typeof ucUpdateCurrencyPreview === 'function') ucUpdateCurrencyPreview();
   var countryName = _countryNameMap[code] || code;
-
-  if(currentCurrency === suggestedCurrency) return; // already matches
-
-  // If currency hasn't been manually changed from default, auto-set silently
-  if(currentCurrency === 'EUR' && suggestedCurrency !== 'EUR'){
-    curEl.value = suggestedCurrency;
-    if(typeof ucUpdateCurrencyPreview === 'function') ucUpdateCurrencyPreview();
-    showToast('💱 Currency set to '+suggestedCurrency+' for '+countryName);
-    return;
-  }
-
-  // Currencies don't match — ask user to confirm
-  var existing = document.getElementById('currency-mismatch-banner');
-  if(existing) existing.remove();
-
-  var banner = document.createElement('div');
-  banner.id = 'currency-mismatch-banner';
-  banner.style.cssText = 'background:#FFF8E1;border:1.5px solid #FFE082;border-radius:12px;padding:12px 14px;margin-top:10px;';
-  banner.innerHTML =
-    '<div style="display:flex;align-items:flex-start;gap:10px;">'
-      +'<div style="font-size:18px;flex-shrink:0;">⚠️</div>'
-      +'<div style="flex:1;">'
-        +'<div style="font-size:13px;font-weight:800;color:#7B5E00;margin-bottom:4px;">Currency mismatch</div>'
-        +'<div style="font-size:12px;color:#92400e;font-weight:500;line-height:1.5;">This address is in <strong>'+countryName+'</strong>, which typically uses <strong>'+suggestedCurrency+'</strong>, but you have <strong>'+currentCurrency+'</strong> selected. Are you sure?</div>'
-        +'<div style="display:flex;gap:8px;margin-top:10px;">'
-          +'<button onclick="document.getElementById(\'uc-deal-currency\').value=\''+suggestedCurrency+'\';if(typeof ucUpdateCurrencyPreview===\'function\')ucUpdateCurrencyPreview();document.getElementById(\'currency-mismatch-banner\').remove();showToast(\'💱 Switched to '+suggestedCurrency+'\')" style="background:#1A1A1A;color:white;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Switch to '+suggestedCurrency+'</button>'
-          +'<button onclick="document.getElementById(\'currency-mismatch-banner\').remove()" style="background:white;color:#555;border:1.5px solid #E8E8EC;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Keep '+currentCurrency+'</button>'
-        +'</div>'
-      +'</div>'
-    +'</div>';
-
-  // Insert after address field
-  var addrEl = document.getElementById('uc-addr');
-  if(addrEl && addrEl.parentNode) addrEl.parentNode.insertBefore(banner, addrEl.nextSibling);
+  showToast('📍 Currency auto-set to '+suggestedCurrency+' ('+countryName+')');
 }
 
 function initAddressAutocomplete() {
