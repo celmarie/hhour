@@ -5582,7 +5582,7 @@ async function handleAuthSession(user) {
   if(role === 'merchant'){
     if(adminRoot) adminRoot.style.display = 'none';
     if(merchRoot) merchRoot.style.display = 'flex';
-  } else if(role === 'admin'){
+  } else if(role === 'admin' || role === 'super_admin'){
     if(merchRoot) merchRoot.style.display = 'none';
     if(adminRoot) adminRoot.style.display = 'flex';
   } else {
@@ -5614,7 +5614,7 @@ async function handleAuthSession(user) {
   // calls (token refresh, tab refocus) must not bounce the user back to home.
   if(role === 'merchant'){
     if(!_sessionRouted) openMerchantDash();
-  } else if(role === 'admin'){
+  } else if(role === 'admin' || role === 'super_admin'){
     if(!_sessionRouted) openAdmin();
   } else {
     // Customer: show the home IMMEDIATELY (deal data is already cached/loaded),
