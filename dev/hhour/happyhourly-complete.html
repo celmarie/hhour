@@ -5550,8 +5550,15 @@ async function handleAuthSession(user) {
     || _lastRole
     || loginRole
     || 'customer';
-  // Remember the authoritative role for future refreshes.
-  try{ if(profile && profile.role) localStorage.setItem('hh_last_role', profile.role); }catch(e){}
+  // Never silently downgrade a known admin/merchant to customer on a bad fetch.
+  if(role === 'customer' && (_lastRole === 'admin' || _lastRole === 'super_admin' || _lastRole === 'merchant')){
+    role = _lastRole;
+  }
+  // Persist the authoritative role — also refresh the cache when using _lastRole.
+  try{
+    if(profile && profile.role) localStorage.setItem('hh_last_role', profile.role);
+    else if(role !== 'customer') localStorage.setItem('hh_last_role', role);
+  }catch(e){}
 
   // HIDE splash screen immediately
   var splash = document.getElementById('role-splash');
@@ -25379,6 +25386,26 @@ function _setupDealMap() {
 </div>
 
 <input type="file" id="multi-photo-input" accept="image/*" multiple style="display:none;" onchange="handleMultiPhotoSelected(this)">
+
+<script>
+// Runs synchronously after the DOM is parsed — before any async Supabase call.
+// Shows the correct root panel immediately on refresh so there is no flash of
+// the customer UI while the auth session restores.  The login screen sits at
+// z-index:999999 and covers everything until auth confirms the session is valid.
+(function _quickRoleApply(){
+  try {
+    var lr = localStorage.getItem('hh_last_role');
+    if(!lr) return;
+    if(lr === 'admin' || lr === 'super_admin'){
+      var el = document.getElementById('admin-root');
+      if(el) el.style.display = 'flex';
+    } else if(lr === 'merchant'){
+      var el = document.getElementById('merch-root');
+      if(el) el.style.display = 'flex';
+    }
+  } catch(e) {}
+})();
+</script>
 
 <!-- Address autocomplete — position:fixed, direct child of body, escapes ALL overflow:hidden -->
 <div id="addr-drop" style="
