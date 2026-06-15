@@ -3072,8 +3072,9 @@ function googleTranslateElementInit(){
         <div style="position:absolute;top:-45px;right:-30px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none;"></div>
         <div style="position:absolute;bottom:-35px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none;"></div>
         <div style="display:flex;align-items:center;gap:16px;position:relative;">
-          <!-- Avatar with initials -->
-          <div style="width:72px;height:72px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 20px rgba(0,0,0,.22);">
+          <!-- Avatar with initials (or photo) -->
+          <div style="width:72px;height:72px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 20px rgba(0,0,0,.22);overflow:hidden;">
+            <img id="prof-avatar-img" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
             <span id="prof-avatar-initials" style="font-size:28px;font-weight:900;color:#E8192C;font-family:Inter,sans-serif;line-height:1;">J</span>
           </div>
           <div>
@@ -4347,8 +4348,12 @@ function googleTranslateElementInit(){
           <div style="font-size:13px;color:var(--t3);margin-bottom:20px;">Update your name and email address</div>
           <!-- Avatar -->
           <div style="text-align:center;margin-bottom:20px;">
-            <div style="width:72px;height:72px;border-radius:50%;background:var(--redl);display:inline-flex;align-items:center;justify-content:center;font-size:28px;border:3px solid var(--red);position:relative;cursor:pointer;" onclick="showToast('Photo upload coming soon 📷')">
-              👤
+            <input type="file" id="st-edit-photo-input" accept="image/*" style="display:none;" onchange="stEditPhotoSelected(this)">
+            <div onclick="document.getElementById('st-edit-photo-input').click()" style="position:relative;display:inline-block;cursor:pointer;">
+              <div style="width:72px;height:72px;border-radius:50%;background:var(--redl);display:flex;align-items:center;justify-content:center;font-size:28px;border:3px solid var(--red);overflow:hidden;">
+                <img id="st-edit-avatar-img" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                <span id="st-edit-avatar-initials">👤</span>
+              </div>
               <div style="position:absolute;bottom:0;right:0;background:var(--red);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid white;">✏️</div>
             </div>
             <div style="font-size:12px;color:var(--t3);margin-top:8px;font-weight:500;">Tap to change photo</div>
@@ -5567,6 +5572,11 @@ async function handleAuthSession(user) {
     var pe = document.querySelector('.prof-email'); if (pe) pe.textContent = user.email;
     var ai = document.getElementById('prof-avatar-initials');
     if(ai) ai.textContent = (profile.name || user.email || 'U').trim().charAt(0).toUpperCase();
+    var pImg = document.getElementById('prof-avatar-img');
+    if(pImg){
+      if(profile.avatar_url){ pImg.src = profile.avatar_url; pImg.style.display = 'block'; if(ai) ai.style.display = 'none'; }
+      else { pImg.style.display = 'none'; if(ai) ai.style.display = 'block'; }
+    }
     var sp = document.getElementById('st-profile-sub');
     if (sp) sp.textContent = (profile.name || user.email) + ' · ' + user.email;
     var cb  = document.getElementById('prof-cr-balance');  if (cb)  cb.textContent  = (profile.credits || 0).toLocaleString();
@@ -6388,6 +6398,26 @@ function stApplyDark(on){
   }
 }
 
+var _stEditPhotoDataUrl = '';
+function stEditPhotoSelected(input){
+  if(!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var url = e.target.result;
+    var apply = function(finalUrl){
+      _stEditPhotoDataUrl = finalUrl;
+      var img = document.getElementById('st-edit-avatar-img');
+      var ini = document.getElementById('st-edit-avatar-initials');
+      if(img){ img.src = finalUrl; img.style.display = 'block'; }
+      if(ini) ini.style.display = 'none';
+    };
+    if(typeof compressImage === 'function'){
+      Promise.resolve(compressImage(url, 400, 0.7)).then(apply).catch(function(){ apply(url); });
+    } else { apply(url); }
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
 function stSaveProfile(){
   var nameEl = document.getElementById('st-edit-name');
   var emailEl = document.getElementById('st-edit-email');
@@ -6403,6 +6433,23 @@ function stSaveProfile(){
   var pe = document.querySelector('.prof-email'); if(pe) pe.textContent = email;
   var sp = document.getElementById('st-profile-sub'); if(sp) sp.textContent = name + ' · ' + email;
   var ai = document.getElementById('prof-avatar-initials'); if(ai) ai.textContent = name.trim().charAt(0).toUpperCase();
+
+  // Update profile photo (if a new one was picked)
+  if(_stEditPhotoDataUrl){
+    var pImg = document.getElementById('prof-avatar-img');
+    var pIni = document.getElementById('prof-avatar-initials');
+    if(pImg){ pImg.src = _stEditPhotoDataUrl; pImg.style.display = 'block'; }
+    if(pIni) pIni.style.display = 'none';
+    if(typeof currentProfile !== 'undefined' && currentProfile) currentProfile.avatar_url = _stEditPhotoDataUrl;
+    if(typeof currentUser !== 'undefined' && currentUser && window.db){
+      (async function(){
+        try{
+          var r = await db.from('profiles').update({ avatar_url: _stEditPhotoDataUrl }).eq('id', currentUser.id);
+          if(r && r.error) console.warn('[stSaveProfile] avatar save:', r.error.message);
+        }catch(e){ console.warn('[stSaveProfile] avatar save failed', e); }
+      })();
+    }
+  }
 
   // Update USERS record for the current session
   if(typeof USERS !== 'undefined'){
@@ -6430,6 +6477,21 @@ function openEditProfile(){
   var currentEmail = (document.querySelector('.prof-email')||{}).textContent || 'john.doe@email.com';
   var ni = document.getElementById('st-edit-name'); if(ni) ni.value = currentName;
   var ei = document.getElementById('st-edit-email'); if(ei) ei.value = currentEmail;
+
+  // Preload current avatar into the edit preview
+  _stEditPhotoDataUrl = '';
+  var headImg = document.getElementById('prof-avatar-img');
+  var hasPhoto = headImg && headImg.style.display !== 'none' && headImg.src;
+  var eimg = document.getElementById('st-edit-avatar-img');
+  var eini = document.getElementById('st-edit-avatar-initials');
+  if(hasPhoto){
+    if(eimg){ eimg.src = headImg.src; eimg.style.display = 'block'; }
+    if(eini) eini.style.display = 'none';
+  } else {
+    if(eimg){ eimg.style.display = 'none'; eimg.src = ''; }
+    if(eini) eini.style.display = 'block';
+  }
+  var fi = document.getElementById('st-edit-photo-input'); if(fi) fi.value = '';
 
   ov.style.display = 'flex';
 }
@@ -22060,6 +22122,30 @@ function comSetSort(mode){
   });
   comRefreshList();
 }
+// Parse an event's display date (e.g. "Sat 24 May", no year) into a Date,
+// assuming the current year and rolling to next year if it's well in the past.
+function _comEventDate(ev){
+  var iso = ev && (ev.event_date_iso || ev._dateISO);
+  if(iso){ var di=new Date(iso+'T00:00:00'); if(!isNaN(di)) return di; }
+  var s = ((ev && (ev.date || ev.event_date)) || '').trim();
+  if(!s) return null;
+  var now = new Date();
+  var cleaned = s.replace(/^[A-Za-z]{3,},?\s*/, ''); // drop leading weekday
+  var d = new Date(cleaned + ' ' + now.getFullYear());
+  if(isNaN(d)) return null;
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if((today - d) > 31*24*3600*1000) d = new Date(cleaned + ' ' + (now.getFullYear()+1));
+  return isNaN(d) ? null : d;
+}
+// True if the event is today or in the future (unparseable dates are kept).
+function _comEventIsUpcoming(ev){
+  var d = _comEventDate(ev);
+  if(!d) return true;
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return d >= today;
+}
+
 function comRefreshList() {
   var container = document.getElementById('com-cards-container');
   var label     = document.getElementById('com-results-label');
@@ -22067,9 +22153,10 @@ function comRefreshList() {
 
   var q = (_comSearchQ || '').toLowerCase().trim();
 
-  // 1. Filter approved + search
+  // 1. Filter approved + upcoming (current/future only) + search
   var events = comMeetups.filter(function(m) {
     if (m.status !== 'approved') return false;
+    if (!_comEventIsUpcoming(m)) return false;
     if (!q) return true;
     // Match every user-visible field: title, location, host, description,
     // category, date, time, price, tags
@@ -22907,12 +22994,31 @@ function watchCloseSpotDetail(){
   if(ov) ov.style.display='none';
 }
 
+// Sort key: a spot's soonest UPCOMING kickoff (ms). Upcoming first (closest
+// at top); spots whose matches have all kicked off sink below, most-recent
+// first; spots with no parseable time go last.
+function _watchSpotSoonest(s){
+  var times=[];
+  if(s && s.matches && s.matches.length){
+    s.matches.forEach(function(m){ if(m && m.kickoffUTC){ var t=new Date(m.kickoffUTC).getTime(); if(!isNaN(t)) times.push(t); } });
+  }
+  if(s && s.match_date){
+    var t2=new Date(s.match_date + (s.kickoff_time ? 'T'+s.kickoff_time : 'T00:00')).getTime();
+    if(!isNaN(t2)) times.push(t2);
+  }
+  if(!times.length) return Infinity;
+  var now=Date.now();
+  var grace=now - 2*3600*1000; // keep just-kicked-off matches (<2h) near the top
+  var upcoming=times.filter(function(t){ return t>=grace; });
+  if(upcoming.length) return Math.min.apply(null, upcoming);
+  return 9e15 + (now - Math.max.apply(null, times)); // all past → bottom, recent-past first
+}
+
 function watchRenderList(){
   var el = document.getElementById('watch-list');
   if(!el) return;
   var spots = (watchSpots||[]).slice().sort(function(a,b){
-    return String(a.match_date||'').localeCompare(String(b.match_date||'')) ||
-           String(a.kickoff_time||'').localeCompare(String(b.kickoff_time||''));
+    return _watchSpotSoonest(a) - _watchSpotSoonest(b);
   });
   if(!spots.length){
     el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:#9A9AB0;">'
