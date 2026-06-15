@@ -13602,10 +13602,16 @@ function adminRenderSettings() {
 
   // ROLE ACCESS CONFIGURATION (Super Admin Only)
   if(isSuperAdmin){
+    var _racOpen = (localStorage.getItem('hh_rac_open') !== 'false');
     html += '<div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:14px;padding:20px;color:white;">'
-      + '<div style="font-size:16px;font-weight:900;margin-bottom:8px;">⚙️ Admin Role Access Control</div>'
-      + '<div style="font-size:12px;opacity:0.9;margin-bottom:16px;">Configure which pages each admin role can access</div>'
-      + '<div style="display:grid;gap:14px;">';
+      + '<div onclick="_admToggleRAC()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:'+(_racOpen?'8px':'0')+'" id="rac-header">'
+        + '<div>'
+          + '<div style="font-size:16px;font-weight:900;">⚙️ Admin Role Access Control</div>'
+          + '<div style="font-size:12px;opacity:0.9;margin-top:3px;">Configure which pages each admin role can access</div>'
+        + '</div>'
+        + '<div id="rac-chevron" style="font-size:18px;transition:transform .25s;transform:rotate('+(_racOpen?'0':'180')+'deg);">⌃</div>'
+      + '</div>'
+      + '<div id="rac-body" style="display:grid;gap:14px;overflow:hidden;transition:max-height .3s ease;max-height:'+(_racOpen?'2000px':'0')+';'+(! _racOpen?'margin-top:0;':'')+'"">';
 
     // Generate role configuration cards
     Object.keys(_adminRoles).forEach(function(roleKey){
@@ -13677,6 +13683,18 @@ function adminRenderSettings() {
   html += '</div>';
 
   body.innerHTML = html;
+}
+
+function _admToggleRAC(){
+  var body = document.getElementById('rac-body');
+  var chevron = document.getElementById('rac-chevron');
+  var header = document.getElementById('rac-header');
+  if(!body) return;
+  var open = body.style.maxHeight !== '0px';
+  body.style.maxHeight = open ? '0' : '2000px';
+  if(chevron) chevron.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+  if(header) header.style.marginBottom = open ? '0' : '8px';
+  try{ localStorage.setItem('hh_rac_open', String(!open)); }catch(e){}
 }
 
 function adminSavePasscode() {
