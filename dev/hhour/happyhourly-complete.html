@@ -11738,8 +11738,11 @@ async function loadAdminData(){
   try {
     // ⚡ Kick off ALL independent admin queries in parallel with 8s timeout fallback per query
     var _pCD = withTimeout(
+      // select('*') is resilient: a missing optional column won't error the whole
+      // query (which would silently empty the admin community-deals lists). The
+      // mapping below defaults every field, so extra/missing columns are fine.
       db.from('community_deals')
-        .select('id,venue_name,title,description,hours,days,price,was_price,is_free,category,address,emoji,status,created_at,user_name,image_url,currency,discount_pct,dist_km,time_from,time_to,rejection_reason')
+        .select('*')
         .order('created_at', {ascending:false}),
       8000
     ).catch(function(){ return { data: [] }; });
