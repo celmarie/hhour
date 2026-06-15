@@ -4067,6 +4067,11 @@ function googleTranslateElementInit(){
       <div id="watch-list" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:14px 14px calc(var(--nav) + 14px);"></div>
       <div id="watch-schedule" style="display:none;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:14px 14px calc(var(--nav) + 14px);"></div>
 
+      <!-- Spot detail popup -->
+      <div id="watch-spot-detail-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99990;padding:20px 16px;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;" onclick="if(event.target===this)watchCloseSpotDetail()">
+        <div id="watch-spot-detail-card" style="background:white;border-radius:18px;width:100%;max-width:480px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);"></div>
+      </div>
+
       <!-- Create sheet -->
       <div id="watch-create-sheet-ov" style="position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:60;display:none;align-items:flex-end;" onclick="if(event.target===this)watchCloseCreateSheet()">
         <div id="watch-create-sheet" style="background:white;border-radius:22px 22px 0 0;width:100%;max-height:92%;overflow-y:auto;scrollbar-width:none;transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);">
@@ -22821,6 +22826,73 @@ function _watchMatchesBlockHtml(s){
     + '</div>';
 }
 
+// Compact match summary for the collapsed card (count + soonest match only).
+function _watchMatchesSummaryHtml(s){
+  var ms=_watchMatchesOf(s);
+  if(!ms.length) return '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚽ Match</div>';
+  if(ms.length===1){
+    var m=ms[0], meta=[];
+    if(m.dateStr) meta.push('📅 '+_watchEsc(_watchFmtDate(m.dateStr)));
+    if(m.timeStr) meta.push('⏰ '+_watchEsc(m.timeStr+(m.tz?' '+m.tz:'')));
+    return '<div style="font-size:16px;font-weight:900;color:#1A1A1A;letter-spacing:-.2px;">⚽ '+_watchEsc(m.label)+'</div>'
+      + (meta.length?'<div style="font-size:12.5px;color:#555;font-weight:600;margin-top:4px;">'+meta.join(' · ')+'</div>':'');
+  }
+  var first=ms[0];
+  var t=(first.dateStr?_watchFmtDate(first.dateStr):'')+(first.timeStr?' · '+first.timeStr+(first.tz?' '+first.tz:''):'');
+  return '<div style="font-size:16px;font-weight:900;color:#1A1A1A;letter-spacing:-.2px;">⚽ '+ms.length+' matches shown here</div>'
+    + '<div style="font-size:12.5px;color:#555;font-weight:600;margin-top:4px;"><span style="color:#1A1A1A;font-weight:700;">'+_watchEsc(first.label)+'</span>'+(t?' <span style="color:#9A9AB0;">· '+_watchEsc(t)+'</span>':'')+'</div>'
+    + '<div style="font-size:11.5px;color:#12A150;font-weight:800;margin-top:4px;">+'+(ms.length-1)+' more · tap to see all</div>';
+}
+
+// ── Spot detail popup (full match list + all details) ───────────────
+var _watchDetailId = null;
+function watchOpenSpotDetail(id){
+  var s=(watchSpots||[]).find(function(x){ return x.id===id; });
+  if(!s) return;
+  _watchDetailId=id;
+  var ov=document.getElementById('watch-spot-detail-ov');
+  var card=document.getElementById('watch-spot-detail-card');
+  if(!ov||!card) return;
+  var joined=watchJoined(); var isJoined=joined.indexOf(s.id)!==-1;
+  var isAdmin=watchIsAdmin();
+  var resvBadge = s.reservation_needed
+    ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#FFF4E5;color:#B86E00;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:800;">⚠️ Reservation needed</span>'
+    : '<span style="display:inline-flex;align-items:center;gap:4px;background:#E6F7EE;color:#0B7A3C;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:800;">✓ Walk-ins OK</span>';
+  var img = s.image_url
+    ? '<img src="'+_watchEsc(s.image_url)+'" loading="lazy" style="width:100%;height:160px;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
+    : '';
+  card.innerHTML =
+    '<div style="position:relative;">'
+      + img
+      + '<button onclick="watchCloseSpotDetail()" style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,.45);border:none;border-radius:50%;width:34px;height:34px;font-size:17px;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;">✕</button>'
+    + '</div>'
+    + '<div style="padding:16px;">'
+      + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">'
+        + '<div style="min-width:0;">'+_watchMatchesBlockHtml(s)+'</div>'
+        + (isAdmin ? '<button onclick="watchDelete('+s.id+')" title="Delete" style="flex-shrink:0;background:#FDEDED;border:none;border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer;color:#E8192C;">🗑</button>' : '')
+      + '</div>'
+      + '<div style="font-size:15px;font-weight:800;color:#12A150;margin-top:4px;">'+_watchEsc(s.venue_name)+'</div>'
+      + (s.location ? '<div style="font-size:12.5px;color:#9A9AB0;font-weight:600;margin-top:6px;margin-bottom:10px;">📍 '+_watchEsc(s.location)+'</div>' : '<div style="height:10px;"></div>')
+      + '<div style="margin-bottom:'+((s.notes||s.reservation_info)?'10px':'12px')+';">'+resvBadge+'</div>'
+      + (s.reservation_info ? '<div style="font-size:12px;color:#B86E00;font-weight:600;margin-bottom:8px;">🎟️ '+_watchEsc(s.reservation_info)+'</div>' : '')
+      + (s.notes ? '<div style="font-size:13px;color:#666;font-weight:500;line-height:1.5;margin-bottom:10px;">'+_watchEsc(s.notes)+'</div>' : '')
+      + _watchCrowdBlockHtml(s)
+      + '<div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #F0F0F4;padding-top:10px;">'
+        + '<div style="min-width:0;">'
+          + '<div style="font-size:11.5px;color:#9A9AB0;font-weight:600;">Shared by '+_watchEsc(s.host_name||'Community')+'</div>'
+          + '<button onclick="openSpotReport('+s.id+')" style="background:none;border:none;padding:3px 0 0;font-size:11px;font-weight:700;color:#C0C0CC;cursor:pointer;font-family:Inter,sans-serif;display:inline-flex;align-items:center;gap:4px;">⚑ Report info</button>'
+        + '</div>'
+        + '<button onclick="watchToggleGoing('+s.id+')" style="flex-shrink:0;background:'+(isJoined?'#12A150':'#E6F7EE')+';color:'+(isJoined?'white':'#0B7A3C')+';border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">'+(isJoined?'✓ Going':"I'm going")+' ('+(s.going||0)+')</button>'
+      + '</div>'
+    + '</div>';
+  ov.style.display='flex';
+}
+function watchCloseSpotDetail(){
+  _watchDetailId=null;
+  var ov=document.getElementById('watch-spot-detail-ov');
+  if(ov) ov.style.display='none';
+}
+
 function watchRenderList(){
   var el = document.getElementById('watch-list');
   if(!el) return;
@@ -22863,33 +22935,28 @@ function watchRenderList(){
       ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#FFF4E5;color:#B86E00;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:800;">⚠️ Reservation needed</span>'
       : '<span style="display:inline-flex;align-items:center;gap:4px;background:#E6F7EE;color:#0B7A3C;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:800;">✓ Walk-ins OK</span>';
     var img = s.image_url
-      ? '<img src="'+_watchEsc(s.image_url)+'" loading="lazy" style="width:100%;height:130px;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
+      ? '<img src="'+_watchEsc(s.image_url)+'" loading="lazy" style="width:100%;height:120px;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
       : '';
-    return '<div style="background:white;border:1.5px solid #EEE;border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.05);">'
+    return '<div onclick="watchOpenSpotDetail('+s.id+')" style="background:white;border:1.5px solid #EEE;border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.05);cursor:pointer;">'
       + img
       + '<div style="padding:14px;">'
         + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">'
           + '<div style="min-width:0;">'
-            + _watchMatchesBlockHtml(s)
+            + _watchMatchesSummaryHtml(s)
             + '<div style="font-size:13.5px;font-weight:700;color:#12A150;margin-top:6px;">'+_watchEsc(s.venue_name)+'</div>'
           + '</div>'
-          + (isAdmin ? '<button onclick="watchDelete('+s.id+')" title="Delete" style="flex-shrink:0;background:#FDEDED;border:none;border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer;color:#E8192C;">🗑</button>' : '')
+          + (isAdmin ? '<button onclick="event.stopPropagation();watchDelete('+s.id+')" title="Delete" style="flex-shrink:0;background:#FDEDED;border:none;border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer;color:#E8192C;">🗑</button>' : '')
         + '</div>'
         + (s.location ? '<div style="font-size:12.5px;color:#9A9AB0;font-weight:600;margin-bottom:10px;">📍 '+_watchEsc(s.location)+'</div>' : '')
-        + '<div style="margin-bottom:'+((s.notes||s.reservation_info)?'10px':'12px')+';">'+resvBadge+'</div>'
-        + (s.reservation_info ? '<div style="font-size:12px;color:#B86E00;font-weight:600;margin-bottom:8px;">🎟️ '+_watchEsc(s.reservation_info)+'</div>' : '')
-        + (s.notes ? '<div style="font-size:13px;color:#666;font-weight:500;line-height:1.5;margin-bottom:10px;">'+_watchEsc(s.notes)+'</div>' : '')
-        + _watchCrowdBlockHtml(s)
+        + '<div style="margin-bottom:12px;">'+resvBadge+'</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #F0F0F4;padding-top:10px;">'
-          + '<div style="min-width:0;">'
-            + '<div style="font-size:11.5px;color:#9A9AB0;font-weight:600;">Shared by '+_watchEsc(s.host_name||'Community')+'</div>'
-            + '<button onclick="openSpotReport('+s.id+')" style="background:none;border:none;padding:3px 0 0;font-size:11px;font-weight:700;color:#C0C0CC;cursor:pointer;font-family:Inter,sans-serif;display:inline-flex;align-items:center;gap:4px;" onmouseover="this.style.color=\'#E8192C\'" onmouseout="this.style.color=\'#C0C0CC\'">⚑ Report info</button>'
-          + '</div>'
-          + '<button onclick="watchToggleGoing('+s.id+')" style="flex-shrink:0;background:'+(isJoined?'#12A150':'#E6F7EE')+';color:'+(isJoined?'white':'#0B7A3C')+';border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">'+(isJoined?'✓ Going':"I'm going")+' ('+(s.going||0)+')</button>'
+          + '<div style="font-size:12px;color:#9A9AB0;font-weight:700;">Tap for details ›</div>'
+          + '<button onclick="event.stopPropagation();watchToggleGoing('+s.id+')" style="flex-shrink:0;background:'+(isJoined?'#12A150':'#E6F7EE')+';color:'+(isJoined?'white':'#0B7A3C')+';border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">'+(isJoined?'✓ Going':"I'm going")+' ('+(s.going||0)+')</button>'
         + '</div>'
       + '</div>'
     + '</div>';
   }).join('');
+  if(_watchDetailId!=null) watchOpenSpotDetail(_watchDetailId);
 }
 
 // ── Customer schedule view (fixtures + kickoff-time filter) ─────────
