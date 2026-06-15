@@ -4049,7 +4049,7 @@ function googleTranslateElementInit(){
       <div style="background:linear-gradient(120deg,#12A150,#0B7A3C);padding:14px 18px 18px;flex-shrink:0;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <div style="display:flex;align-items:center;gap:10px;"><button class="vd-back" onclick="goBack()">&#8249;</button><div style="font-size:18px;font-weight:800;color:white;display:flex;align-items:center;gap:9px;">⚽ Where to Watch</div></div>
-          <button onclick="watchOpenCreateSheet()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.35);border-radius:10px;padding:8px 14px;color:white;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">+ Share a spot</button>
+          <button onclick="watchOpenCreateSheet()" style="background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.35);border-radius:10px;padding:8px 14px;color:white;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">+ Contribute Info</button>
         </div>
         <div style="font-size:12.5px;color:rgba(255,255,255,.8);font-weight:500;">Community spots showing World Cup matches near you</div>
         <div style="display:flex;gap:6px;background:rgba(255,255,255,.15);border-radius:12px;padding:3px;margin-top:12px;">
@@ -22653,7 +22653,7 @@ function wcFixturesCardHtml(){
   return '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;">'
     + '<div style="padding:16px;border-bottom:1px solid #E8E8EC;">'
       + '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚽ World Cup Fixtures</div>'
-      + '<div style="font-size:12px;color:#9A9AB0;margin-top:4px;">Matches shown in the "Share a spot" dropdown. Enter date &amp; time in your local timezone — viewers see it auto-converted to theirs.</div>'
+      + '<div style="font-size:12px;color:#9A9AB0;margin-top:4px;">Matches shown in the "Contribute Info" dropdown. Enter date &amp; time in your local timezone — viewers see it auto-converted to theirs.</div>'
     + '</div>'
     + '<div style="padding:16px;">'
       + '<div id="wc-fixtures-rows">' + _wcFxRowsHtml() + '</div>'
@@ -22919,7 +22919,7 @@ function watchRenderList(){
       + '<div style="font-size:48px;margin-bottom:12px;">⚽</div>'
       + '<div style="font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:6px;">No spots shared yet</div>'
       + '<div style="font-size:13px;font-weight:500;margin-bottom:18px;">Be the first to tell everyone where to catch the match!</div>'
-      + '<button onclick="watchOpenCreateSheet()" style="background:#12A150;color:white;border:none;border-radius:12px;padding:12px 22px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">+ Share a spot</button>'
+      + '<button onclick="watchOpenCreateSheet()" style="background:#12A150;color:white;border:none;border-radius:12px;padding:12px 22px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">+ Contribute Info</button>'
       + '</div>';
     return;
   }
