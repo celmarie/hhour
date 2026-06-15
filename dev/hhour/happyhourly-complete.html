@@ -22817,13 +22817,27 @@ function _watchMatchesBlockHtml(s){
     return '<div style="font-size:16px;font-weight:900;color:#1A1A1A;letter-spacing:-.2px;">⚽ '+_watchEsc(m.label)+'</div>'
       + (meta.length?'<div style="font-size:12.5px;color:#555;font-weight:600;margin-top:4px;">'+meta.join(' · ')+'</div>':'');
   }
-  return '<div style="font-size:16px;font-weight:900;color:#1A1A1A;letter-spacing:-.2px;">⚽ '+ms.length+' matches shown here</div>'
-    + '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">'
-    + ms.map(function(m){
-        var t=(m.dateStr?_watchFmtDate(m.dateStr):'')+(m.timeStr?' · '+m.timeStr+(m.tz?' '+m.tz:''):'');
-        return '<div style="font-size:12.5px;color:#555;font-weight:600;"><span style="color:#1A1A1A;font-weight:700;">'+_watchEsc(m.label)+'</span>'+(t?' <span style="color:#9A9AB0;">· '+_watchEsc(t)+'</span>':'')+'</div>';
-      }).join('')
-    + '</div>';
+  var row=function(m){
+    var t=(m.dateStr?_watchFmtDate(m.dateStr):'')+(m.timeStr?' · '+m.timeStr+(m.tz?' '+m.tz:''):'');
+    return '<div style="font-size:12.5px;color:#555;font-weight:600;"><span style="color:#1A1A1A;font-weight:700;">'+_watchEsc(m.label)+'</span>'+(t?' <span style="color:#9A9AB0;">· '+_watchEsc(t)+'</span>':'')+'</div>';
+  };
+  var header='<div style="font-size:16px;font-weight:900;color:#1A1A1A;letter-spacing:-.2px;">⚽ '+ms.length+' matches shown here</div>';
+  // 2 or fewer extra: show all. More than 2: collapse the rest behind a toggle.
+  if(ms.length<=2){
+    return header
+      + '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">'+ms.map(row).join('')+'</div>';
+  }
+  return header
+    + '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">'+ms.slice(0,2).map(row).join('')+'</div>'
+    + '<div id="watch-more-matches" style="display:none;margin-top:4px;flex-direction:column;gap:4px;">'+ms.slice(2).map(row).join('')+'</div>'
+    + '<button onclick="watchToggleMatches(this,'+ms.length+')" style="margin-top:8px;background:none;border:none;padding:0;font-size:12px;font-weight:800;color:#12A150;cursor:pointer;font-family:Inter,sans-serif;">▾ Show all '+ms.length+' matches</button>';
+}
+function watchToggleMatches(btn,total){
+  var more=document.getElementById('watch-more-matches');
+  if(!more) return;
+  var willOpen=(more.style.display==='none' || !more.style.display);
+  more.style.display=willOpen?'flex':'none';
+  btn.innerHTML=willOpen?'▴ Show less':('▾ Show all '+total+' matches');
 }
 
 // Compact match summary for the collapsed card (count + soonest match only).
