@@ -13994,9 +13994,14 @@ function adminWatchDelete(id){
     showToast('🗑 Spot removed'); adminLoadWatchSpots();
   }).catch(function(e){ showToast('⚠️ '+((e&&e.message)||'delete failed')); });
 }
+var _awePhotoNew = null; // tracks newly-selected photo for the edit modal
+var _awePhotoRemove = false; // true when admin explicitly removes the photo
+
 function adminWatchEdit(id){
   var s=(_admWatchRows||[]).find(function(x){ return x.id===id; });
   if(!s){ showToast('Spot not found'); return; }
+  _awePhotoNew = null;
+  _awePhotoRemove = false;
   var ov=document.getElementById('adm-watch-edit-ov');
   if(!ov){
     ov=document.createElement('div');
@@ -14009,6 +14014,17 @@ function adminWatchEdit(id){
   var lbl='font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;margin-top:12px;';
   var ms=_watchMatchesOf(s);
   var multiNote = ms.length>1 ? '<div style="font-size:11px;color:#B86E00;font-weight:600;background:#FFF4E5;border-radius:8px;padding:8px 10px;margin-top:6px;">This spot lists '+ms.length+' matches. Editing the label below changes the summary text only.</div>' : '';
+
+  var hasPhoto = !!(s.image_url);
+  var photoSection = '<label style="'+lbl+'">Photo</label>'
+    +'<div id="awe-photo-wrap" style="position:relative;border-radius:12px;overflow:hidden;background:#F5F5F7;border:2px dashed #E8E8EC;min-height:120px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="document.getElementById(\'awe-file-inp\').click()">'
+      +(hasPhoto
+        ? '<img id="awe-photo-preview" src="'+s.image_url+'" style="width:100%;max-height:200px;object-fit:cover;display:block;">'
+        : '<div id="awe-photo-placeholder" style="text-align:center;padding:20px;"><div style="font-size:28px;">📷</div><div style="font-size:12px;font-weight:700;color:#9A9AB0;margin-top:4px;">Tap to add photo</div></div>')
+      +'<input type="file" id="awe-file-inp" accept="image/*" style="display:none;" onchange="awePhotoSelected(this)">'
+    +'</div>'
+    +(hasPhoto ? '<button type="button" onclick="aweRemovePhoto(\''+_watchEsc(s.image_url)+'\')" style="margin-top:6px;background:none;border:none;color:#E8192C;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;padding:0;">✕ Remove photo</button>' : '');
+
   ov.innerHTML='<div style="background:white;border-radius:16px;width:100%;max-width:460px;padding:22px;margin-top:40px;box-shadow:0 20px 60px rgba(0,0,0,.3);">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div style="font-size:17px;font-weight:900;color:#1A1A1A;">✏️ Edit spot</div><button onclick="adminWatchEditClose()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button></div>'
     +'<div style="font-size:12px;color:#9A9AB0;">Shared by '+_watchEsc(s.host_name||'Community')+'</div>'
@@ -14020,11 +14036,54 @@ function adminWatchEdit(id){
     +'<label style="'+lbl+'">Notes</label><textarea id="awe-notes" style="'+inp+'height:70px;resize:vertical;">'+_watchEsc(s.notes||'')+'</textarea>'
     +'<label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;font-weight:700;color:#1A1A1A;cursor:pointer;"><input type="checkbox" id="awe-resv" '+(s.reservation_needed?'checked':'')+' style="width:17px;height:17px;accent-color:#12A150;"> Reservation needed</label>'
     +'<label style="'+lbl+'">Reservation info</label><input id="awe-resv-info" style="'+inp+'" value="'+_watchEsc(s.reservation_info||'')+'">'
+    +photoSection
     +'<div style="display:flex;gap:10px;margin-top:18px;"><button onclick="adminWatchEditClose()" style="flex:1;background:#F0F2F5;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Cancel</button><button onclick="adminWatchSaveEdit('+id+')" style="flex:2;background:#12A150;color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Save changes</button></div>'
   +'</div>';
   ov.style.display='flex';
 }
+
+function awePhotoSelected(inp){
+  var file = inp.files && inp.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    _awePhotoNew = e.target.result;
+    _awePhotoRemove = false;
+    var wrap = document.getElementById('awe-photo-wrap');
+    if(wrap){
+      wrap.style.border = '2px solid #12A150';
+      var ph = document.getElementById('awe-photo-placeholder');
+      if(ph) ph.style.display = 'none';
+      var prev = document.getElementById('awe-photo-preview');
+      if(prev){ prev.src = _awePhotoNew; prev.style.display = 'block'; }
+      else {
+        var img = document.createElement('img');
+        img.id = 'awe-photo-preview';
+        img.src = _awePhotoNew;
+        img.style.cssText = 'width:100%;max-height:200px;object-fit:cover;display:block;';
+        wrap.insertBefore(img, wrap.firstChild);
+      }
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function aweRemovePhoto(){
+  _awePhotoRemove = true;
+  _awePhotoNew = null;
+  var wrap = document.getElementById('awe-photo-wrap');
+  if(wrap){
+    wrap.style.border = '2px dashed #E8E8EC';
+    var prev = document.getElementById('awe-photo-preview');
+    if(prev) prev.style.display = 'none';
+    var ph = document.getElementById('awe-photo-placeholder');
+    if(ph) ph.style.display = 'block';
+    else wrap.innerHTML = '<div id="awe-photo-placeholder" style="text-align:center;padding:20px;"><div style="font-size:28px;">📷</div><div style="font-size:12px;font-weight:700;color:#9A9AB0;margin-top:4px;">Tap to add photo</div></div><input type="file" id="awe-file-inp" accept="image/*" style="display:none;" onchange="awePhotoSelected(this)">';
+  }
+}
+
 function adminWatchEditClose(){ var ov=document.getElementById('adm-watch-edit-ov'); if(ov) ov.style.display='none'; }
+
 async function adminWatchSaveEdit(id){
   var g=function(i){ var el=document.getElementById(i); return el?el.value.trim():''; };
   var upd={
@@ -14038,6 +14097,16 @@ async function adminWatchSaveEdit(id){
     reservation_info:g('awe-resv-info')||null
   };
   if(!upd.venue_name){ showToast('Venue name required'); return; }
+
+  // Handle photo
+  if(_awePhotoRemove){
+    upd.image_url = null;
+  } else if(_awePhotoNew){
+    showToast('⏳ Compressing photo…');
+    try{ upd.image_url = await compressImage(_awePhotoNew, 1200, 0.82); }
+    catch(e){ upd.image_url = _awePhotoNew; }
+  }
+
   try{
     var r=await db.from('match_screenings').update(upd).eq('id',id);
     if(r&&r.error){ showToast('⚠️ '+r.error.message); return; }
