@@ -23237,6 +23237,10 @@ function openSpotReport(id){
   _spotReportId = id;
   var s=(watchSpots||[]).find(function(x){ return x.id===id; });
   var m=document.getElementById('spot-report-modal'); if(!m) return;
+  // The modal markup lives inside #screen-vdetail; reparent to <body> so it
+  // shows above whatever screen is active (it's position:fixed).
+  if(m.parentElement !== document.body) document.body.appendChild(m);
+  m.style.zIndex = '100000';
   var sub=document.getElementById('spot-report-sub');
   if(sub) sub.textContent = s ? ('Spot: '+(s.venue_name||'')) : '';
   document.getElementById('spot-report-field').value='';
