@@ -420,6 +420,7 @@ textarea.finput{resize:none;height:80px;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 @keyframes pulse{0%{transform:scale(1);opacity:.4}50%{transform:scale(1.8);opacity:.1}100%{transform:scale(1);opacity:.4}}
+@keyframes sk-pulse{0%,100%{opacity:.5}50%{opacity:1}}
 @keyframes hpop{0%{transform:scale(1)}40%{transform:scale(1.4)}100%{transform:scale(1)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fieldReveal{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
@@ -5229,75 +5230,77 @@ function dbAgo(ts) {
 
 // ── Load public deals (no auth required) ──────────────────────────────────────
 async function loadDealsFromSupabase() {
+  _dealsLoading = true;
   try {
     var today = new Date().toISOString().split('T')[0];
-    var [dr, ur, rr] = await Promise.all([
+
+    // Fetch deals + community deals together — render as soon as both arrive.
+    // Reviews are fetched separately in the background so they never block rendering.
+    var [dr, ur] = await Promise.all([
       db.from('deals').select('*, venues(name,category,dist_km)')
         .eq('status', 'active')
         .or('end_date.is.null,end_date.gte.' + today)
         .order('claimed', { ascending: false }),
-      db.from('community_deals').select('*').eq('status', 'approved').order('created_at', { ascending: false }),
-      db.from('reviews').select('deal_id,deal_kind,rating')
+      db.from('community_deals').select('*').eq('status', 'approved').order('created_at', { ascending: false })
     ]);
+
     if (dr.error) console.error('[Supabase] deals fetch error:', dr.error.message);
     if (ur.error){ console.error('[Supabase] community_deals fetch error:', ur.error.message); ucDeals = []; }
 
-    // Build rating lookup: { "verified:1": {sum, count}, "community:5": ... }
-    var ratingMap = {};
-    if (rr.data && rr.data.length) {
+    // Process verified deals
+    if (dr.data) {
+      vouchers = dr.data.map(dbDealToLocal);
+      try { localStorage.setItem('hh_deals_cache', JSON.stringify({v:vouchers,time:Date.now()})); } catch(e){}
+    } else { vouchers = []; }
+
+    // Process community deals
+    if (ur.data) {
+      var freshUC = ur.data.map(dbUCToLocal);
+      var freshIds = {};
+      freshUC.forEach(function(d){ if(d._dbId) freshIds[d._dbId] = true; });
+      var sessionKept = ucDeals.filter(function(d){ return d._sessionAdded && !freshIds[d._dbId]; });
+      ucDeals = sessionKept.concat(freshUC);
+      try { localStorage.setItem('hh_uc_deals_cache', JSON.stringify({u:ucDeals,time:Date.now()})); } catch(e){}
+    } else { ucDeals = []; }
+
+    // Render immediately — no longer waiting for reviews
+    _dealsLoading = false;
+    if (typeof renderCoupons === 'function') renderCoupons('all');
+    if (typeof renderUC === 'function') renderUC('all');
+    if (typeof renderTonightsPicks === 'function') renderTonightsPicks();
+    if (typeof recomputeDealDistances === 'function') recomputeDealDistances();
+
+    // Fetch reviews in background and silently update ratings once they arrive
+    db.from('reviews').select('deal_id,deal_kind,rating').then(function(rr){
+      if (!rr || !rr.data || !rr.data.length) return;
+      var ratingMap = {};
       rr.data.forEach(function(r){
         var key = r.deal_kind + ':' + r.deal_id;
         if (!ratingMap[key]) ratingMap[key] = { sum: 0, count: 0 };
-        ratingMap[key].sum   += r.rating;
-        ratingMap[key].count += 1;
+        ratingMap[key].sum += r.rating; ratingMap[key].count += 1;
       });
-    }
-
-    // Load ALL verified deals from database - NO filtering by localStorage
-    if (dr.data) {
-      vouchers = dr.data.map(dbDealToLocal);  // Convert ALL deals, don't filter by _removedVD
       vouchers.forEach(function(v){
         var agg = ratingMap['verified:' + v.id];
         if (agg && agg.count) v.rating = parseFloat((agg.sum / agg.count).toFixed(1));
       });
-      // Cache to localStorage for instant load next time
-      try { localStorage.setItem('hh_deals_cache', JSON.stringify({v:vouchers,time:Date.now()})); } catch(e){}
-      console.log('[loadDealsFromSupabase] Loaded', vouchers.length, 'verified deals from DB');
-    } else {
-      vouchers = []; // No verified deals from DB
-    }
-
-    // Load ALL approved community deals from database - NO filtering by localStorage
-    if (ur.data) {
-      var freshUC = ur.data.map(dbUCToLocal);  // Convert ALL deals, don't filter by _removedUC
-      freshUC.forEach(function(u){
+      ucDeals.forEach(function(u){
         var agg = ratingMap['community:' + u._dbId];
         if (agg && agg.count) u.rating = parseFloat((agg.sum / agg.count).toFixed(1));
       });
-      var freshIds = {};
-      freshUC.forEach(function(d){ if(d._dbId) freshIds[d._dbId] = true; });
-      // Preserve deals approved this session but not yet in the DB refresh result
-      var sessionKept = ucDeals.filter(function(d){ return d._sessionAdded && !freshIds[d._dbId]; });
-      ucDeals = sessionKept.concat(freshUC);
-      // Cache to localStorage for instant load next time
-      try { localStorage.setItem('hh_uc_deals_cache', JSON.stringify({u:ucDeals,time:Date.now()})); } catch(e){}
-      console.log('[loadDealsFromSupabase] Loaded', freshUC.length, 'community deals from DB');
-    } else {
-      ucDeals = []; // No community deals from DB
-    }
+      if (typeof renderCoupons === 'function') renderCoupons('all');
+      if (typeof renderUC === 'function') renderUC('all');
+    }).catch(function(){});
 
-    // Render deals immediately after loading for faster display
-    if (typeof renderCoupons === 'function') renderCoupons('all');
-    if (typeof renderUC === 'function') renderUC('all');
-    if (typeof renderTonightsPicks === 'function') renderTonightsPicks();
-    // Replace seeded distances with real ones once location is known
-    if (typeof recomputeDealDistances === 'function') recomputeDealDistances();
-  } catch (e) { console.warn('[Supabase] deals load failed — using seed data', e); }
+  } catch (e) {
+    _dealsLoading = false;
+    console.warn('[Supabase] deals load failed — using seed data', e);
+  }
 }
 
 function loadDealsFromCache(){
   vouchers = [];
   ucDeals = [];
+  _dealsLoading = true; // show skeleton until DB responds
   try {
     var cached = localStorage.getItem('hh_deals_cache');
     if(cached){
@@ -6243,6 +6246,7 @@ function adminDeleteCategory(id){
 // IMPORTANT: Only real data from database. No seed/test data.
 var vouchers = [];  // Populated from DB via loadDealsFromSupabase()
 var ucDeals = [];   // Populated from DB via loadDealsFromSupabase()
+var _dealsLoading = false; // true while the first DB fetch is in flight
 
 // ══ FILTER ENGINE ═══════════════════════════════════════════════════
 var fFilters = {
@@ -6908,11 +6912,23 @@ function renderCoupons(cat){
   var el = document.getElementById('coupon-scroll');
   if(!el) return;
   if(!list.length){
-    el.innerHTML='<div style="padding:36px 16px;text-align:center;color:var(--t3);">'
-      +'<div style="font-size:40px;margin-bottom:12px;">🔍</div>'
-      +'<div style="font-size:14px;font-weight:700;margin-bottom:14px;">No deals match your filters</div>'
-      +'<button onclick="clearAllFilters()" style="background:var(--red);color:white;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Clear filters</button>'
-      +'</div>';
+    if(_dealsLoading){
+      // Show skeleton cards while fetching — looks like real content loading
+      var sk='<div style="display:flex;gap:12px;overflow:hidden;padding:4px 0;">';
+      for(var _si=0;_si<3;_si++) sk+='<div style="flex:0 0 200px;border-radius:14px;overflow:hidden;background:#E8E8EC;animation:sk-pulse 1.4s ease-in-out infinite;animation-delay:'+(_si*0.15)+'s;">'
+        +'<div style="height:128px;background:#DCDCE0;"></div>'
+        +'<div style="padding:10px 12px;">'
+          +'<div style="height:11px;background:#DCDCE0;border-radius:6px;margin-bottom:8px;width:70%;"></div>'
+          +'<div style="height:9px;background:#DCDCE0;border-radius:6px;width:50%;"></div>'
+        +'</div></div>';
+      el.innerHTML=sk+'</div>';
+    } else {
+      el.innerHTML='<div style="padding:36px 16px;text-align:center;color:var(--t3);">'
+        +'<div style="font-size:40px;margin-bottom:12px;">🔍</div>'
+        +'<div style="font-size:14px;font-weight:700;margin-bottom:14px;">No deals match your filters</div>'
+        +'<button onclick="clearAllFilters()" style="background:var(--red);color:white;border:none;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Clear filters</button>'
+        +'</div>';
+    }
     return;
   }
   var shown = list.slice(0, 4);
