@@ -5019,6 +5019,7 @@ const db = supabase.createClient(SUPA_URL, SUPA_KEY, {
     detectSessionInUrl: true
   }
 });
+window.db = db; // Make available to save functions
 
 let currentUser = null;
 let currentProfile = null;
