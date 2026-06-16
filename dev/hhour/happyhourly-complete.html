@@ -4275,28 +4275,68 @@ function googleTranslateElementInit(){
         </div>
 
         <!-- ── COOKIE PREFERENCES ── -->
-        <div style="padding:4px 16px 4px;font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;">Cookie Preferences</div>
-        <div style="background:white;border-radius:14px;margin:0 16px 12px;overflow:hidden;border:1.5px solid var(--border);">
-          <div class="prow" style="cursor:default;">
-            <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">🍪</div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">Essential cookies</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Required for site to function</div></div>
-            <div style="padding:8px 12px;background:#F0F0F4;border-radius:8px;font-size:12px;font-weight:700;color:#9A9AB0;">Always On</div>
+        <div style="padding:16px 16px 0;font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;">Cookie Preferences</div>
+        <div style="padding:0 16px 12px;">
+          <div style="background:white;border-radius:14px;overflow:hidden;border:1.5px solid var(--border);">
+            <!-- Essential Cookies -->
+            <div style="padding:14px 16px;border-bottom:1px solid #F0F0F4;">
+              <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div style="font-size:20px;flex-shrink:0;">🍪</div>
+                <div style="flex:1;">
+                  <div style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Essential Cookies</div>
+                  <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:8px;">Required for basic site functionality. These cookies cannot be disabled as they are necessary for the app to work properly and securely.</div>
+                  <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Authentication • Session • Security</div>
+                </div>
+                <div style="padding:6px 10px;background:#F0F0F4;border-radius:6px;font-size:11px;font-weight:700;color:#9A9AB0;flex-shrink:0;white-space:nowrap;">Always On</div>
+              </div>
+            </div>
+
+            <!-- Analytics Cookies -->
+            <div style="padding:14px 16px;border-bottom:1px solid #F0F0F4;">
+              <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div style="font-size:20px;flex-shrink:0;">📈</div>
+                <div style="flex:1;">
+                  <div style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Analytics Cookies</div>
+                  <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:8px;">Help us understand how you interact with the app. This information helps us improve features and user experience.</div>
+                  <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Usage tracking • Performance • User behavior</div>
+                </div>
+                <div class="st-tog on" id="st-tog-cookies-analytics" onclick="stToggleCookie('analytics',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
+              </div>
+            </div>
+
+            <!-- Marketing Cookies -->
+            <div style="padding:14px 16px;border-bottom:1px solid #F0F0F4;">
+              <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div style="font-size:20px;flex-shrink:0;">📢</div>
+                <div style="flex:1;">
+                  <div style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Marketing Cookies</div>
+                  <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:8px;">Allow us to show you personalized advertisements and promotional content based on your interests and activity.</div>
+                  <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Targeted ads • Promotions • Retargeting</div>
+                </div>
+                <div class="st-tog" id="st-tog-cookies-marketing" onclick="stToggleCookie('marketing',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
+              </div>
+            </div>
+
+            <!-- Personalization Cookies -->
+            <div style="padding:14px 16px;">
+              <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div style="font-size:20px;flex-shrink:0;">✨</div>
+                <div style="flex:1;">
+                  <div style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Personalization Cookies</div>
+                  <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:8px;">Remember your preferences and settings to personalize your experience, such as language and display options.</div>
+                  <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Preferences • Settings • Language</div>
+                </div>
+                <div class="st-tog on" id="st-tog-cookies-personalization" onclick="stToggleCookie('personalization',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
+              </div>
+            </div>
           </div>
-          <div class="prow" style="cursor:default;">
-            <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">📈</div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">Analytics</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Help us understand how you use the app</div></div>
-            <div class="st-tog on" id="st-tog-cookies-analytics" onclick="stToggleCookie('analytics',this)"><div class="st-tok"></div></div>
+
+          <!-- Action Buttons -->
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <button onclick="stCookieAcceptAll()" style="flex:1;background:var(--red);color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Accept All</button>
+            <button onclick="stCookieRejectNonEssential()" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Reject Non-Essential</button>
           </div>
-          <div class="prow" style="cursor:default;">
-            <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">📢</div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">Marketing</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Personalized ads and promotions</div></div>
-            <div class="st-tog" id="st-tog-cookies-marketing" onclick="stToggleCookie('marketing',this)"><div class="st-tok"></div></div>
-          </div>
-          <div class="prow" style="cursor:default;">
-            <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">✨</div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">Personalization</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Remember your preferences</div></div>
-            <div class="st-tog on" id="st-tog-cookies-personalization" onclick="stToggleCookie('personalization',this)"><div class="st-tok"></div></div>
-          </div>
+          <button onclick="stCookieSavePreferences()" style="width:100%;background:white;color:var(--red);border:1.5px solid var(--red);border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;margin-top:8px;">Save Preferences</button>
         </div>
 
         <!-- ── ABOUT ── -->
@@ -6892,6 +6932,29 @@ function stToggleCookie(key, el){
     personalization: 'Personalization cookies'
   };
   showToast((stState[stateKey] ? '✓ ' : '✗ ') + (labels[key]||key) + ' ' + (stState[stateKey] ? 'enabled' : 'disabled'));
+}
+
+function stCookieAcceptAll(){
+  stState.cookiesAnalytics = true;
+  stState.cookiesMarketing = true;
+  stState.cookiesPersonalization = true;
+  stSaveSettings();
+  stSyncToggles();
+  showToast('✓ All cookies accepted');
+}
+
+function stCookieRejectNonEssential(){
+  stState.cookiesAnalytics = false;
+  stState.cookiesMarketing = false;
+  stState.cookiesPersonalization = false;
+  stSaveSettings();
+  stSyncToggles();
+  showToast('✗ Non-essential cookies rejected');
+}
+
+function stCookieSavePreferences(){
+  stSaveSettings();
+  showToast('✓ Cookie preferences saved');
 }
 
 // ══ MERCHANT mePage + sheet helpers ══════════════════════════════════
