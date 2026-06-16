@@ -5672,6 +5672,7 @@ async function handleAuthSession(user) {
   }
   var _cb  = document.getElementById('prof-cr-balance');    if(_cb)  _cb.textContent  = ((profile && profile.credits) || 0).toLocaleString();
   var _cbd = document.getElementById('cr-balance-display'); if(_cbd) _cbd.textContent = ((profile && profile.credits) || 0).toLocaleString();
+  crBalance = (profile && profile.credits) || 0;
   isGuest = false;
   updateGuestVisibility();
   var ls = document.getElementById('login-screen');
@@ -22525,7 +22526,7 @@ function meSubmitPayout(){
 // ══════════════════════════════════════════════════
 // CREDITS SYSTEM
 // ══════════════════════════════════════════════════
-var crBalance=1260;var crRedeemed=[];
+var crBalance=0;var crRedeemed=[];
 var crTiers=[
   {name:'Bronze',  icon:'🥉',min:function(){ return _ccGet('tierBronze',0);    },max:function(){ return _ccGet('tierSilver',500)-1;   }},
   {name:'Silver',  icon:'🥈',min:function(){ return _ccGet('tierSilver',500);  },max:function(){ return _ccGet('tierGold',1000)-1;    }},
