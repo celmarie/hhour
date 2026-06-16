@@ -6621,39 +6621,42 @@ async function stSaveProfile(){
         if(typeof currentProfile!=='undefined' && currentProfile) currentProfile.avatar_url = upd.avatar_url;
       }
       if(Object.keys(upd).length){
-        // .select() returns the updated row — lets us CONFIRM it actually saved
-        // (an RLS/anon no-op returns 0 rows with no error, which we must catch).
-        var r = await db.from('profiles').update(upd).eq('id', currentUser.id).select();
-        console.log('[stSaveProfile] update result:', {error: r && r.error, data: r && r.data, rowCount: r && r.data && r.data.length});
-        // If a column doesn't exist yet (e.g. 'phone' not added), drop it and retry.
-        if(r && r.error){
-          var _m = (r.error.message || '').toLowerCase();
+        // DO the update first
+        var updRes = await db.from('profiles').update(upd).eq('id', currentUser.id);
+        if(updRes && updRes.error){
+          var _m = (updRes.error.message || '').toLowerCase();
           var _stripped = false;
           ['phone','avatar_url'].forEach(function(col){
             if(_m.indexOf(col) !== -1 && upd[col] !== undefined){ delete upd[col]; _stripped = true; }
           });
           if(_stripped && Object.keys(upd).length){
-            console.log('[stSaveProfile] retrying without:', Object.keys(upd));
-            r = await db.from('profiles').update(upd).eq('id', currentUser.id).select();
-            console.log('[stSaveProfile] retry result:', {error: r && r.error, data: r && r.data, rowCount: r && r.data && r.data.length});
+            updRes = await db.from('profiles').update(upd).eq('id', currentUser.id);
+          } else {
+            showToast('⚠️ Save failed: ' + updRes.error.message);
+            console.warn('[stSaveProfile]', updRes.error);
+            return;
           }
         }
+        if(updRes && updRes.error){
+          showToast('⚠️ Save failed: ' + updRes.error.message);
+          console.warn('[stSaveProfile]', updRes.error);
+          return;
+        }
+        // THEN fetch the fresh row separately (no caching issues)
+        var r = await db.from('profiles').select('*').eq('id', currentUser.id).single();
         if(r && r.error){
           showToast('⚠️ Save failed: ' + r.error.message);
           console.warn('[stSaveProfile]', r.error);
           return;
         }
-        if(!r || !r.data || !r.data.length){
-          // Update matched 0 rows → session/permission problem, not a real save.
+        if(!r || !r.data){
           showToast('⚠️ Couldn\'t save — please sign out and sign in again.');
-          console.warn('[stSaveProfile] update affected 0 rows (auth/RLS)');
+          console.warn('[stSaveProfile] fetch after update returned no row');
           return;
         }
         // Reflect the saved row back into memory + header
-        console.log('[stSaveProfile] reflecting saved row:', r.data[0]);
-        if(currentProfile) Object.assign(currentProfile, r.data[0]);
-        console.log('[stSaveProfile] currentProfile after update:', currentProfile);
-        var _pn=document.querySelector('.prof-name'); if(_pn && r.data[0].name) _pn.textContent=r.data[0].name;
+        if(currentProfile) Object.assign(currentProfile, r.data);
+        var _pn=document.querySelector('.prof-name'); if(_pn && r.data.name) _pn.textContent=r.data.name;
       }
       showToast('✅ Profile saved');
     }catch(e){
