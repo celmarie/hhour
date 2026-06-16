@@ -6518,10 +6518,26 @@ try {
   }
 } catch(e) {}
 
+// Restore language preference
+try {
+  var savedLang = localStorage.getItem('hh-language');
+  if(savedLang && savedLang !== 'English') {
+    var code = _GT_CODES[savedLang] || 'en';
+    if(code !== 'en') {
+      setTimeout(function() { _gtApply(code, savedLang, 12); }, 500);
+    }
+  }
+} catch(e) {}
+
 // Sync UI to match loaded settings, and apply dark mode if needed
 setTimeout(function() {
   stSyncToggles();
   if(stState.dark) stApplyDark(true);
+  // Set language select to saved value
+  try {
+    var savedLang = localStorage.getItem('hh-language') || 'English';
+    document.querySelectorAll('select[onchange*="stSetLanguage"]').forEach(function(s){ s.value = savedLang; });
+  } catch(e) {}
 }, 100);
 
 // Save settings to localStorage
@@ -6793,6 +6809,8 @@ function stSetLanguage(val){
   var code = _GT_CODES[val] || 'en';
   // Keep both language selects in sync
   document.querySelectorAll('select[onchange*="stSetLanguage"]').forEach(function(s){ s.value = val; });
+  // Save language preference
+  try { localStorage.setItem('hh-language', val); } catch(e) {}
   if(code === 'en'){
     // Reset to English — clear cookie and reload
     document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
@@ -6822,6 +6840,7 @@ function _gtApply(code, label, retries){
 
 function stToggle2FA(el){
   stState.twoFactor = !stState.twoFactor;
+  stSaveSettings();
   el.classList.toggle('on', stState.twoFactor);
   if(stState.twoFactor){
     showToast('🔐 Two-factor auth enabled');
