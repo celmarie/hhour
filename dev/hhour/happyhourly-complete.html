@@ -6509,6 +6509,28 @@ var stState = {
   distance: 'km',
 };
 
+// Load settings from localStorage if they exist
+try {
+  var saved = localStorage.getItem('hh-settings');
+  if(saved) {
+    var loaded = JSON.parse(saved);
+    Object.assign(stState, loaded);
+  }
+} catch(e) {}
+
+// Sync UI to match loaded settings, and apply dark mode if needed
+setTimeout(function() {
+  stSyncToggles();
+  if(stState.dark) stApplyDark(true);
+}, 100);
+
+// Save settings to localStorage
+function stSaveSettings() {
+  try {
+    localStorage.setItem('hh-settings', JSON.stringify(stState));
+  } catch(e) {}
+}
+
 // Sync all toggle visuals to match stState
 function stSyncToggles(){
   var map = {
@@ -6526,11 +6548,21 @@ function stSyncToggles(){
     var el = document.getElementById(id);
     if(el) el.classList.toggle('on', !!stState[map[id]]);
   });
+  // Also sync distance unit buttons
+  document.querySelectorAll('.st-dist-btn').forEach(function(b){
+    var unit = b.textContent.trim();
+    if(unit === stState.distance){
+      b.style.background = 'var(--red)'; b.style.color = 'white'; b.style.fontWeight = '800';
+    } else {
+      b.style.background = 'none'; b.style.color = 'var(--t3)'; b.style.fontWeight = '700';
+    }
+  });
 }
 
 function stToggle(key, el){
   stState[key] = !stState[key];
   el.classList.toggle('on', stState[key]);
+  stSaveSettings();
   var labels = {
     dark:'Dark mode', deals:'New deal alerts', expiry:'Expiry reminders',
     vouchers:'Voucher updates', credits:'Credits notifications',
@@ -6741,6 +6773,7 @@ async function stSavePassword(){
 
 function stSetDistance(unit, btn){
   stState.distance = unit;
+  stSaveSettings();
   document.querySelectorAll('.st-dist-btn').forEach(function(b){
     b.style.background = 'none'; b.style.color = 'var(--t3)'; b.style.fontWeight = '700';
   });
