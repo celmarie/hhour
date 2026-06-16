@@ -4373,10 +4373,6 @@ function googleTranslateElementInit(){
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Full Name</label>
               <input id="st-edit-name" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="Your full name" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
             </div>
-            <div style="margin-bottom:12px;">
-              <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Email Address</label>
-              <input id="st-edit-email" type="email" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="your@email.com" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
-            </div>
             <div style="margin-bottom:16px;">
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Phone Number <span style="color:var(--t3);font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></label>
               <input id="st-edit-phone" type="tel" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="+34 600 000 000" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
@@ -6583,9 +6579,8 @@ function stEditPhotoSelected(input){
 
 async function stSaveProfile(){
   var nameEl = document.getElementById('st-edit-name');
-  var emailEl = document.getElementById('st-edit-email');
   var phoneEl = document.getElementById('st-edit-phone');
-  if(!nameEl || !emailEl) return;
+  if(!nameEl) return;
 
   var name = nameEl.value.trim();
   var phone = phoneEl ? phoneEl.value.trim() : '';
@@ -6676,12 +6671,8 @@ function openEditProfile(){
   // Pre-fill from the loaded profile (authoritative), falling back to the DOM.
   var currentName = (currentProfile && currentProfile.name)
                  || (document.querySelector('.prof-name')||{}).textContent || '';
-  var currentEmail = (currentUser && currentUser.email)
-                  || (currentProfile && currentProfile.email)
-                  || (document.querySelector('.prof-email')||{}).textContent || '';
   var currentPhone = (currentProfile && currentProfile.phone) || '';
   var ni = document.getElementById('st-edit-name'); if(ni) ni.value = currentName;
-  var ei = document.getElementById('st-edit-email'); if(ei) ei.value = currentEmail;
   var pi = document.getElementById('st-edit-phone'); if(pi) pi.value = currentPhone;
 
   // Preload current avatar into the edit preview
