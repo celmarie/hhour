@@ -4274,6 +4274,31 @@ function googleTranslateElementInit(){
           </div>
         </div>
 
+        <!-- ── COOKIE PREFERENCES ── -->
+        <div style="padding:4px 16px 4px;font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;">Cookie Preferences</div>
+        <div style="background:white;border-radius:14px;margin:0 16px 12px;overflow:hidden;border:1.5px solid var(--border);">
+          <div class="prow" style="cursor:default;">
+            <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">🍪</div>
+            <div style="flex:1;"><div class="prow-text" style="margin:0;">Essential cookies</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Required for site to function</div></div>
+            <div style="padding:8px 12px;background:#F0F0F4;border-radius:8px;font-size:12px;font-weight:700;color:#9A9AB0;">Always On</div>
+          </div>
+          <div class="prow" style="cursor:default;">
+            <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">📈</div>
+            <div style="flex:1;"><div class="prow-text" style="margin:0;">Analytics</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Help us understand how you use the app</div></div>
+            <div class="st-tog on" id="st-tog-cookies-analytics" onclick="stToggleCookie('analytics',this)"><div class="st-tok"></div></div>
+          </div>
+          <div class="prow" style="cursor:default;">
+            <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">📢</div>
+            <div style="flex:1;"><div class="prow-text" style="margin:0;">Marketing</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Personalized ads and promotions</div></div>
+            <div class="st-tog" id="st-tog-cookies-marketing" onclick="stToggleCookie('marketing',this)"><div class="st-tok"></div></div>
+          </div>
+          <div class="prow" style="cursor:default;">
+            <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">✨</div>
+            <div style="flex:1;"><div class="prow-text" style="margin:0;">Personalization</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Remember your preferences</div></div>
+            <div class="st-tog on" id="st-tog-cookies-personalization" onclick="stToggleCookie('personalization',this)"><div class="st-tok"></div></div>
+          </div>
+        </div>
+
         <!-- ── ABOUT ── -->
         <div style="padding:4px 16px 4px;font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;">About</div>
         <div style="background:white;border-radius:14px;margin:0 16px 12px;overflow:hidden;border:1.5px solid var(--border);">
@@ -6508,6 +6533,9 @@ var stState = {
   public: true,
   twoFactor: false,
   distance: 'km',
+  cookiesAnalytics: true,
+  cookiesMarketing: false,
+  cookiesPersonalization: true,
 };
 
 // Load settings from localStorage if they exist
@@ -6560,6 +6588,9 @@ function stSyncToggles(){
     'st-tog-location':  'location',
     'st-tog-public':    'public',
     'st-tog-analytics': 'analytics',
+    'st-tog-cookies-analytics': 'cookiesAnalytics',
+    'st-tog-cookies-marketing': 'cookiesMarketing',
+    'st-tog-cookies-personalization': 'cookiesPersonalization',
   };
   Object.keys(map).forEach(function(id){
     var el = document.getElementById(id);
@@ -6848,6 +6879,19 @@ function stToggle2FA(el){
   } else {
     showToast('Two-factor auth disabled');
   }
+}
+
+function stToggleCookie(key, el){
+  var stateKey = 'cookies' + key.charAt(0).toUpperCase() + key.slice(1);
+  stState[stateKey] = !stState[stateKey];
+  stSaveSettings();
+  el.classList.toggle('on', stState[stateKey]);
+  var labels = {
+    analytics: 'Analytics cookies',
+    marketing: 'Marketing cookies',
+    personalization: 'Personalization cookies'
+  };
+  showToast((stState[stateKey] ? '✓ ' : '✗ ') + (labels[key]||key) + ' ' + (stState[stateKey] ? 'enabled' : 'disabled'));
 }
 
 // ══ MERCHANT mePage + sheet helpers ══════════════════════════════════
