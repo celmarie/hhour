@@ -4272,71 +4272,11 @@ function googleTranslateElementInit(){
             <div style="flex:1;"><div class="prow-text" style="margin:0;">Two-factor authentication</div><div id="st-2fa-sub" style="font-size:12px;font-weight:700;color:#d97706;margin-top:2px;">Not enabled — tap to enable</div></div>
             <div class="st-tog" id="st-tog-2fa" onclick="stToggle2FA(this)"><div class="st-tok"></div></div>
           </div>
-        </div>
-
-        <!-- ── COOKIE PREFERENCES ── -->
-        <div style="padding:16px 16px 0;font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;">Cookie Preferences</div>
-        <div style="padding:0 16px 12px;">
-          <div style="background:white;border-radius:14px;overflow:hidden;border:1.5px solid var(--border);">
-            <!-- Essential Cookies -->
-            <div style="padding:14px 16px;border-bottom:1px solid #F0F0F4;">
-              <div style="display:flex;align-items:flex-start;gap:12px;">
-                <div style="font-size:20px;flex-shrink:0;">🍪</div>
-                <div style="flex:1;">
-                  <div style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Essential Cookies</div>
-                  <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:8px;">Required for basic site functionality. These cookies cannot be disabled as they are necessary for the app to work properly and securely.</div>
-                  <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Authentication • Session • Security</div>
-                </div>
-                <div style="padding:6px 10px;background:#F0F0F4;border-radius:6px;font-size:11px;font-weight:700;color:#9A9AB0;flex-shrink:0;white-space:nowrap;">Always On</div>
-              </div>
-            </div>
-
-            <!-- Analytics Cookies -->
-            <div style="padding:14px 16px;border-bottom:1px solid #F0F0F4;">
-              <div style="display:flex;align-items:flex-start;gap:12px;">
-                <div style="font-size:20px;flex-shrink:0;">📈</div>
-                <div style="flex:1;">
-                  <div style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Analytics Cookies</div>
-                  <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:8px;">Help us understand how you interact with the app. This information helps us improve features and user experience.</div>
-                  <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Usage tracking • Performance • User behavior</div>
-                </div>
-                <div class="st-tog on" id="st-tog-cookies-analytics" onclick="stToggleCookie('analytics',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
-              </div>
-            </div>
-
-            <!-- Marketing Cookies -->
-            <div style="padding:14px 16px;border-bottom:1px solid #F0F0F4;">
-              <div style="display:flex;align-items:flex-start;gap:12px;">
-                <div style="font-size:20px;flex-shrink:0;">📢</div>
-                <div style="flex:1;">
-                  <div style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Marketing Cookies</div>
-                  <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:8px;">Allow us to show you personalized advertisements and promotional content based on your interests and activity.</div>
-                  <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Targeted ads • Promotions • Retargeting</div>
-                </div>
-                <div class="st-tog" id="st-tog-cookies-marketing" onclick="stToggleCookie('marketing',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
-              </div>
-            </div>
-
-            <!-- Personalization Cookies -->
-            <div style="padding:14px 16px;">
-              <div style="display:flex;align-items:flex-start;gap:12px;">
-                <div style="font-size:20px;flex-shrink:0;">✨</div>
-                <div style="flex:1;">
-                  <div style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Personalization Cookies</div>
-                  <div style="font-size:12px;color:var(--t3);line-height:1.5;margin-bottom:8px;">Remember your preferences and settings to personalize your experience, such as language and display options.</div>
-                  <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Preferences • Settings • Language</div>
-                </div>
-                <div class="st-tog on" id="st-tog-cookies-personalization" onclick="stToggleCookie('personalization',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
-              </div>
-            </div>
+          <div class="prow" onclick="goScreen('cookiepolicy')">
+            <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">🍪</div>
+            <div style="flex:1;"><div class="prow-text" style="margin:0;">Cookie Policy</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Manage cookie preferences</div></div>
+            <div class="prow-arrow">›</div>
           </div>
-
-          <!-- Action Buttons -->
-          <div style="display:flex;gap:10px;margin-top:14px;">
-            <button onclick="stCookieAcceptAll()" style="flex:1;background:var(--red);color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Accept All</button>
-            <button onclick="stCookieRejectNonEssential()" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Reject Non-Essential</button>
-          </div>
-          <button onclick="stCookieSavePreferences()" style="width:100%;background:white;color:var(--red);border:1.5px solid var(--red);border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;margin-top:8px;">Save Preferences</button>
         </div>
 
         <!-- ── ABOUT ── -->
@@ -4938,6 +4878,83 @@ function googleTranslateElementInit(){
     <div class="screen" id="screen-privacy">
       <div class="vd-hdr"><button class="vd-back" onclick="goBack()">‹</button><div class="vd-hdr-title">Privacy Policy 🔐</div></div>
       <div id="screen-privacy-body" style="padding:16px 20px 32px;white-space:pre-wrap;font-size:13px;color:var(--t2);font-weight:500;line-height:1.75;"></div>
+    </div>
+
+    <!-- ══ COOKIE POLICY ══ -->
+    <div class="screen" id="screen-cookiepolicy" style="overflow-y:auto;-webkit-overflow-scrolling:touch;">
+      <div class="vd-hdr"><button class="vd-back" onclick="goBack()">‹</button><div class="vd-hdr-title">Cookie Policy 🍪</div></div>
+      <div style="padding:20px;background:white;color:var(--text);font-size:14px;line-height:1.6;">
+        <h2 style="font-size:20px;font-weight:900;margin-bottom:12px;color:#1A1A1A;">Cookie Preferences</h2>
+        <p style="font-size:13px;color:var(--t3);margin-bottom:20px;">We use cookies to improve your experience. Manage your preferences below.</p>
+
+        <!-- Essential Cookies -->
+        <div style="background:#F9F9FB;border-radius:12px;padding:14px;margin-bottom:12px;border-left:4px solid var(--red);">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="font-size:18px;flex-shrink:0;">🍪</div>
+            <div style="flex:1;">
+              <div style="font-weight:800;color:#1A1A1A;margin-bottom:4px;">Essential Cookies</div>
+              <div style="font-size:12px;color:var(--t3);margin-bottom:8px;">Required for basic functionality. Cannot be disabled.</div>
+              <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Authentication • Session • Security</div>
+            </div>
+            <div style="padding:6px 10px;background:#F0F0F4;border-radius:6px;font-size:11px;font-weight:700;color:#9A9AB0;flex-shrink:0;">Always On</div>
+          </div>
+        </div>
+
+        <!-- Analytics Cookies -->
+        <div style="background:#F9F9FB;border-radius:12px;padding:14px;margin-bottom:12px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="font-size:18px;flex-shrink:0;">📈</div>
+            <div style="flex:1;">
+              <div style="font-weight:800;color:#1A1A1A;margin-bottom:4px;">Analytics Cookies</div>
+              <div style="font-size:12px;color:var(--t3);margin-bottom:8px;">Help us understand how you use the app to improve features.</div>
+              <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Usage tracking • Performance • User behavior</div>
+            </div>
+            <div class="st-tog on" id="st-tog-cookies-analytics" onclick="stToggleCookie('analytics',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
+          </div>
+        </div>
+
+        <!-- Marketing Cookies -->
+        <div style="background:#F9F9FB;border-radius:12px;padding:14px;margin-bottom:12px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="font-size:18px;flex-shrink:0;">📢</div>
+            <div style="flex:1;">
+              <div style="font-weight:800;color:#1A1A1A;margin-bottom:4px;">Marketing Cookies</div>
+              <div style="font-size:12px;color:var(--t3);margin-bottom:8px;">Show you personalized ads and promotions.</div>
+              <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Targeted ads • Promotions • Retargeting</div>
+            </div>
+            <div class="st-tog" id="st-tog-cookies-marketing" onclick="stToggleCookie('marketing',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
+          </div>
+        </div>
+
+        <!-- Personalization Cookies -->
+        <div style="background:#F9F9FB;border-radius:12px;padding:14px;margin-bottom:20px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="font-size:18px;flex-shrink:0;">✨</div>
+            <div style="flex:1;">
+              <div style="font-weight:800;color:#1A1A1A;margin-bottom:4px;">Personalization Cookies</div>
+              <div style="font-size:12px;color:var(--t3);margin-bottom:8px;">Remember your preferences and settings.</div>
+              <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Preferences • Settings • Language</div>
+            </div>
+            <div class="st-tog on" id="st-tog-cookies-personalization" onclick="stToggleCookie('personalization',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <button onclick="stCookieAcceptAll()" style="flex:1;background:var(--red);color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Accept All</button>
+          <button onclick="stCookieRejectNonEssential()" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Reject</button>
+        </div>
+        <button onclick="stCookieSavePreferences()" style="width:100%;background:white;color:var(--red);border:1.5px solid var(--red);border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:32px;">Save Preferences</button>
+
+        <h3 style="font-size:16px;font-weight:900;margin-top:24px;margin-bottom:12px;color:#1A1A1A;">What Are Cookies?</h3>
+        <p style="font-size:13px;color:var(--t2);margin-bottom:16px;">Cookies are small text files stored on your device that help us remember your preferences and understand how you use our app. We also use similar technologies like pixels and web beacons.</p>
+
+        <h3 style="font-size:16px;font-weight:900;margin-top:20px;margin-bottom:12px;color:#1A1A1A;">How We Use Cookies</h3>
+        <p style="font-size:13px;color:var(--t2);margin-bottom:16px;">We use cookies to provide core functionality, analyze how our app is used, remember your preferences, and deliver personalized content and advertisements.</p>
+
+        <h3 style="font-size:16px;font-weight:900;margin-top:20px;margin-bottom:12px;color:#1A1A1A;">Your Rights</h3>
+        <p style="font-size:13px;color:var(--t2);margin-bottom:32px;">You can change your cookie preferences at any time using the toggles above. You can also control cookies through your browser settings, though this may affect app functionality.</p>
+      </div>
     </div>
 
     <!-- ══ GENERIC CONTENT PAGE (footer links → admin-editable content) ══ -->
@@ -11128,7 +11145,7 @@ function adminUpdateDealsBadge(){
 }
 
 // NAVIGATION
-const navList=['deals','alerts','map','saved','profile','settings','credits','community','post','myvouchers','vdetail','invitedeals','business','support','terms','privacy','qr','alldeals','mycontribs','watch'];
+const navList=['deals','alerts','map','saved','profile','settings','credits','community','post','myvouchers','vdetail','invitedeals','business','support','terms','privacy','cookiepolicy','qr','alldeals','mycontribs','watch'];
 function updateGuestVisibility(){
   // Hide stats for guests
   var statCards = document.getElementById('prof-stat-cards');
