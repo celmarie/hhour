@@ -2753,6 +2753,20 @@ function googleTranslateElementInit(){
 <div id="_gt_el" style="display:none;"></div>
 <div class="shell">
 
+  <!-- ══ COOKIE CONSENT BANNER (first-time visitors) ══ -->
+  <div id="cookie-consent-banner" style="position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #E8E8EC;padding:16px;z-index:999;display:none;box-shadow:0 -2px 8px rgba(0,0,0,.08);max-height:200px;overflow-y:auto;">
+    <div style="max-width:1200px;margin:0 auto;display:flex;align-items:flex-start;gap:16px;justify-content:space-between;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <div style="font-weight:800;color:#1A1A1A;margin-bottom:4px;">🍪 Cookie Preferences</div>
+        <div style="font-size:12px;color:var(--t3);line-height:1.5;">We use cookies to enhance your experience. Essential cookies are always on. Customize your preferences or accept all.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0;">
+        <button onclick="stCookieConsentReject()" style="background:#F5F5F7;color:#555;border:none;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Customize</button>
+        <button onclick="stCookieConsentAccept()" style="background:var(--red);color:white;border:none;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Accept All</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ DESKTOP / WEB SIDEBAR (hidden on mobile) ══ -->
   <aside class="web-sidebar">
     <div class="web-logo">
@@ -5162,6 +5176,9 @@ if(typeof db !== 'undefined' && db.auth){
   initializeAuth().catch(function(e){ console.error('[initializeAuth] Error:', e); });
 }
 
+// Show cookie consent banner to first-time visitors
+setTimeout(stShowCookieConsentBanner, 1000);
+
 // ── Price / discount helpers ──────────────────────────────────────────────────
 function fmtPriceDisplay(p) {
   if (!p) return '';
@@ -6972,6 +6989,35 @@ function stCookieRejectNonEssential(){
 function stCookieSavePreferences(){
   stSaveSettings();
   showToast('✓ Cookie preferences saved');
+}
+
+function stCookieConsentAccept(){
+  stState.cookiesAnalytics = true;
+  stState.cookiesMarketing = true;
+  stState.cookiesPersonalization = true;
+  stSaveSettings();
+  try { localStorage.setItem('hh-cookie-consent-shown', 'true'); } catch(e) {}
+  var banner = document.getElementById('cookie-consent-banner');
+  if(banner) banner.style.display = 'none';
+  showToast('✓ Cookie preferences updated');
+}
+
+function stCookieConsentReject(){
+  try { localStorage.setItem('hh-cookie-consent-shown', 'true'); } catch(e) {}
+  var banner = document.getElementById('cookie-consent-banner');
+  if(banner) banner.style.display = 'none';
+  goScreen('cookiepolicy');
+  setTimeout(function(){ showToast('Customize your cookie preferences'); }, 300);
+}
+
+function stShowCookieConsentBanner(){
+  try {
+    var shown = localStorage.getItem('hh-cookie-consent-shown');
+    if(!shown){
+      var banner = document.getElementById('cookie-consent-banner');
+      if(banner) banner.style.display = 'flex';
+    }
+  } catch(e) {}
 }
 
 // ══ MERCHANT mePage + sheet helpers ══════════════════════════════════
