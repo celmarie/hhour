@@ -5146,7 +5146,7 @@ function dbDealToLocal(row) {
     claimed: row.claimed || row.slots_sold || 0,
     slotsTotal: row.slots_total || 100,
     slotsSold: row.slots_sold || 0,
-    dist: dk < 1 ? Math.round(dk * 1000) + 'm' : dk.toFixed(1) + ' km',
+    dist: (function(){ var useKm = stState.distance === 'km'; var d = useKm ? dk : (dk * 0.621371); return d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + ' ' + (useKm ? 'km' : 'mi'); })(),
     distKm: dk,
     days: row.days || 'Daily',
     hours: row.hours || '5PM–10PM',
@@ -5189,7 +5189,7 @@ function dbUCToLocal(row) {
     currency: row.currency || 'EUR',
     isFree: !!row.is_free,
     off: computeOffBadge(row),
-    dist: dk < 1 ? Math.round(dk * 1000) + 'm' : dk.toFixed(1) + ' km',
+    dist: (function(){ var useKm = stState.distance === 'km'; var d = useKm ? dk : (dk * 0.621371); return d < 1 ? Math.round(d * 1000) + 'm' : d.toFixed(1) + ' ' + (useKm ? 'km' : 'mi'); })(),
     distKm: dk,
     rating: 0,
     cat: row.category || 'bars',
@@ -7138,7 +7138,8 @@ function recomputeDealDistances(){
       if(loc){
         var km = _haversineKm(_userLoc.lat, _userLoc.lng, loc.lat, loc.lng);
         d.distKm = km;
-        d.dist = km < 1 ? Math.round(km*1000)+'m' : km.toFixed(1)+' km';
+        var useKm = stState.distance === 'km'; var d_val = useKm ? km : (km * 0.621371);
+        d.dist = d_val < 1 ? Math.round(d_val*1000)+'m' : d_val.toFixed(1)+' ' + (useKm ? 'km' : 'mi');
         changed = true;
       }
       done();
