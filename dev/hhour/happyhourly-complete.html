@@ -112,14 +112,6 @@ body{font-family:'Inter',sans-serif;background:#111;display:flex;justify-content
 /* COUPON CARDS */
 .cscroll{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin:0 -18px;padding-left:18px;padding-right:18px;margin-bottom:24px;}
 .cscroll::-webkit-scrollbar{display:none;}
-#picks-scroll::-webkit-scrollbar{display:none;}
-.pick-card{flex-shrink:0;width:150px;border-radius:16px;overflow:hidden;cursor:pointer;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.12);transition:transform .18s;}
-.pick-card:active{transform:scale(.97);}
-.pick-img{width:150px;height:100px;object-fit:cover;display:block;background:#F0F0F4;}
-.pick-body{padding:10px 12px 12px;background:white;}
-.pick-off{position:absolute;top:8px;left:8px;background:#E8192C;color:white;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:800;font-family:Inter,sans-serif;}
-.pick-name{font-size:13px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
-.pick-meta{font-size:11px;color:#9A9AB0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ccard{width:240px;flex-shrink:0;background:white;border-radius:18px;overflow:hidden;
   box-shadow:0 4px 20px rgba(0,0,0,.12);cursor:pointer;
   transition:transform .2s,box-shadow .2s;}
@@ -292,7 +284,7 @@ body{font-family:'Inter',sans-serif;background:#111;display:flex;justify-content
 .sheart:active{transform:scale(.88);}
 
 /* PROFILE */
-.prof-hdr{background:linear-gradient(150deg,#8B0A14 0%,#C01020 45%,#E8192C 100%);padding:20px 20px 28px;position:relative;overflow:hidden;}
+.prof-hdr{background:linear-gradient(160deg,#6B0510 0%,#A80E1C 40%,#E8192C 100%);padding:18px 20px 22px;position:relative;overflow:hidden;}
 .pav{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.25);border:3px solid rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:white;margin:0 auto 10px;}
 .pname{font-size:22px;font-weight:800;color:white;margin-bottom:4px;}
 .psub{font-size:13px;color:rgba(255,255,255,.8);font-weight:500;}
@@ -2883,15 +2875,6 @@ function googleTranslateElementInit(){
         </div>
       </div>
 
-      <!-- TONIGHT'S PICKS -->
-      <div id="picks-section" style="padding:16px 16px 0;display:none;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <div style="font-size:16px;font-weight:800;color:#1A1A1A;">🔥 Tonight's Picks</div>
-          <button onclick="filterCat('all',document.querySelector('.chip.on'));goScreen('alldeals')" style="background:none;border:none;font-size:13px;font-weight:700;color:var(--red);cursor:pointer;padding:0;font-family:Inter,sans-serif;">See all →</button>
-        </div>
-        <div id="picks-scroll" style="display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;-webkit-overflow-scrolling:touch;"></div>
-      </div>
-
       <!-- BODY -->
       <div class="body-pad">
         <div class="nearby-row">
@@ -2909,11 +2892,11 @@ function googleTranslateElementInit(){
           <div class="chip" onclick="filterCat('wine',this)">🍷 Wine</div>
         </div>
 
-        <div class="sec-lbl">Happy Hour Coupons</div>
-        <div class="cscroll" id="coupon-scroll"></div>
-
         <div class="sec-lbl">User-Contributed Happy Hours</div>
         <div class="ucscroll" id="uc-scroll"></div>
+
+        <div class="sec-lbl">Happy Hour Coupons</div>
+        <div class="cscroll" id="coupon-scroll"></div>
       </div>
 
       <!-- WEB FOOTER (web view only — hidden on mobile) -->
@@ -3070,93 +3053,131 @@ function googleTranslateElementInit(){
 
       <!-- Profile header -->
       <div class="prof-hdr">
-        <div style="position:absolute;top:-45px;right:-30px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none;"></div>
-        <div style="position:absolute;bottom:-35px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none;"></div>
-        <div style="display:flex;align-items:center;gap:16px;position:relative;">
-          <!-- Avatar with initials (or photo) -->
-          <div style="width:72px;height:72px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 20px rgba(0,0,0,.22);overflow:hidden;">
-            <img id="prof-avatar-img" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-            <span id="prof-avatar-initials" style="font-size:28px;font-weight:900;color:#E8192C;font-family:Inter,sans-serif;line-height:1;">J</span>
-          </div>
-          <div>
-            <div class="prof-name" style="font-size:22px;font-weight:800;color:white;margin-bottom:3px;">John Doe</div>
-            <div class="prof-email" style="font-size:13px;color:rgba(255,255,255,.75);font-weight:500;">john.doe@email.com</div>
-            <div onclick="goSettingsGated()" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:rgba(255,255,255,.18);border-radius:20px;padding:5px 14px;cursor:pointer;">
-              <span style="font-size:11px;color:white;font-weight:700;">✏️ Edit profile</span>
+        <!-- Decorative blobs -->
+        <div style="position:absolute;top:-60px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none;"></div>
+        <div style="position:absolute;top:20px;right:30px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none;"></div>
+        <div style="position:absolute;bottom:-50px;left:-30px;width:140px;height:140px;border-radius:50%;background:rgba(0,0,0,.12);pointer-events:none;"></div>
+
+        <!-- Avatar row -->
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:0;">
+          <!-- Avatar with gradient ring -->
+          <div style="position:relative;margin-bottom:10px;">
+            <div style="width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#FFD166,#FF6B6B,#E8192C);padding:2.5px;box-shadow:0 6px 20px rgba(0,0,0,.28);">
+              <div style="width:100%;height:100%;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                <img id="prof-avatar-img" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                <span id="prof-avatar-initials" style="font-size:24px;font-weight:900;color:#E8192C;font-family:Inter,sans-serif;line-height:1;">J</span>
+              </div>
             </div>
+            <!-- Edit badge on avatar -->
+            <div onclick="goSettingsGated()" style="position:absolute;bottom:0;right:0;width:22px;height:22px;background:#FFD166;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);border:2px solid white;">✏️</div>
           </div>
+
+          <!-- Name & email centered -->
+          <div class="prof-name" style="font-size:18px;font-weight:900;color:white;letter-spacing:-.2px;margin-bottom:2px;text-align:center;">John Doe</div>
+          <div class="prof-email" style="font-size:12px;color:rgba(255,255,255,.65);font-weight:500;margin-bottom:12px;text-align:center;">john.doe@email.com</div>
         </div>
-        <!-- Stat cards — hidden for guests -->
-        <div id="prof-stat-cards" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:20px;position:relative;">
-          <div style="background:rgba(255,255,255,.15);border-radius:14px;padding:14px 10px;text-align:center;backdrop-filter:blur(4px);">
-            <div style="font-size:22px;font-weight:900;color:white;" id="prof-stat-vouchers">0</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.7);font-weight:600;margin-top:3px;">Vouchers</div>
+
+        <!-- Stat cards -->
+        <div id="prof-stat-cards" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;position:relative;">
+          <div onclick="isGuest?requireLogin('view vouchers'):goScreen('myvouchers')" style="background:rgba(255,255,255,.13);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 6px;text-align:center;cursor:pointer;">
+            <div style="font-size:16px;margin-bottom:3px;">🎟️</div>
+            <div style="font-size:18px;font-weight:900;color:white;line-height:1;" id="prof-stat-vouchers">0</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.65);font-weight:700;margin-top:3px;letter-spacing:.3px;text-transform:uppercase;">Vouchers</div>
           </div>
-          <div style="background:rgba(255,255,255,.15);border-radius:14px;padding:14px 10px;text-align:center;backdrop-filter:blur(4px);">
-            <div style="font-size:22px;font-weight:900;color:#FFD166;" id="prof-cr-balance">0</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.7);font-weight:600;margin-top:3px;">Credits</div>
+          <div onclick="goScreen('credits')" style="background:rgba(255,255,255,.13);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 6px;text-align:center;cursor:pointer;">
+            <div style="font-size:16px;margin-bottom:3px;">🪙</div>
+            <div style="font-size:18px;font-weight:900;color:#FFD166;line-height:1;" id="prof-cr-balance">0</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.65);font-weight:700;margin-top:3px;letter-spacing:.3px;text-transform:uppercase;">Credits</div>
           </div>
-          <div style="background:rgba(255,255,255,.15);border-radius:14px;padding:14px 10px;text-align:center;backdrop-filter:blur(4px);">
-            <div style="font-size:22px;font-weight:900;color:white;" id="prof-stat-saved">0</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.7);font-weight:600;margin-top:3px;">Saved</div>
+          <div style="background:rgba(255,255,255,.13);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 6px;text-align:center;">
+            <div style="font-size:16px;margin-bottom:3px;">❤️</div>
+            <div style="font-size:18px;font-weight:900;color:white;line-height:1;" id="prof-stat-saved">0</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.65);font-weight:700;margin-top:3px;letter-spacing:.3px;text-transform:uppercase;">Saved</div>
           </div>
         </div>
       </div>
 
-      <div style="padding:16px 16px 0;background:var(--bg);">
+      <div style="background:var(--bg);padding:20px 16px 0;">
 
         <!-- ── ACCOUNT ── -->
-        <div style="font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;padding:0 4px;margin-bottom:8px;">Account</div>
-        <div class="psec" style="margin-bottom:16px;">
-          <div class="prow" onclick="isGuest?requireLogin('view vouchers'):goScreen('myvouchers')" id="prow-myvouchers">
-            <div style="width:42px;height:42px;background:rgba(232,25,44,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🎟️</div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">My Vouchers</div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-top:2px;" id="prow-myvouchers-sub">QR codes &amp; purchases</div></div>
-            <div class="prow-arrow" id="prow-myvouchers-arrow">›</div>
-          </div>
-          <div class="prow" onclick="goScreen('credits')" id="prow-credits">
-            <div style="width:42px;height:42px;background:rgba(255,193,7,.12);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🪙</div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">Credits &amp; Rewards</div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-top:2px;">Earn, redeem &amp; leaderboard</div></div>
-            <div class="prow-arrow">›</div>
-          </div>
-          <div class="prow" onclick="isGuest?requireLogin('view contributions'):goScreen('mycontribs')" id="prow-contributions">
-            <div style="width:42px;height:42px;background:rgba(232,25,44,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;position:relative;">
-              📣<div id="mycontribs-badge" style="display:none;position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#d97706;border-radius:50%;border:2px solid white;"></div>
+        <div style="font-size:10px;font-weight:900;color:#B0B0C0;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding:0 4px;">My Account</div>
+        <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.05);margin-bottom:20px;">
+          <div class="prow" onclick="isGuest?requireLogin('view vouchers'):goScreen('myvouchers')" id="prow-myvouchers" style="padding:16px 18px;">
+            <div style="width:46px;height:46px;background:linear-gradient(135deg,#FFE5E8,#FFCDD2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 2px 8px rgba(232,25,44,.15);">🎟️</div>
+            <div style="flex:1;margin-left:4px;">
+              <div style="font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">My Vouchers</div>
+              <div style="font-size:12px;font-weight:500;color:#9A9AB0;" id="prow-myvouchers-sub">QR codes &amp; purchases</div>
             </div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">My Contributions</div><div style="font-size:11px;font-weight:600;color:var(--t3);margin-top:2px;" id="mycontribs-sub">Happy hours I've shared</div></div>
-            <div class="prow-arrow">›</div>
+            <div style="font-size:18px;color:#D0D0DC;font-weight:300;" id="prow-myvouchers-arrow">›</div>
           </div>
-          <div class="prow" onclick="goScreen('community')">
-            <div style="width:42px;height:42px;background:rgba(59,130,246,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;position:relative;">
-              👥<div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:var(--red);border-radius:50%;border:2px solid white;"></div>
+          <div class="prow" onclick="goScreen('credits')" id="prow-credits" style="padding:16px 18px;">
+            <div style="width:46px;height:46px;background:linear-gradient(135deg,#FFF9E5,#FFF0C0);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 2px 8px rgba(255,193,7,.2);">🪙</div>
+            <div style="flex:1;margin-left:4px;">
+              <div style="font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">Credits &amp; Rewards</div>
+              <div style="font-size:12px;font-weight:500;color:#9A9AB0;">Earn, redeem &amp; leaderboard</div>
             </div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">Events</div><div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;">Meetups &amp; events</div></div>
-            <div class="prow-arrow">›</div>
+            <div style="font-size:18px;color:#D0D0DC;font-weight:300;">›</div>
           </div>
-          <div class="prow" onclick="goScreen('invitedeals')" id="prow-invitedeals">
-            <div style="width:42px;height:42px;background:rgba(123,47,190,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔒</div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">Invite-Only Deals</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Enter event codes</div></div>
-            <div class="prow-arrow">›</div>
+          <div class="prow" onclick="isGuest?requireLogin('view contributions'):goScreen('mycontribs')" id="prow-contributions" style="padding:16px 18px;">
+            <div style="width:46px;height:46px;background:linear-gradient(135deg,#FFF0E5,#FFD8C0);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;position:relative;box-shadow:0 2px 8px rgba(251,113,43,.15);">
+              📣<div id="mycontribs-badge" style="display:none;position:absolute;top:-3px;right:-3px;width:11px;height:11px;background:#d97706;border-radius:50%;border:2px solid white;"></div>
+            </div>
+            <div style="flex:1;margin-left:4px;">
+              <div style="font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">My Contributions</div>
+              <div style="font-size:12px;font-weight:500;color:#9A9AB0;" id="mycontribs-sub">Happy hours I've shared</div>
+            </div>
+            <div style="font-size:18px;color:#D0D0DC;font-weight:300;">›</div>
+          </div>
+          <div class="prow" onclick="goScreen('community')" style="padding:16px 18px;">
+            <div style="width:46px;height:46px;background:linear-gradient(135deg,#E8F0FF,#C8D8FF);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;position:relative;box-shadow:0 2px 8px rgba(59,130,246,.15);">
+              🎉<div style="position:absolute;top:-3px;right:-3px;width:11px;height:11px;background:var(--red);border-radius:50%;border:2px solid white;"></div>
+            </div>
+            <div style="flex:1;margin-left:4px;">
+              <div style="font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">Events</div>
+              <div style="font-size:12px;font-weight:700;color:var(--red);letter-spacing:.3px;">Meetups &amp; events</div>
+            </div>
+            <div style="font-size:18px;color:#D0D0DC;font-weight:300;">›</div>
+          </div>
+          <div class="prow" onclick="goScreen('invitedeals')" id="prow-invitedeals" style="padding:16px 18px;">
+            <div style="width:46px;height:46px;background:linear-gradient(135deg,#F0E8FF,#DCC8FF);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 2px 8px rgba(123,47,190,.15);">🔒</div>
+            <div style="flex:1;margin-left:4px;">
+              <div style="font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">Invite-Only Deals</div>
+              <div style="font-size:12px;font-weight:500;color:#9A9AB0;">Enter exclusive event codes</div>
+            </div>
+            <div style="font-size:18px;color:#D0D0DC;font-weight:300;">›</div>
           </div>
         </div>
 
         <!-- ── BUSINESS ── -->
-        <div id="prof-biz-label" style="font-size:11px;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;padding:0 4px;margin-bottom:8px;">For Businesses</div>
-        <div class="psec" id="prof-biz-sec" style="margin-bottom:16px;">
-          <div class="prow" onclick="goScreen('business')">
-            <div style="width:42px;height:42px;background:rgba(232,25,44,.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">💼</div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">Business Signup</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">List your venue &amp; post deals</div></div>
-            <div class="prow-arrow">›</div>
+        <div id="prof-biz-label" style="font-size:10px;font-weight:900;color:#B0B0C0;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding:0 4px;">For Businesses</div>
+        <div id="prof-biz-sec" style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.05);margin-bottom:20px;">
+          <!-- Merchants only: jump back to the Merchant Portal -->
+          <div class="prow" id="prof-merchant-portal-row" onclick="openMerchantDash()" style="padding:16px 18px;display:none;">
+            <div style="width:46px;height:46px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.2);">🏪</div>
+            <div style="flex:1;margin-left:4px;">
+              <div style="font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">Merchant Portal</div>
+              <div style="font-size:12px;font-weight:500;color:#9A9AB0;">Manage your venue, deals &amp; vouchers</div>
+            </div>
+            <div style="font-size:18px;color:#D0D0DC;font-weight:300;">›</div>
+          </div>
+          <div class="prow" id="prof-biz-signup-row" onclick="goScreen('business')" style="padding:16px 18px;">
+            <div style="width:46px;height:46px;background:linear-gradient(135deg,#E8F8EE,#C8EDDA);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 2px 8px rgba(18,161,80,.15);">💼</div>
+            <div style="flex:1;margin-left:4px;">
+              <div style="font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">Business Signup</div>
+              <div style="font-size:12px;font-weight:500;color:#9A9AB0;">List your venue &amp; post deals</div>
+            </div>
+            <div style="font-size:18px;color:#D0D0DC;font-weight:300;">›</div>
           </div>
         </div>
 
         <!-- Log out -->
-        <div style="margin:0 0 16px;">
-          <button onclick="handleLogoutBtn()" id="prof-logout-btn" style="width:100%;background:white;border:1.5px solid rgba(232,25,44,.2);border-radius:14px;padding:15px;font-size:15px;font-weight:700;color:var(--red);cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s;" onmousedown="this.style.background='#fff5f5'" onmouseup="this.style.background='white'">
-            <span id="prof-logout-label">🚪 Log Out</span>
+        <div style="margin:0 0 20px;">
+          <button onclick="handleLogoutBtn()" id="prof-logout-btn" style="width:100%;background:white;border:1.5px solid rgba(232,25,44,.2);border-radius:16px;padding:16px;font-size:15px;font-weight:700;color:var(--red);cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 2px 12px rgba(232,25,44,.08);transition:background .15s;" onmousedown="this.style.background='#FFF5F5'" onmouseup="this.style.background='white'">
+            <span id="prof-logout-label">Sign Out</span>
           </button>
         </div>
 
-        <div style="height:16px;"></div>
+        <div style="height:20px;"></div>
 
       </div>
     </div>
@@ -4081,17 +4102,6 @@ function googleTranslateElementInit(){
             <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px;">Share a watch spot ⚽</div>
             <div style="font-size:13px;color:#9A9AB0;margin-bottom:18px;">Let the community know where to catch the game</div>
 
-            <input type="file" id="watch-photo-input" accept="image/*" style="display:none;" onchange="watchPhotoSelected(this)">
-            <div id="watch-photo-empty" onclick="document.getElementById('watch-photo-input').click()" style="background:#F5F5F7;border:2px dashed rgba(18,161,80,.4);border-radius:14px;padding:16px;text-align:center;cursor:pointer;margin-bottom:14px;">
-              <div style="font-size:24px;margin-bottom:4px;">📷</div>
-              <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px;">Add a photo <span style="color:#9A9AB0;font-weight:600;">(optional)</span></div>
-              <div style="display:inline-block;background:#12A150;color:white;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:800;">Upload</div>
-            </div>
-            <div id="watch-photo-preview" style="display:none;position:relative;border-radius:14px;overflow:hidden;border:2px solid rgba(18,161,80,.4);margin-bottom:14px;">
-              <img id="watch-photo-preview-img" style="width:100%;height:110px;object-fit:cover;display:block;" src="" alt="">
-              <button onclick="document.getElementById('watch-photo-input').click()" style="position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,.55);border:none;border-radius:6px;padding:4px 10px;font-size:10px;color:white;cursor:pointer;font-family:Inter,sans-serif;font-weight:700;">Change</button>
-            </div>
-
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Venue</label>
             <input id="watch-venue" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="Search bar / restaurant…" oninput="addrInput('watch-venue')" onfocus="this.style.borderColor='#12A150';addrInput('watch-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
 
@@ -4341,37 +4351,41 @@ function googleTranslateElementInit(){
 
       <!-- ── EDIT PROFILE SHEET ── -->
       <div id="st-edit-profile-ov" style="position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:80;display:none;align-items:flex-end;" onclick="if(event.target===this)this.style.display='none'">
-        <div style="background:white;border-radius:22px 22px 0 0;width:100%;padding:20px 20px 36px;max-height:85%;overflow-y:auto;">
-          <div style="width:40px;height:4px;background:#E0E0E0;border-radius:2px;margin:0 auto 18px;"></div>
-          <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px;">Edit Profile</div>
-          <div style="font-size:13px;color:var(--t3);margin-bottom:20px;">Update your name and email address</div>
-          <!-- Avatar -->
-          <div style="text-align:center;margin-bottom:20px;">
-            <input type="file" id="st-edit-photo-input" accept="image/*" style="display:none;" onchange="stEditPhotoSelected(this)">
-            <div onclick="document.getElementById('st-edit-photo-input').click()" style="position:relative;display:inline-block;cursor:pointer;">
-              <div style="width:72px;height:72px;border-radius:50%;background:var(--redl);display:flex;align-items:center;justify-content:center;font-size:28px;border:3px solid var(--red);overflow:hidden;">
-                <img id="st-edit-avatar-img" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                <span id="st-edit-avatar-initials">👤</span>
+        <div style="background:white;border-radius:22px 22px 0 0;width:100%;max-height:90%;display:flex;flex-direction:column;">
+          <!-- Scrollable content -->
+          <div style="overflow-y:auto;flex:1;padding:20px 20px 0;-webkit-overflow-scrolling:touch;">
+            <div style="width:40px;height:4px;background:#E0E0E0;border-radius:2px;margin:0 auto 18px;"></div>
+            <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px;">Edit Profile</div>
+            <div style="font-size:13px;color:var(--t3);margin-bottom:20px;">Update your name and photo</div>
+            <!-- Avatar -->
+            <div style="text-align:center;margin-bottom:20px;">
+              <input type="file" id="st-edit-photo-input" accept="image/*" style="display:none;" onchange="stEditPhotoSelected(this)">
+              <div onclick="document.getElementById('st-edit-photo-input').click()" style="position:relative;display:inline-block;cursor:pointer;">
+                <div style="width:80px;height:80px;border-radius:50%;background:var(--redl);display:flex;align-items:center;justify-content:center;font-size:32px;border:3px solid var(--red);overflow:hidden;">
+                  <img id="st-edit-avatar-img" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+                  <span id="st-edit-avatar-initials">👤</span>
+                </div>
+                <div style="position:absolute;bottom:0;right:0;background:var(--red);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid white;">✏️</div>
               </div>
-              <div style="position:absolute;bottom:0;right:0;background:var(--red);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid white;">✏️</div>
+              <div style="font-size:12px;color:var(--t3);margin-top:8px;font-weight:500;">Tap to change photo</div>
             </div>
-            <div style="font-size:12px;color:var(--t3);margin-top:8px;font-weight:500;">Tap to change photo</div>
+            <div style="margin-bottom:12px;">
+              <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Full Name</label>
+              <input id="st-edit-name" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="Your full name" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+            </div>
+            <div style="margin-bottom:12px;">
+              <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Email Address</label>
+              <input id="st-edit-email" type="email" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="your@email.com" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+            </div>
+            <div style="margin-bottom:16px;">
+              <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Phone Number <span style="color:var(--t3);font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></label>
+              <input id="st-edit-phone" type="tel" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="+34 600 000 000" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+            </div>
           </div>
-          <div style="margin-bottom:12px;">
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Full Name</label>
-            <input id="st-edit-name" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="Your full name" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
-          </div>
-          <div style="margin-bottom:12px;">
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Email Address</label>
-            <input id="st-edit-email" type="email" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="your@email.com" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
-          </div>
-          <div style="margin-bottom:18px;">
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Phone Number <span style="color:var(--t3);font-weight:500;text-transform:none;letter-spacing:0;font-size:11px;">(optional)</span></label>
-            <input id="st-edit-phone" type="tel" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="+34 600 000 000" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
-          </div>
-          <div style="display:flex;gap:10px;">
-            <button onclick="stSaveProfile()" style="flex:2;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:13px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Save Changes</button>
-            <button onclick="document.getElementById('st-edit-profile-ov').style.display='none'" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:13px;padding:15px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>
+          <!-- Sticky Save button — always visible at bottom -->
+          <div style="padding:14px 20px 32px;background:white;border-top:1px solid #F0F0F4;display:flex;gap:10px;flex-shrink:0;">
+            <button onclick="stSaveProfile()" style="flex:2;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 14px rgba(232,25,44,.3);">Save Changes</button>
+            <button onclick="document.getElementById('st-edit-profile-ov').style.display='none'" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:14px;padding:16px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>
           </div>
         </div>
       </div>
@@ -5008,6 +5022,7 @@ const db = supabase.createClient(SUPA_URL, SUPA_KEY, {
 
 let currentUser = null;
 let currentProfile = null;
+let _lastHandledUserId = null; // guards the per-account reset against double auth-callbacks
 let _authInitialized = false;
 // True once we've routed the user to their landing screen for this session.
 // Prevents background auth events (token refresh, tab refocus) from yanking the
@@ -5020,11 +5035,15 @@ db.auth.onAuthStateChange(function(event, session){
   if(session && session.user){
     console.log('[onAuthStateChange] Session found, user:', session.user.email);
     currentUser = session.user;
-    // If not already initialized, handle the restored session
+    // If not already initialized, handle the restored session.
+    // Defer with setTimeout(0): supabase-js holds a lock during this callback,
+    // and making DB calls synchronously here can run them before the auth token
+    // is attached (→ anon requests → null profile → wrong role). Deferring lets
+    // the client finish attaching the session first.
     if(!_authInitialized){
       console.log('[onAuthStateChange] First auth state, handling session');
       _authInitialized = true;
-      handleAuthSession(session.user);
+      setTimeout(function(){ handleAuthSession(session.user); }, 0);
     }
   } else {
     console.log('[onAuthStateChange] No session');
@@ -5219,6 +5238,37 @@ function compressImage(dataUrl, maxWidth, quality){
     img.src = dataUrl;
   });
 }
+
+// Upload a base64 data-URL image to Supabase Storage and return its public URL.
+// This keeps heavy image bytes OUT of the database (huge egress saver). If the
+// storage bucket isn't set up yet (or upload fails), it returns the original
+// base64 so the app keeps working unchanged — set up the 'photos' bucket to
+// activate the saving. Already-URL inputs are returned as-is.
+var HH_BUCKET = 'photos';
+async function uploadImageToStorage(dataUrl, prefix){
+  try {
+    if(!dataUrl || typeof dataUrl !== 'string') return dataUrl || null;
+    if(!dataUrl.startsWith('data:')) return dataUrl;            // already a URL
+    if(!(db && db.storage)) return dataUrl;
+    var blob = await (await fetch(dataUrl)).blob();
+    var ext = ((blob.type.split('/')[1]||'jpg').split('+')[0]) || 'jpg';
+    var path = (prefix||'img') + '/' + Date.now() + '-' + Math.random().toString(36).slice(2,8) + '.' + ext;
+    var up = await db.storage.from(HH_BUCKET).upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert:false });
+    if(up && up.error){ console.warn('[storage] upload failed — keeping base64:', up.error.message); return dataUrl; }
+    var pub = db.storage.from(HH_BUCKET).getPublicUrl(path);
+    var url = pub && pub.data && pub.data.publicUrl;
+    return url || dataUrl;
+  } catch(e){ console.warn('[storage] upload error — keeping base64', e); return dataUrl; }
+}
+// Compress THEN upload to storage; returns a URL (or base64 fallback).
+async function compressAndUpload(dataUrl, maxWidth, quality, prefix){
+  if(!dataUrl || typeof dataUrl !== 'string') return dataUrl || null;
+  if(!dataUrl.startsWith('data:')) return dataUrl;             // already a URL — leave it
+  var compressed = dataUrl;
+  try { compressed = await compressImage(dataUrl, maxWidth||800, quality||0.8); } catch(e){}
+  return await uploadImageToStorage(compressed, prefix);
+}
+
 function dbAgo(ts) {
   if (!ts) return 'recently';
   var s = (Date.now() - new Date(ts).getTime()) / 1000 | 0;
@@ -5239,7 +5289,6 @@ async function loadDealsFromSupabase() {
     var [dr, ur] = await Promise.all([
       db.from('deals').select('*, venues(name,category,dist_km)')
         .eq('status', 'active')
-        .or('end_date.is.null,end_date.gte.' + today)
         .order('claimed', { ascending: false }),
       db.from('community_deals').select('*').eq('status', 'approved').order('created_at', { ascending: false })
     ]);
@@ -5267,7 +5316,6 @@ async function loadDealsFromSupabase() {
     _dealsLoading = false;
     if (typeof renderCoupons === 'function') renderCoupons('all');
     if (typeof renderUC === 'function') renderUC('all');
-    if (typeof renderTonightsPicks === 'function') renderTonightsPicks();
     if (typeof recomputeDealDistances === 'function') recomputeDealDistances();
 
     // Fetch reviews in background and silently update ratings once they arrive
@@ -5540,28 +5588,51 @@ function subscribeToMyNotifications(){
 // ── Handle a valid session (login + page restore) ─────────────────────────────
 async function handleAuthSession(user) {
   currentUser = user;
-  var { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
+  // Robustly fetch the profile (which carries the authoritative role). Right
+  // after sign-in the auth token can lag attaching to PostgREST, which makes
+  // the first query run as anon → 0 rows → null profile → everyone defaulted
+  // to 'customer'. Retry a couple of times so the role is read reliably.
+  var profile = null, _perr = null;
+  for(var _try=0; _try<3; _try++){
+    try{
+      var _res = await db.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      profile = _res && _res.data; _perr = _res && _res.error;
+      console.log('[handleAuthSession] fetch attempt', _try+1, ':', {fetched: !!profile, error: _perr && _perr.message, name: profile && profile.name, phone: profile && profile.phone});
+    }catch(e){ _perr = e; console.log('[handleAuthSession] fetch exception:', e); }
+    if(profile) break;
+    await new Promise(function(r){ setTimeout(r, 300); });
+  }
   currentProfile = profile;
+  console.log('[handleAuthSession] final currentProfile:', {name: currentProfile && currentProfile.name, phone: currentProfile && currentProfile.phone, email: currentProfile && currentProfile.email});
 
-  // Determine role FIRST, before showing any UI.
-  // Fall back to the last known role (persisted) so a slow/failed profile fetch
-  // on refresh can't demote an admin/merchant into the customer UI.
+  // Role comes from the LOGIN TOKEN itself (app_metadata/user_metadata) — this
+  // is in the JWT, available instantly with NO database call, NO RLS, and NO
+  // timing race. It's the most reliable source. The DB profile is used as a
+  // secondary source (it's the most current if a role just changed), and a
+  // previously-confirmed _lastRole is the final fallback.
+  var _metaRole = (user.app_metadata && user.app_metadata.role)
+               || (user.user_metadata && user.user_metadata.role) || null;
   var _lastRole = null;
   try{ _lastRole = localStorage.getItem('hh_last_role'); }catch(e){}
-  var role = (profile && profile.role)
-    || (user.user_metadata && user.user_metadata.role)
-    || _lastRole
-    || loginRole
-    || 'customer';
-  // Never silently downgrade a known admin/merchant to customer on a bad fetch.
-  if(role === 'customer' && (_lastRole === 'admin' || _lastRole === 'super_admin' || _lastRole === 'merchant')){
-    role = _lastRole;
+  // Prefer the freshly-loaded DB profile when present; otherwise trust the JWT
+  // role; never use the login tab (loginRole) to grant a role.
+  var role = (profile && profile.role) || _metaRole || _lastRole || 'customer';
+  console.log('[handleAuthSession] role:', role, '| profile:', profile?profile.role:'NULL', '| jwt:', _metaRole||'none', _perr?('| err:'+(_perr.message||_perr)):'');
+  // Persist the authoritative role for THIS account (overwrites any stale value).
+  try{ localStorage.setItem('hh_last_role', role); }catch(e){}
+
+  // Reset per-account state ONLY when the signed-in user actually changes — so
+  // data never bleeds across accounts, but a second handleAuthSession call for
+  // the SAME user (e.g. the init + onAuthStateChange double-fire on refresh)
+  // doesn't wipe freshly-loaded deals/venue.
+  if(_lastHandledUserId !== user.id){
+    try{
+      meVenueId = null; meVenueName = '';
+      if(typeof dealsData !== 'undefined') dealsData = [];
+      if(typeof _meSelectedDeals !== 'undefined') _meSelectedDeals = [];
+    }catch(e){}
   }
-  // Persist the authoritative role — also refresh the cache when using _lastRole.
-  try{
-    if(profile && profile.role) localStorage.setItem('hh_last_role', profile.role);
-    else if(role !== 'customer') localStorage.setItem('hh_last_role', role);
-  }catch(e){}
+  _lastHandledUserId = user.id;
 
   // HIDE splash screen immediately
   var splash = document.getElementById('role-splash');
@@ -5582,21 +5653,37 @@ async function handleAuthSession(user) {
     if(adminRoot) adminRoot.style.display = 'none';
   }
 
-  if (profile) {
-    var pn = document.querySelector('.prof-name');  if (pn) pn.textContent = profile.name || user.email;
-    var pe = document.querySelector('.prof-email'); if (pe) pe.textContent = user.email;
-    var ai = document.getElementById('prof-avatar-initials');
-    if(ai) ai.textContent = (profile.name || user.email || 'U').trim().charAt(0).toUpperCase();
-    var pImg = document.getElementById('prof-avatar-img');
-    if(pImg){
-      if(profile.avatar_url){ pImg.src = profile.avatar_url; pImg.style.display = 'block'; if(ai) ai.style.display = 'none'; }
-      else { pImg.style.display = 'none'; if(ai) ai.style.display = 'block'; }
-    }
-    var sp = document.getElementById('st-profile-sub');
-    if (sp) sp.textContent = (profile.name || user.email) + ' · ' + user.email;
-    var cb  = document.getElementById('prof-cr-balance');  if (cb)  cb.textContent  = (profile.credits || 0).toLocaleString();
-    var cbd = document.getElementById('cr-balance-display'); if (cbd) cbd.textContent = (profile.credits || 0).toLocaleString();
+  // Profile "For Businesses" section: merchants get a "Merchant Portal" link
+  // (they have BOTH UIs); everyone else sees "Business Signup".
+  var _mpRow = document.getElementById('prof-merchant-portal-row');
+  var _bsRow = document.getElementById('prof-biz-signup-row');
+  if(role === 'merchant'){
+    if(_mpRow) _mpRow.style.display = 'flex';
+    if(_bsRow) _bsRow.style.display = 'none';
+  } else {
+    if(_mpRow) _mpRow.style.display = 'none';
+    if(_bsRow) _bsRow.style.display = 'flex';
   }
+
+  // Update the WHOLE profile display ATOMICALLY from the current account, so a
+  // name/email from a previous session can never linger (the "Golden Tap +
+  // admin@…" mix-up). Name/avatar are set even when the profile fetch failed,
+  // derived from the auth email — never left stale.
+  var _authEmail = user.email || '';
+  var _name = (profile && profile.name) || _authEmail || 'User';
+  var _peEl = document.querySelector('.prof-email'); if(_peEl) _peEl.textContent = _authEmail;
+  var _pnEl = document.querySelector('.prof-name');  if(_pnEl) _pnEl.textContent = _name;
+  var _aiEl = document.getElementById('prof-avatar-initials');
+  if(_aiEl) _aiEl.textContent = (_name || 'U').trim().charAt(0).toUpperCase();
+  var _spEl = document.getElementById('st-profile-sub');
+  if(_spEl) _spEl.textContent = _name + ' · ' + _authEmail;
+  var _pImg = document.getElementById('prof-avatar-img');
+  if(_pImg){
+    if(profile && profile.avatar_url){ _pImg.src = profile.avatar_url; _pImg.style.display = 'block'; if(_aiEl) _aiEl.style.display = 'none'; }
+    else { _pImg.removeAttribute('src'); _pImg.style.display = 'none'; if(_aiEl) _aiEl.style.display = 'block'; }
+  }
+  var _cb  = document.getElementById('prof-cr-balance');    if(_cb)  _cb.textContent  = ((profile && profile.credits) || 0).toLocaleString();
+  var _cbd = document.getElementById('cr-balance-display'); if(_cbd) _cbd.textContent = ((profile && profile.credits) || 0).toLocaleString();
   isGuest = false;
   updateGuestVisibility();
   var ls = document.getElementById('login-screen');
@@ -5612,7 +5699,7 @@ async function handleAuthSession(user) {
     // Customer: show the home IMMEDIATELY (deal data is already cached/loaded),
     // then stream in personal data (vouchers/saved/alerts) in the background so
     // navigation isn't blocked on 4 network round-trips.
-    if (!_sessionRouted && !_pendingSharedDeal && curScreen !== 'vdetail') goScreen('deals');
+    if (!_sessionRouted && !_pendingSharedDeal && !_pendingSharedWatch && curScreen !== 'vdetail') goScreen('deals');
 
     if(typeof subscribeToMyNotifications === 'function') subscribeToMyNotifications();
     if(typeof comLoadMyCreated==='function') comLoadMyCreated();
@@ -5778,7 +5865,7 @@ function addrInput(inputId) {
       var esc  = p.description.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var mainEsc = main.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var secEsc = (sec||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      var clickHandler = (inputId === 'uc-venue') ? "ucAddrPick('"+secEsc+"','"+mainEsc+"')" : (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'edit-m-address') ? "adminAddrPick('"+esc+"')" : (inputId === 'watch-venue') ? "watchVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
+      var clickHandler = (inputId === 'uc-venue') ? "ucAddrPick('"+secEsc+"','"+mainEsc+"')" : (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'edit-m-address') ? "adminAddrPick('"+esc+"')" : (inputId === 'watch-venue') ? "watchVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'awe-venue') ? "aweVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
       return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'" ontouchend="'+clickHandler+'"'
         +' style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;cursor:pointer;background:#fff;'
         +'border-top:'+(i?'1px solid #F0F0F0':'none')+'"'
@@ -5934,6 +6021,33 @@ function getPendingSharedDeal(){
 }
 var _pendingSharedDeal = getPendingSharedDeal();
 
+// Shared watch-spot link: /watch/<slug>-<id>
+function getPendingSharedWatch(){
+  try {
+    var m = window.location.pathname.match(/^\/watch\/(.+)$/);
+    if(m && m[1]){
+      var segs = m[1].replace(/\/+$/,'').split('-');
+      var id = segs.pop();
+      if(id) return { id: id };
+    }
+  } catch(e){}
+  return null;
+}
+var _pendingSharedWatch = getPendingSharedWatch();
+function openSharedWatchSpot(){
+  if(!_pendingSharedWatch) return;
+  var id = _pendingSharedWatch.id;
+  _watchFeatureOn = true;               // ensure the screen isn't redirected away
+  if(typeof goScreen==='function') goScreen('watch'); // triggers watchInitList → loads spots
+  var tries = 0;
+  (function tryOpen(){
+    var s = (watchSpots||[]).find(function(x){ return String(x.id) === String(id); });
+    if(s){ if(typeof watchOpenSpotDetail==='function') watchOpenSpotDetail(s.id); _pendingSharedWatch = null; return; }
+    if(tries++ > 40) return; // ~6s of retries
+    setTimeout(tryOpen, 150);
+  })();
+}
+
 // Full-screen branded loader shown while a shared deal is being fetched
 function showSharedDealLoader(){
   if(document.getElementById('shared-deal-loader')) return;
@@ -5996,6 +6110,8 @@ document.addEventListener('DOMContentLoaded', async function(){
 
   // ⚡ INSTANT DEALS: Load from cache immediately (milliseconds)
   loadDealsFromCache();
+  // ⚡ INSTANT STATS: Paint hero stats from cache before DB responds
+  _applyHeroStatsCache();
 
   // Shared deal link: show branded loader and try to open straight from cache
   if(_pendingSharedDeal){
@@ -6015,8 +6131,9 @@ document.addEventListener('DOMContentLoaded', async function(){
     if (_ls) _ls.style.display = 'none';
   }
 
-  // Load public deals, events and config in parallel
+  // Load public deals, events and config in parallel; fetch settings once (not on every render)
   await Promise.all([loadDealsFromSupabase(), loadEventsFromSupabase(), loadAppConfig()]);
+  loadFooterFromDB(); loadWatchSettingFromDB(); loadWcFixturesFromDB();
 
   // Render deals now that we have fresh data
   if(typeof renderCoupons==='function') renderCoupons('all');
@@ -6031,6 +6148,11 @@ document.addEventListener('DOMContentLoaded', async function(){
     }
   }
 
+  // Shared watch-spot link: open the Where to Watch board on the shared spot
+  if(_pendingSharedWatch && typeof openSharedWatchSpot==='function'){
+    openSharedWatchSpot();
+  }
+
   renderInviteHowItWorks();
 
 
@@ -6038,8 +6160,13 @@ document.addEventListener('DOMContentLoaded', async function(){
   setupDealSubscriptions();
 
   // Poll every 60s so customer devices pick up admin changes without needing a manual refresh
+  // Background refresh — kept light to avoid burning egress. Runs every 5 min
+  // and ONLY when the tab is visible (no polling in backgrounded/hidden tabs).
+  // (Previously every 60s in every tab, which re-downloaded all base64 images
+  // and blew through the bandwidth quota.)
   setInterval(async function(){
     try{
+      if(document.hidden) return;            // skip hidden/background tabs
       await loadDealsFromSupabase();
       await loadEventsFromSupabase();
       if(typeof renderAllDeals==='function') renderAllDeals(typeof _adCurTab!=='undefined'?_adCurTab:'all');
@@ -6049,7 +6176,24 @@ document.addEventListener('DOMContentLoaded', async function(){
       if(comCont && typeof comCurrentTab!=='undefined' && comCurrentTab==='meetups')
         if(typeof comRenderMeetups==='function') comRenderMeetups(comCont);
     }catch(e){}
-  }, 60000);
+  }, 300000);
+
+  // Refresh the moment the user returns to the tab (so the 5-min poll never
+  // feels stale), throttled to at most once every 2 min to protect egress.
+  var _lastFocusRefresh = Date.now();
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden) return;
+    if(Date.now() - _lastFocusRefresh < 120000) return;   // ≤ once / 2 min
+    _lastFocusRefresh = Date.now();
+    (async function(){
+      try{
+        await loadDealsFromSupabase();
+        if(typeof renderCoupons==='function') renderCoupons('all');
+        if(typeof renderUC==='function') renderUC('all');
+        if(typeof renderAllDeals==='function') renderAllDeals(typeof _adCurTab!=='undefined'?_adCurTab:'all');
+      }catch(e){}
+    })();
+  });
 
   // Realtime: show newly approved community events instantly on all devices
   db.channel('community_events_live').on('postgres_changes',
@@ -6259,6 +6403,8 @@ var fFilters = {
 function fApplyToDeals(deals){
   var f = fFilters;
   var result = deals.slice();
+  // Never show expired deals (past their end date)
+  result = result.filter(function(d){ return !isDealExpired(d); });
   if(f.price==='free'||f.quickFree) result=result.filter(function(d){return d.isFree||d.price==='Free'||d.off==='FREE';});
   if(f.price==='paid') result=result.filter(function(d){return !d.isFree&&d.price!=='Free'&&d.off!=='FREE';});
   if(f.cats&&f.cats.length&&!f.cats.includes('all')) result=result.filter(function(d){return f.cats.includes(d.cat);});
@@ -6333,11 +6479,11 @@ function clearAllFilters(){
   var tl=document.getElementById('f-time-lbl');if(tl)tl.textContent='Any time';
   var tf=document.getElementById('f-time-from');if(tf)tf.value='';
   var tt=document.getElementById('f-time-to');if(tt)tt.value='';
-  fBuildDateChips(); closeFilterSheet(); renderCoupons('all'); renderUC('all'); renderTonightsPicks();
+  fBuildDateChips(); closeFilterSheet(); renderCoupons('all'); renderUC('all');
 }
 function applyFilters(){
   closeFilterSheet();
-  renderCoupons('all'); renderUC('all'); renderTonightsPicks();
+  renderCoupons('all'); renderUC('all');
   if(typeof renderAllDeals==='function') renderAllDeals(typeof _adCurTab!=='undefined'?_adCurTab:'all');
   showToast('🎯 Filters applied');
 }
@@ -6428,27 +6574,25 @@ function stEditPhotoSelected(input){
       if(ini) ini.style.display = 'none';
     };
     if(typeof compressImage === 'function'){
-      Promise.resolve(compressImage(url, 400, 0.7)).then(apply).catch(function(){ apply(url); });
+      Promise.resolve(compressImage(url, 300, 0.6)).then(apply).catch(function(){ apply(url); });
     } else { apply(url); }
   };
   reader.readAsDataURL(input.files[0]);
 }
 
-function stSaveProfile(){
+async function stSaveProfile(){
   var nameEl = document.getElementById('st-edit-name');
   var emailEl = document.getElementById('st-edit-email');
   var phoneEl = document.getElementById('st-edit-phone');
   if(!nameEl || !emailEl) return;
 
-  var name = nameEl.value.trim() || 'John Doe';
-  var email = emailEl.value.trim() || 'john.doe@email.com';
+  var name = nameEl.value.trim();
   var phone = phoneEl ? phoneEl.value.trim() : '';
 
-  // Update profile header
-  var pn = document.querySelector('.prof-name'); if(pn) pn.textContent = name;
-  var pe = document.querySelector('.prof-email'); if(pe) pe.textContent = email;
-  var sp = document.getElementById('st-profile-sub'); if(sp) sp.textContent = name + ' · ' + email;
-  var ai = document.getElementById('prof-avatar-initials'); if(ai) ai.textContent = name.trim().charAt(0).toUpperCase();
+  // Update profile header immediately (optimistic)
+  if(name){ var pn = document.querySelector('.prof-name'); if(pn) pn.textContent = name; }
+  var sp = document.getElementById('st-profile-sub'); if(sp && name) sp.textContent = name + ' · ' + ((document.querySelector('.prof-email')||{}).textContent||'');
+  var ai = document.getElementById('prof-avatar-initials'); if(ai && name) ai.textContent = name.trim().charAt(0).toUpperCase();
 
   // Update profile photo (if a new one was picked)
   if(_stEditPhotoDataUrl){
@@ -6457,42 +6601,84 @@ function stSaveProfile(){
     if(pImg){ pImg.src = _stEditPhotoDataUrl; pImg.style.display = 'block'; }
     if(pIni) pIni.style.display = 'none';
     if(typeof currentProfile !== 'undefined' && currentProfile) currentProfile.avatar_url = _stEditPhotoDataUrl;
-    if(typeof currentUser !== 'undefined' && currentUser && window.db){
-      (async function(){
-        try{
-          var r = await db.from('profiles').update({ avatar_url: _stEditPhotoDataUrl }).eq('id', currentUser.id);
-          if(r && r.error) console.warn('[stSaveProfile] avatar save:', r.error.message);
-        }catch(e){ console.warn('[stSaveProfile] avatar save failed', e); }
-      })();
-    }
-  }
-
-  // Update USERS record for the current session
-  if(typeof USERS !== 'undefined'){
-    for(var u in USERS){
-      if(USERS[u].role === 'customer'){
-        USERS[u].name = name;
-        USERS[u].email = email;
-      }
-    }
   }
 
   // Close the edit sheet
   var ov = document.getElementById('st-edit-profile-ov');
   if(ov) ov.style.display = 'none';
 
-  showToast('✅ Profile updated successfully');
+  // Save to DB
+  if(typeof currentUser !== 'undefined' && currentUser && window.db){
+    try{
+      var upd = {};
+      if(name) upd.name = name;
+      if(phone) upd.phone = phone;
+      console.log('[stSaveProfile] saving to DB:', {user_id: currentUser.id, updates: upd, currentProfile_before: currentProfile});
+      if(_stEditPhotoDataUrl){
+        // Upload avatar to Storage (URL in DB, not base64). Falls back to base64.
+        var _avUrl = await uploadImageToStorage(_stEditPhotoDataUrl, 'avatars');
+        upd.avatar_url = _avUrl || _stEditPhotoDataUrl;
+        if(typeof currentProfile!=='undefined' && currentProfile) currentProfile.avatar_url = upd.avatar_url;
+      }
+      if(Object.keys(upd).length){
+        // .select() returns the updated row — lets us CONFIRM it actually saved
+        // (an RLS/anon no-op returns 0 rows with no error, which we must catch).
+        var r = await db.from('profiles').update(upd).eq('id', currentUser.id).select();
+        console.log('[stSaveProfile] update result:', {error: r && r.error, data: r && r.data, rowCount: r && r.data && r.data.length});
+        // If a column doesn't exist yet (e.g. 'phone' not added), drop it and retry.
+        if(r && r.error){
+          var _m = (r.error.message || '').toLowerCase();
+          var _stripped = false;
+          ['phone','avatar_url'].forEach(function(col){
+            if(_m.indexOf(col) !== -1 && upd[col] !== undefined){ delete upd[col]; _stripped = true; }
+          });
+          if(_stripped && Object.keys(upd).length){
+            console.log('[stSaveProfile] retrying without:', Object.keys(upd));
+            r = await db.from('profiles').update(upd).eq('id', currentUser.id).select();
+            console.log('[stSaveProfile] retry result:', {error: r && r.error, data: r && r.data, rowCount: r && r.data && r.data.length});
+          }
+        }
+        if(r && r.error){
+          showToast('⚠️ Save failed: ' + r.error.message);
+          console.warn('[stSaveProfile]', r.error);
+          return;
+        }
+        if(!r || !r.data || !r.data.length){
+          // Update matched 0 rows → session/permission problem, not a real save.
+          showToast('⚠️ Couldn\'t save — please sign out and sign in again.');
+          console.warn('[stSaveProfile] update affected 0 rows (auth/RLS)');
+          return;
+        }
+        // Reflect the saved row back into memory + header
+        console.log('[stSaveProfile] reflecting saved row:', r.data[0]);
+        if(currentProfile) Object.assign(currentProfile, r.data[0]);
+        console.log('[stSaveProfile] currentProfile after update:', currentProfile);
+        var _pn=document.querySelector('.prof-name'); if(_pn && r.data[0].name) _pn.textContent=r.data[0].name;
+      }
+      showToast('✅ Profile saved');
+    }catch(e){
+      showToast('⚠️ Could not save profile');
+      console.warn('[stSaveProfile] exception:', e);
+    }
+  } else {
+    showToast('✅ Profile updated');
+  }
 }
 
 function openEditProfile(){
   var ov = document.getElementById('st-edit-profile-ov');
   if(!ov) return;
 
-  // Pre-fill with current values
-  var currentName = (document.querySelector('.prof-name')||{}).textContent || 'John Doe';
-  var currentEmail = (document.querySelector('.prof-email')||{}).textContent || 'john.doe@email.com';
+  // Pre-fill from the loaded profile (authoritative), falling back to the DOM.
+  var currentName = (currentProfile && currentProfile.name)
+                 || (document.querySelector('.prof-name')||{}).textContent || '';
+  var currentEmail = (currentUser && currentUser.email)
+                  || (currentProfile && currentProfile.email)
+                  || (document.querySelector('.prof-email')||{}).textContent || '';
+  var currentPhone = (currentProfile && currentProfile.phone) || '';
   var ni = document.getElementById('st-edit-name'); if(ni) ni.value = currentName;
   var ei = document.getElementById('st-edit-email'); if(ei) ei.value = currentEmail;
+  var pi = document.getElementById('st-edit-phone'); if(pi) pi.value = currentPhone;
 
   // Preload current avatar into the edit preview
   _stEditPhotoDataUrl = '';
@@ -6517,28 +6703,54 @@ function stChangePassword(){
   if(ov) ov.style.display = 'flex';
 }
 
-function stSavePassword(){
+async function stSavePassword(){
   var cur = (document.getElementById('st-pw-current')||{}).value || '';
   var nw  = (document.getElementById('st-pw-new')||{}).value || '';
   var con = (document.getElementById('st-pw-confirm')||{}).value || '';
   var err = document.getElementById('st-pw-error');
+  if(err) err.textContent = '';
 
   if(!cur){ if(err) err.textContent = 'Enter your current password'; return; }
-  if(nw.length < 3){ if(err) err.textContent = 'New password must be at least 3 characters'; return; }
-  if(nw !== con){ if(err) err.textContent = 'Passwords do not match'; return; }
+  if(nw.length < 6){ if(err) err.textContent = '⚠️ Password not acceptable — use at least 6 characters.'; return; }
+  if(nw !== con){ if(err) err.textContent = 'New passwords don\'t match — please re-type them.'; return; }
+  if(nw === cur){ if(err) err.textContent = '⚠️ Pick a password different from your current one.'; return; }
 
-  // Update in USERS
-  if(typeof USERS !== 'undefined'){
-    for(var u in USERS){
-      if(USERS[u].pass === cur && USERS[u].role === 'customer'){
-        USERS[u].pass = nw;
-        var ov2 = document.getElementById('st-change-pw-ov'); if(ov2) ov2.style.display='none';
-        showToast('🔑 Password changed successfully');
-        return;
-      }
-    }
+  // Must be a real signed-in account
+  if(!currentUser || !currentUser.email || !window.db){
+    if(err) err.textContent = 'Please sign in to change your password.';
+    return;
   }
-  if(err) err.textContent = 'Current password is incorrect';
+
+  try {
+    // 1) Verify the current password by re-authenticating
+    var v = await db.auth.signInWithPassword({ email: currentUser.email, password: cur });
+    if(v.error){ if(err) err.textContent = '⚠️ Current password is incorrect.'; return; }
+
+    // 2) Set the new password on the live account
+    var r = await db.auth.updateUser({ password: nw });
+    if(r.error){
+      // Translate Supabase's technical errors into clear, friendly messages.
+      var _lm = (r.error.message || '').toLowerCase();
+      var _friendly =
+        (_lm.indexOf('different from the old') !== -1 || _lm.indexOf('should be different') !== -1)
+          ? '⚠️ Pick a password different from your current one.'
+        : (_lm.indexOf('at least') !== -1 || _lm.indexOf('weak') !== -1 || _lm.indexOf('6 char') !== -1 || _lm.indexOf('short') !== -1)
+          ? '⚠️ Password not acceptable — use at least 6 characters.'
+        : (_lm.indexOf('rate') !== -1)
+          ? '⚠️ Too many attempts — wait a moment and try again.'
+        : ('⚠️ ' + (r.error.message || 'Password not acceptable.'));
+      if(err) err.textContent = _friendly;
+      return;
+    }
+
+    var ov2 = document.getElementById('st-change-pw-ov'); if(ov2) ov2.style.display='none';
+    var ci=document.getElementById('st-pw-current'); if(ci) ci.value='';
+    var ni=document.getElementById('st-pw-new'); if(ni) ni.value='';
+    var coi=document.getElementById('st-pw-confirm'); if(coi) coi.value='';
+    showToast('🔑 Password changed successfully');
+  } catch(e){
+    if(err) err.textContent = (e && e.message) ? e.message : 'Could not change password';
+  }
 }
 
 function stSetDistance(unit, btn){
@@ -6722,6 +6934,18 @@ function closeMerchantCreateDeal(){meCloseCreate();}
 
 // RENDER COUPONS — home screen (max 5) + See All card
 // ── Deal availability helpers ──────────────────────────────────────────────────
+// True when a deal's end date has already passed (expired). Deals with no
+// end date never expire. Compared against the end of the end_date day so a
+// deal is still valid through the last day it runs.
+function isDealExpired(deal){
+  if(!deal) return false;
+  var ed = deal.endDate || deal.end_date || '';
+  if(!ed) return false;
+  var end = new Date(String(ed).slice(0,10) + 'T23:59:59');
+  if(isNaN(end)) return false;
+  return end.getTime() < Date.now();
+}
+
 function isDealActiveToday(deal){
   var days = (deal.days || 'Daily').toLowerCase().trim();
   if(!days || days === 'daily' || days === 'every day' || days === '—') return true;
@@ -6797,21 +7021,29 @@ function updateWebHeroStats(){
   var all = (Array.isArray(vouchers)?vouchers:[]).concat(Array.isArray(ucDeals)?ucDeals:[]);
   var names = {}; all.forEach(function(d){ if(d && d.name) names[d.name] = 1; });
   var venueCount = Object.keys(names).length;
+  var maxOff = 0;
+  all.forEach(function(d){ var o=parseFloat(String(d&&d.off||'').replace(/[^0-9.]/g,'')); if(o>maxOff) maxOff=o; });
   // Web hero stats
   var hd = document.getElementById('wh-stat-deals'); if(hd) hd.textContent = all.length;
   var hv = document.getElementById('wh-stat-venues'); if(hv) hv.textContent = venueCount;
   // Mobile hero stats
   var md = document.getElementById('rh-stat-deals'); if(md) md.textContent = all.length || '—';
   var mv = document.getElementById('rh-stat-venues'); if(mv) mv.textContent = venueCount || '—';
-  var maxOff = 0;
-  all.forEach(function(d){ var o=parseFloat(String(d&&d.off||'').replace(/[^0-9.]/g,'')); if(o>maxOff) maxOff=o; });
   var ms = document.getElementById('rh-stat-save'); if(ms && maxOff) ms.textContent = maxOff+'%';
-  // Paint the admin-editable footer once the web home is on screen
+  // Cache so next load is instant
+  try { localStorage.setItem('hh_hero_stats', JSON.stringify({deals:all.length,venues:venueCount,maxOff:maxOff})); } catch(e){}
   if(!_footerApplied) applyFooterConfig();
-  loadFooterFromDB();
-  loadPicksSettingFromDB();
-  loadWatchSettingFromDB();
-  loadWcFixturesFromDB();
+}
+function _applyHeroStatsCache(){
+  try {
+    var c = JSON.parse(localStorage.getItem('hh_hero_stats')||'null');
+    if(!c) return;
+    var hd=document.getElementById('wh-stat-deals'); if(hd&&c.deals) hd.textContent=c.deals;
+    var hv=document.getElementById('wh-stat-venues'); if(hv&&c.venues) hv.textContent=c.venues;
+    var md=document.getElementById('rh-stat-deals'); if(md&&c.deals) md.textContent=c.deals;
+    var mv=document.getElementById('rh-stat-venues'); if(mv&&c.venues) mv.textContent=c.venues;
+    var ms=document.getElementById('rh-stat-save'); if(ms&&c.maxOff) ms.textContent=c.maxOff+'%';
+  } catch(e){}
 }
 
 // ── REAL DISTANCES ──────────────────────────────────────────────────
@@ -6875,33 +7107,16 @@ function recomputeDealDistances(){
     });
   });
 }
-function renderTonightsPicks(){
-  var sec = document.getElementById('picks-section');
-  var scroll = document.getElementById('picks-scroll');
-  if(!sec || !scroll) return;
-  if(!_showTonightsPicks){ sec.style.display='none'; return; }
-  var src = Array.isArray(vouchers) ? vouchers : [];
-  // Top picks: active today, verified, highest discount first
-  var picks = src.filter(function(v){ return isDealActiveToday(v); })
-    .sort(function(a,b){
-      var ao = parseFloat(String(a.off||'').replace(/[^0-9.]/g,''))||0;
-      var bo = parseFloat(String(b.off||'').replace(/[^0-9.]/g,''))||0;
-      return bo - ao;
-    }).slice(0, 8);
-  if(!picks.length){ sec.style.display='none'; return; }
-  sec.style.display='block';
-  scroll.innerHTML = picks.map(function(v){
-    var img = v.img ? '<img class="pick-img" src="'+v.img+'" loading="lazy" onerror="this.style.display=\'none\'">' : '<div class="pick-img" style="display:flex;align-items:center;justify-content:center;font-size:36px;background:#FFF0F2;">'+v.emoji+'</div>';
-    var off = v.off || (v.price ? '€'+parseFloat(v.price).toFixed(2) : '');
-    return '<div class="pick-card" onclick="openDeal(\''+v.id+'\')">'
-      + img
-      +'<div class="pick-off">'+off+'</div>'
-      +'<div class="pick-body">'
-        +'<div class="pick-name">'+v.emoji+' '+v.name+'</div>'
-        +'<div class="pick-meta">'+(v.dist||v.hours||v.days||'')+'</div>'
-      +'</div>'
-    +'</div>';
-  }).join('');
+// True if at least one verified deal is actually buyable right now:
+// not expired and still has vouchers available (slots remaining). The
+// "Coming Soon" card only shows when this is false.
+function _hasPurchasableVouchers(){
+  if(!Array.isArray(vouchers)) return false;
+  return vouchers.some(function(v){
+    if(isDealExpired(v)) return false;
+    var avail = Math.max(0, (v.slotsTotal||100) - (v.slotsSold||0));
+    return avail > 0;
+  });
 }
 
 function renderCoupons(cat){
@@ -6922,6 +7137,23 @@ function renderCoupons(cat){
           +'<div style="height:9px;background:#DCDCE0;border-radius:6px;width:50%;"></div>'
         +'</div></div>';
       el.innerHTML=sk+'</div>';
+    } else if(!_hasPurchasableVouchers()) {
+      el.innerHTML='<div style="margin:8px 0 4px;border-radius:20px;overflow:hidden;background:linear-gradient(135deg,#1A1A2E 0%,#16213E 45%,#0F3460 100%);padding:32px 20px 28px;text-align:center;position:relative;">'
+        +'<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(232,25,44,.18) 0%,transparent 60%),radial-gradient(ellipse at 70% 80%,rgba(100,60,200,.15) 0%,transparent 60%);pointer-events:none;"></div>'
+        +'<div style="position:relative;z-index:1;">'
+          +'<div style="font-size:44px;margin-bottom:10px;filter:drop-shadow(0 4px 12px rgba(232,25,44,.4));">🎟️</div>'
+          +'<div style="display:inline-block;background:rgba(232,25,44,.15);border:1px solid rgba(232,25,44,.4);border-radius:20px;padding:4px 14px;margin-bottom:12px;">'
+            +'<span style="font-size:10px;font-weight:900;color:#E8192C;letter-spacing:2px;text-transform:uppercase;">Coming Soon</span>'
+          +'</div>'
+          +'<div style="font-size:18px;font-weight:900;color:white;margin-bottom:8px;line-height:1.25;">Exclusive Happy Hour<br>Coupons</div>'
+          +'<div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;max-width:240px;margin:0 auto;">Verified deals from top bars &amp; restaurants — buy a voucher, show it, save up to 60%.</div>'
+          +'<div style="display:flex;justify-content:center;gap:6px;margin-top:18px;">'
+            +'<div style="width:6px;height:6px;border-radius:50%;background:rgba(232,25,44,.8);animation:sk-pulse 1.4s ease-in-out infinite;"></div>'
+            +'<div style="width:6px;height:6px;border-radius:50%;background:rgba(232,25,44,.8);animation:sk-pulse 1.4s ease-in-out infinite;animation-delay:.2s;"></div>'
+            +'<div style="width:6px;height:6px;border-radius:50%;background:rgba(232,25,44,.8);animation:sk-pulse 1.4s ease-in-out infinite;animation-delay:.4s;"></div>'
+          +'</div>'
+        +'</div>'
+      +'</div>';
     } else {
       el.innerHTML='<div style="padding:36px 16px;text-align:center;color:var(--t3);">'
         +'<div style="font-size:40px;margin-bottom:12px;">🔍</div>'
@@ -7123,7 +7355,7 @@ function renderAllDeals(tab){
 
 function filterCat(cat,el){
   document.querySelectorAll('#cat-chips .chip').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');renderCoupons(cat);renderUC(cat);if(cat==='all')renderTonightsPicks();
+  el.classList.add('on');renderCoupons(cat);renderUC(cat);
 }
 
 // ALERTS — compact list, tap to open detail sheet
@@ -7670,6 +7902,7 @@ function _fsKeyHandler(e){
 
 function openDeal(deal){
   if(!deal)return;
+  if(isDealExpired(deal)){ showToast('⌛ This deal has expired and is no longer available'); return; }
   curV=deal.id; qty=1;
   curVKind = deal.verified ? 'verified' : 'community';
 
@@ -8489,9 +8722,9 @@ async function adminSaveDealEdits(dealId){
   // Build image_url from _admPhotos array (same pattern as adminSaveEditsOnly)
   var savedImgs = ['','',''];
   var p0=_admPhotos[0]||'', p1=_admPhotos[1]||'', p2=_admPhotos[2]||'';
-  if(p0 && p0.startsWith('data:')){ try{ savedImgs[0]=await compressImage(p0,800,0.8); }catch(e){ savedImgs[0]=p0; } } else { savedImgs[0]=p0; }
-  if(p1 && p1.startsWith('data:')){ try{ savedImgs[1]=await compressImage(p1,800,0.8); }catch(e){ savedImgs[1]=p1; } } else { savedImgs[1]=p1; }
-  if(p2 && p2.startsWith('data:')){ try{ savedImgs[2]=await compressImage(p2,800,0.8); }catch(e){ savedImgs[2]=p2; } } else { savedImgs[2]=p2; }
+  if(p0){ try{ savedImgs[0]=await compressAndUpload(p0,800,0.8,'deals'); }catch(e){ savedImgs[0]=p0; } }
+  if(p1){ try{ savedImgs[1]=await compressAndUpload(p1,800,0.8,'deals'); }catch(e){ savedImgs[1]=p1; } }
+  if(p2){ try{ savedImgs[2]=await compressAndUpload(p2,800,0.8,'deals'); }catch(e){ savedImgs[2]=p2; } }
   var allPhotos = savedImgs.filter(Boolean);
   var image_url = allPhotos.length > 1 ? JSON.stringify(allPhotos) : (allPhotos[0] || '');
 
@@ -10639,12 +10872,12 @@ function _submitDealInner(){
   if (currentUser) {
     (async function(){
       try {
-        // Compress all photos and build JSON array (same as admin save)
+        // Compress + upload each photo to Storage (URL in DB, not base64)
         var savedImg1 = '', savedImg2 = '', savedImg3 = '';
         var p0 = _ucPhotos[0]||'', p1 = _ucPhotos[1]||'', p2 = _ucPhotos[2]||'';
-        if(p0 && p0.startsWith('data:')){ try{ savedImg1 = await compressImage(p0, 800, 0.8); }catch(e){ savedImg1 = p0; } } else { savedImg1 = p0; }
-        if(p1 && p1.startsWith('data:')){ try{ savedImg2 = await compressImage(p1, 800, 0.8); }catch(e){ savedImg2 = p1; } } else { savedImg2 = p1; }
-        if(p2 && p2.startsWith('data:')){ try{ savedImg3 = await compressImage(p2, 800, 0.8); }catch(e){ savedImg3 = p2; } } else { savedImg3 = p2; }
+        if(p0){ try{ savedImg1 = await compressAndUpload(p0, 800, 0.8, 'community'); }catch(e){ savedImg1 = p0; } }
+        if(p1){ try{ savedImg2 = await compressAndUpload(p1, 800, 0.8, 'community'); }catch(e){ savedImg2 = p1; } }
+        if(p2){ try{ savedImg3 = await compressAndUpload(p2, 800, 0.8, 'community'); }catch(e){ savedImg3 = p2; } }
         var allPhotos = [savedImg1, savedImg2, savedImg3].filter(Boolean);
         var dbImageUrl = allPhotos.length > 1 ? JSON.stringify(allPhotos) : (allPhotos[0] || null);
         var { data: row, error: insErr } = await db.from('community_deals').insert({
@@ -11345,6 +11578,18 @@ var USERS={
 
 var _loginMode = 'signin';
 
+function _updateSignupCta(){
+  var cta=document.getElementById('login-signup-cta'); if(!cta) return;
+  if(loginRole==='admin'){ cta.style.display='none'; return; }   // admins don't self-register
+  cta.style.display='block';
+  if(_loginMode==='signup'){
+    cta.textContent = 'Already have an account? Sign in';
+  } else if(loginRole==='merchant'){
+    cta.textContent = '🏪 Own a venue? Register your business →';
+  } else {
+    cta.textContent = 'New to HappyHourly? Create an account →';
+  }
+}
 function switchAuthMode(mode){
   _loginMode = mode;
   var nameEl = document.getElementById('signup-name');
@@ -11353,13 +11598,14 @@ function switchAuthMode(mode){
   var modeSI = document.getElementById('mode-signin');
   var modeSU = document.getElementById('mode-signup');
   var isSU = mode === 'signup';
-  if(nameEl){ nameEl.style.display = isSU ? 'block' : 'none'; }
+  if(nameEl){ nameEl.style.display = isSU ? 'block' : 'none'; nameEl.placeholder = (loginRole==='merchant') ? 'Business name' : 'Full name'; }
   if(confirmEl){ confirmEl.style.display = isSU ? 'block' : 'none'; }
-  if(btn) btn.textContent = isSU ? 'Create Account' : 'Sign In';
+  if(btn) btn.textContent = isSU ? (loginRole==='merchant' ? 'Register Business' : 'Create Account') : 'Sign In';
   if(modeSI){ modeSI.style.background = isSU ? 'none' : 'white'; modeSI.style.color = isSU ? 'rgba(255,255,255,.5)' : '#1A1A1A'; }
   if(modeSU){ modeSU.style.background = isSU ? 'white' : 'none'; modeSU.style.color = isSU ? '#1A1A1A' : 'rgba(255,255,255,.5)'; }
   var errEl = document.getElementById('login-error');
   if(errEl) errEl.textContent = '';
+  _updateSignupCta();
 }
 
 async function doSignUp(){
@@ -11370,7 +11616,12 @@ async function doSignUp(){
   var confirm = (document.getElementById('signup-confirm').value || '').trim();
   var errEl = document.getElementById('login-error');
 
-  if(!name){ errEl.textContent = 'Please enter your full name'; return; }
+  // Sign up creates an account for the CURRENT login type. Admins can't self-
+  // register (privileged — created by an existing admin only).
+  var signupRole = (loginRole === 'merchant') ? 'merchant' : 'customer';
+  if(loginRole === 'admin'){ errEl.textContent = 'Admin accounts are created by an administrator.'; return; }
+
+  if(!name){ errEl.textContent = (signupRole==='merchant'?'Please enter your business name':'Please enter your full name'); return; }
   if(!email){ errEl.textContent = 'Please enter your email address'; return; }
   if(!pass){ errEl.textContent = 'Please enter a password'; return; }
   if(pass.length < 6){ errEl.textContent = 'Password must be at least 6 characters'; return; }
@@ -11384,7 +11635,7 @@ async function doSignUp(){
     var { data, error } = await db.auth.signUp({
       email: email,
       password: pass,
-      options: { data: { name: name, role: 'customer' } }
+      options: { data: { name: name, role: signupRole } }
     });
 
     if(error){ errEl.textContent = error.message; if(btn){ btn.disabled=false; btn.textContent='Create Account'; } return; }
@@ -11392,12 +11643,12 @@ async function doSignUp(){
     var user = data && data.user;
     if(!user){ errEl.textContent = 'Signup failed — please try again'; if(btn){ btn.disabled=false; btn.textContent='Create Account'; } return; }
 
-    // Auto-approve: create profile row immediately as active customer
+    // Auto-approve: create profile row immediately with the chosen role
     await db.from('profiles').upsert({
       id: user.id,
       name: name,
       email: email,
-      role: 'customer',
+      role: signupRole,
       status: 'active',
       credits: 0
     }, { onConflict: 'id' });
@@ -11405,7 +11656,10 @@ async function doSignUp(){
     if(btn){ btn.disabled=false; btn.textContent='Create Account'; }
     errEl.textContent = '';
     await handleAuthSession(user);
-    setTimeout(function(){ showToast('🎉 Welcome to HappyHourly, ' + name.split(' ')[0] + '!'); }, 500);
+    var _welcome = signupRole==='merchant'
+      ? '🏪 Welcome, ' + name.split(' ')[0] + '! Set up your venue & post deals.'
+      : '🎉 Welcome to HappyHourly, ' + name.split(' ')[0] + '!';
+    setTimeout(function(){ showToast(_welcome); }, 500);
   } catch(e) {
     errEl.textContent = 'Error: ' + e.message;
     if(btn){ btn.disabled=false; btn.textContent='Create Account'; }
@@ -11414,26 +11668,32 @@ async function doSignUp(){
 
 function switchLoginTab(role){
   loginRole=role;
-  ['customer','merchant','admin'].forEach(function(r){
-    var b=document.getElementById('tab-'+r); if(!b)return;
-    if(r===role){b.style.background='white';b.style.color='#E8192C';b.style.fontWeight='800';}
-    else{b.style.background='none';b.style.color='rgba(255,255,255,.5)';b.style.fontWeight='700';}
-  });
-  var gb=document.getElementById('guest-btn');
-  if(gb) gb.style.display=role==='customer'?'block':'none';
-  // Show/hide Sign In/Sign Up toggle for customer only
-  var mw=document.getElementById('auth-mode-wrap');
-  if(mw) mw.style.display=role==='customer'?'flex':'none';
-  // Reset to sign-in mode when switching tabs
-  if(role!=='customer') _loginMode='signin';
-  else switchAuthMode('signin');
-  // Clear error message and inputs when switching tabs
-  var errEl=document.getElementById('login-error');
-  if(errEl) errEl.textContent='';
-  var userInp=document.getElementById('login-user');
-  var passInp=document.getElementById('login-pass');
-  if(userInp) userInp.value='';
-  if(passInp) passInp.value='';
+  // Title reflects the active login (separation per access rights)
+  var _mt=document.getElementById('login-mode-title');
+  if(_mt) _mt.textContent = role==='merchant' ? '🏪 Merchant login — for venue owners'
+                          : role==='admin'    ? '🛡 Admin login — staff only'
+                          :                     "Your city's best happy hours";
+  // Demo hint reflects the matching account
+  var _dh=document.getElementById('login-demo-hint');
+  if(_dh){
+    var acct = role==='merchant' ? 'merchant@goldentap.com'
+             : role==='admin'    ? 'admin@happyhourly.com'
+             :                     'customer@happyhourly.com';
+    _dh.innerHTML = 'Demo account · Password: <strong style="color:rgba(255,255,255,.6);">123</strong><br><strong style="color:rgba(255,255,255,.6);">'+acct+'</strong>';
+  }
+  // Corner links: show the two roles you're NOT currently on
+  var lm=document.getElementById('link-merchant'); if(lm) lm.style.display = role==='merchant'?'none':'block';
+  var la=document.getElementById('link-admin');    if(la) la.style.display = role==='admin'?'none':'block';
+  var lc=document.getElementById('link-customer'); if(lc) lc.style.display = role==='customer'?'none':'block';
+  // Guest is customer-only. Sign-up is for customer + merchant (admins are
+  // created by an existing admin, so the admin login is sign-in only).
+  var gb=document.getElementById('guest-btn');     if(gb) gb.style.display = role==='customer'?'block':'none';
+  var mw=document.getElementById('auth-mode-wrap'); if(mw) mw.style.display = (role==='admin')?'none':'flex';
+  _loginMode='signin'; switchAuthMode('signin');
+  // Clear error + inputs when switching
+  var errEl=document.getElementById('login-error'); if(errEl) errEl.textContent='';
+  var userInp=document.getElementById('login-user'); if(userInp) userInp.value='';
+  var passInp=document.getElementById('login-pass'); if(passInp) passInp.value='';
 }
 
 function doGuestLogin(){
@@ -11491,8 +11751,31 @@ async function doLogin(){
       return;
     }
 
-    console.log('Login success');
+    // ── Enforce access rights per login entry ──────────────────────────────
+    // Each login (Customer / Merchant / Admin) only accepts its matching role.
+    // Role is read from the auth token (synced by sync_roles_to_token.sql).
+    var acctRole = (data.user.app_metadata && data.user.app_metadata.role)
+                || (data.user.user_metadata && data.user.user_metadata.role)
+                || 'customer';
+    var tab = loginRole || 'customer';
+    var allowed =
+      tab === 'admin'    ? (acctRole === 'admin' || acctRole === 'super_admin') :
+      tab === 'merchant' ? (acctRole === 'merchant') :
+                           (acctRole === 'customer');   // Customer login → customers only
+    if(!allowed){
+      // Each login is its own world: don't reveal that the account exists under
+      // another role. Generic credential error keeps the logins fully separate.
+      await db.auth.signOut().catch(function(){});
+      errEl.textContent = 'Invalid email or password.';
+      return;
+    }
+
+    console.log('Login success as', acctRole);
     errEl.textContent = '';
+    // Claim the session here so the deferred onAuthStateChange handler doesn't
+    // also run handleAuthSession (avoids a double-route race). The token is
+    // already attached at this point (signInWithPassword has resolved).
+    _authInitialized = true;
     await handleAuthSession(data.user);
   } catch(e) {
     console.error('doLogin error:', e);
@@ -11531,12 +11814,37 @@ async function doLogout(){
   var mr = document.getElementById('merch-root'); if (mr) mr.style.display = 'none';
   var cr = document.getElementById('cust-root'); if (cr) cr.style.display = 'none';
 
-  // Sign out and clear state
+  // Sign out and clear ALL per-account state so the next login starts clean
+  // and no data bleeds across accounts (security).
+  var _prevUid = currentUser && currentUser.id;
   await db.auth.signOut().catch(function(){});
-  try{ localStorage.removeItem('hh_last_role'); }catch(e){}
+  try{
+    localStorage.removeItem('hh_last_role');
+    localStorage.removeItem('hh_admin_page');
+    if(_prevUid) localStorage.removeItem('_cachedVenueId_' + _prevUid);
+  }catch(e){}
   currentUser = null; currentProfile = null; isGuest = false; _sessionRouted = false;
+  _lastHandledUserId = null;   // next login is a fresh user → reset will run
   updateGuestVisibility();
   myVouchers = []; savedDeals = [];
+  // Reset the profile display so a previous account's name/avatar/email can't
+  // linger into the next session (the "Golden Tap + admin@…" mix-up).
+  try{
+    var _pn=document.querySelector('.prof-name'); if(_pn) _pn.textContent='';
+    var _pe=document.querySelector('.prof-email'); if(_pe) _pe.textContent='';
+    var _ai=document.getElementById('prof-avatar-initials'); if(_ai){ _ai.textContent='U'; _ai.style.display='block'; }
+    var _pi=document.getElementById('prof-avatar-img'); if(_pi){ _pi.removeAttribute('src'); _pi.style.display='none'; }
+    var _mhe=document.getElementById('merch-hdr-email'); if(_mhe) _mhe.textContent='';
+    var _ahe=document.getElementById('admin-hdr-email'); if(_ahe) _ahe.textContent='';
+  }catch(e){}
+  // Reset merchant/admin working data so it can't show under a different user
+  try{
+    meVenueId = null; meVenueName = '';
+    if(typeof dealsData !== 'undefined') dealsData = [];
+    if(typeof _meSelectedDeals !== 'undefined') _meSelectedDeals = [];
+    if(typeof adminUsers !== 'undefined') adminUsers = [];
+    if(typeof _currentAdminRole !== 'undefined') _currentAdminRole = null;
+  }catch(e){}
 
   // Show login screen
   var ls = document.getElementById('login-screen');
@@ -11548,9 +11856,21 @@ async function doLogout(){
   switchLoginTab('customer');
 }
 function openAdmin(){
+  // Hard guard: only admins/super-admins may ever see the admin UI.
+  var _r = currentProfile && currentProfile.role;
+  if(_r && _r !== 'admin' && _r !== 'super_admin'){
+    console.warn('[openAdmin] blocked for role:', _r);
+    var _mr=document.getElementById('merch-root'); if(_mr) _mr.style.display='none';
+    var _ar=document.getElementById('admin-root'); if(_ar) _ar.style.display='none';
+    if(typeof goScreen==='function') goScreen('deals');
+    return;
+  }
   var el=document.getElementById('admin-root');
   if(!el) return;
   el.style.display='flex';
+  // Show the signed-in email in the header (next to ✕ Close)
+  var _ahe=document.getElementById('admin-hdr-email');
+  if(_ahe) _ahe.textContent = (currentUser && currentUser.email) || (currentProfile && currentProfile.email) || '';
   updateAdminNavVisibility();
   var savedPage = localStorage.getItem('hh_admin_page') || 'dashboard';
   var targetBtn = document.querySelector('.adm-nav-btn[onclick*="\''+savedPage+'\'"]') || document.querySelector('.adm-nav-btn');
@@ -11562,9 +11882,23 @@ function openAdmin(){
 }
 function closeAdmin(){var el=document.getElementById('admin-root');if(el)el.style.display='none';localStorage.removeItem('hh_admin_page');doLogout();}
 function openMerchantDash(){
+  // Hard guard: ONLY merchants may see the merchant portal.
+  // (Customers → blocked. Admins → admin-only, also blocked here.)
+  var _r = currentProfile && currentProfile.role;
+  if(_r && _r !== 'merchant'){
+    console.warn('[openMerchantDash] blocked for role:', _r);
+    var _mr=document.getElementById('merch-root'); if(_mr) _mr.style.display='none';
+    if(_r === 'admin' || _r === 'super_admin'){ if(typeof openAdmin==='function') openAdmin(); }
+    else { var _ar=document.getElementById('admin-root'); if(_ar) _ar.style.display='none'; if(typeof goScreen==='function') goScreen('deals'); }
+    return;
+  }
   var root=document.getElementById('merch-root');
   if(!root) return;
   root.style.display='flex';
+
+  // Show the signed-in email in the header (next to ✕ Close)
+  var _he=document.getElementById('merch-hdr-email');
+  if(_he) _he.textContent = (currentUser && currentUser.email) || (currentProfile && currentProfile.email) || '';
 
   // Initialize dashboard with new design
   mePageNew('dashboard');
@@ -11578,6 +11912,13 @@ function closeMerchant(){
   var el=document.getElementById('merch-root');
   if(el) el.style.display='none';
   doLogout();
+}
+// Merchant → customer UI (without logging out). Merchants have access to BOTH;
+// they can return to the portal via the "Merchant Portal" row in their profile.
+function merchViewCustomer(){
+  var mr=document.getElementById('merch-root'); if(mr) mr.style.display='none';
+  if(typeof goScreen==='function') goScreen('deals');
+  if(typeof showToast==='function') showToast('🏠 Customer view — reopen the Merchant Portal from your Profile');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -12343,6 +12684,69 @@ function adminQuickBan(idx) {
   u.status = u.status === 'banned' ? 'active' : 'banned';
   showToast(u.status === 'banned' ? '🚫 '+u.name+' banned' : '✅ '+u.name+' unbanned');
   adminPage('users', null);
+}
+
+// Admin: set a user's password. Calls the secure server endpoint (service-role
+// key stays server-side; the endpoint re-verifies the caller is an admin).
+var _admPwUserIdx = null;
+function adminResetUserPassword(idx){
+  var u = adminUsers[idx];
+  if(!u){ showToast('❌ User not found'); return; }
+  if(!u._id){ showToast('⚠️ This user has no account id — cannot reset password'); return; }
+  _admPwUserIdx = idx;
+  var modal = document.getElementById('adm-pw-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'adm-pw-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:20px;';
+    modal.innerHTML =
+      '<div style="background:white;border-radius:18px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;" onclick="event.stopPropagation()">'
+      + '<div style="padding:18px 20px;border-bottom:1px solid #EEE;display:flex;align-items:center;justify-content:space-between;">'
+        + '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">🔑 Reset Password</div>'
+        + '<button onclick="document.getElementById(\'adm-pw-modal\').style.display=\'none\'" style="background:#F5F5F7;border:none;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;color:#555;">✕</button>'
+      + '</div>'
+      + '<div style="padding:20px;">'
+        + '<div id="adm-pw-to" style="font-size:13px;color:#555;margin-bottom:14px;"></div>'
+        + '<label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">New password</label>'
+        + '<input id="adm-pw-new" type="text" placeholder="At least 6 characters" style="width:100%;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;color:#1A1A1A;box-sizing:border-box;margin-bottom:8px;" onfocus="this.style.borderColor=\'#F59E0B\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
+        + '<div style="font-size:11.5px;color:#9A9AB0;margin-bottom:16px;">The user will need to use this new password to sign in.</div>'
+        + '<button id="adm-pw-save" onclick="adminSubmitUserPassword()" style="width:100%;background:linear-gradient(135deg,#E8192C,#FF6B35);color:white;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Set Password</button>'
+      + '</div>'
+      + '</div>';
+    modal.onclick = function(e){ if(e.target===modal) modal.style.display='none'; };
+    document.body.appendChild(modal);
+  }
+  var to = document.getElementById('adm-pw-to');
+  if(to) to.innerHTML = 'Setting a new password for <strong>'+(u.name||u.email||'user')+'</strong><br><span style="color:#9A9AB0;">'+(u.email||'')+'</span>';
+  var inp = document.getElementById('adm-pw-new'); if(inp) inp.value='';
+  modal.style.display = 'flex';
+  setTimeout(function(){ if(inp) inp.focus(); }, 50);
+}
+async function adminSubmitUserPassword(){
+  var u = adminUsers[_admPwUserIdx];
+  if(!u || !u._id){ showToast('❌ User not found'); return; }
+  var inp = document.getElementById('adm-pw-new');
+  var pw = inp ? inp.value.trim() : '';
+  if(pw.length < 6){ showToast('⚠️ Password must be at least 6 characters'); return; }
+  var btn = document.getElementById('adm-pw-save');
+  if(btn){ btn.disabled = true; btn.textContent = 'Setting…'; }
+  try{
+    var sess = await db.auth.getSession();
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    if(!token){ showToast('⚠️ Your session expired — sign in again'); if(btn){btn.disabled=false;btn.textContent='Set Password';} return; }
+    var r = await fetch('https://happyhourly-omega.vercel.app/api/admin-reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ user_id: u._id, new_password: pw })
+    });
+    var j = await r.json().catch(function(){ return {}; });
+    if(!r.ok || j.error){ showToast('⚠️ ' + (j.error || ('Failed ('+r.status+')'))); if(btn){btn.disabled=false;btn.textContent='Set Password';} return; }
+    showToast('✅ Password updated for ' + (u.name || u.email));
+    var modal = document.getElementById('adm-pw-modal'); if(modal) modal.style.display='none';
+  }catch(e){
+    showToast('⚠️ ' + (e.message || 'Could not reach server'));
+  }
+  if(btn){ btn.disabled=false; btn.textContent='Set Password'; }
 }
 
 async function adminDeleteUser(idx) {
@@ -13234,39 +13638,6 @@ function setFooterConfig(cfg){
 }
 
 // ── TONIGHT'S PICKS VISIBILITY SETTING ──────────────────────────────
-var _showTonightsPicks = true;
-function loadPicksSettingFromDB(){
-  try {
-    if(typeof db==='undefined'||!db.from) return;
-    db.from('app_settings').select('value').eq('key','show_tonight_picks').maybeSingle()
-      .then(function(r){
-        if(r && r.data && r.data.value !== undefined){
-          _showTonightsPicks = r.data.value !== false && r.data.value !== 'false';
-          try { localStorage.setItem('hh_show_tonight_picks', String(_showTonightsPicks)); } catch(e){}
-          renderTonightsPicks();
-        }
-      }).catch(function(){});
-  } catch(e){}
-}
-(function(){
-  try {
-    var s = localStorage.getItem('hh_show_tonight_picks');
-    if(s !== null) _showTonightsPicks = s !== 'false';
-  } catch(e){}
-})();
-function adminSavePicksSetting(val){
-  _showTonightsPicks = !!val;
-  try { localStorage.setItem('hh_show_tonight_picks', String(_showTonightsPicks)); } catch(e){}
-  try {
-    if(typeof db!=='undefined'&&db.from)
-      db.from('app_settings').upsert({key:'show_tonight_picks',value:_showTonightsPicks},{onConflict:'key'})
-        .then(function(r){ if(r&&r.error) console.warn('[picks] save:', r.error.message); })
-        .catch(function(e){ console.warn('[picks] save failed', e); });
-  } catch(e){}
-  renderTonightsPicks();
-  showToast(_showTonightsPicks ? "Tonight's Picks visible" : "Tonight's Picks hidden");
-}
-
 // ── "WHERE TO WATCH" (World Cup) FEATURE TOGGLE ─────────────────────
 // Defaults ON during the tournament. A super admin can switch it off; that
 // choice is stored in app_settings (DB) and overrides this default everywhere.
@@ -13597,25 +13968,6 @@ function adminRenderSettings() {
 
   var html = '<div style="max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:20px;">';
 
-  // HOME SCREEN VISIBILITY
-  html += '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;">'
-    + '<div style="padding:16px;border-bottom:1px solid #E8E8EC;">'
-      + '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">🏠 Home Screen</div>'
-      + '<div style="font-size:12px;color:#9A9AB0;margin-top:4px;">Control which sections appear on the customer home screen</div>'
-    + '</div>'
-    + '<div style="padding:16px;display:flex;flex-direction:column;gap:0;">'
-      + '<label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:10px 0;">'
-        + '<div>'
-          + '<div style="font-size:14px;font-weight:700;color:#1A1A1A;">🔥 Tonight\'s Picks</div>'
-          + '<div style="font-size:12px;color:#9A9AB0;margin-top:2px;">Featured deal strip below the map</div>'
-        + '</div>'
-        + '<input type="checkbox" id="adm-picks-toggle" onchange="adminSavePicksSetting(this.checked)" '
-          + (_showTonightsPicks ? 'checked' : '')
-          + ' style="width:18px;height:18px;accent-color:#E8192C;cursor:pointer;">'
-      + '</label>'
-    + '</div>'
-  + '</div>';
-
   // ROLE ACCESS CONFIGURATION (Super Admin Only)
   if(isSuperAdmin){
     var _racOpen = (localStorage.getItem('hh_rac_open') !== 'false');
@@ -13627,7 +13979,7 @@ function adminRenderSettings() {
         + '</div>'
         + '<div id="rac-chevron" style="font-size:18px;transition:transform .25s;transform:rotate('+(_racOpen?'0':'180')+'deg);">⌃</div>'
       + '</div>'
-      + '<div id="rac-body" style="display:grid;gap:14px;overflow:hidden;transition:max-height .3s ease;max-height:'+(_racOpen?'2000px':'0')+';'+(! _racOpen?'margin-top:0;':'')+'"">';
+      + '<div id="rac-body" style="display:'+(_racOpen?'grid':'none')+';gap:14px;'+(_racOpen?'margin-top:8px;':'')+ '">';
 
     // Generate role configuration cards
     Object.keys(_adminRoles).forEach(function(roleKey){
@@ -13706,8 +14058,9 @@ function _admToggleRAC(){
   var chevron = document.getElementById('rac-chevron');
   var header = document.getElementById('rac-header');
   if(!body) return;
-  var open = body.style.maxHeight !== '0px';
-  body.style.maxHeight = open ? '0' : '2000px';
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'grid';
+  body.style.marginTop = open ? '0' : '8px';
   if(chevron) chevron.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
   if(header) header.style.marginBottom = open ? '0' : '8px';
   try{ localStorage.setItem('hh_rac_open', String(!open)); }catch(e){}
@@ -14044,36 +14397,162 @@ function adminWatchEdit(id){
     ov.onclick=function(e){ if(e.target===ov) adminWatchEditClose(); };
     document.body.appendChild(ov);
   }
-  var inp='width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;color:#1A1A1A;outline:none;box-sizing:border-box;';
-  var lbl='font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px;margin-top:12px;';
+  // Field styling mirrors the "Contribute Info" form
+  var inp='width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;box-sizing:border-box;';
+  var inpRO='width:100%;background:#EFEFF2;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:#6B6B76;outline:none;margin-bottom:12px;box-sizing:border-box;cursor:not-allowed;';
+  var lbl='font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;';
   var ms=_watchMatchesOf(s);
-  var multiNote = ms.length>1 ? '<div style="font-size:11px;color:#B86E00;font-weight:600;background:#FFF4E5;border-radius:8px;padding:8px 10px;margin-top:6px;">This spot lists '+ms.length+' matches. Editing the label below changes the summary text only.</div>' : '';
+  var multiNote = ms.length>1 ? '<div style="font-size:11px;color:#B86E00;font-weight:600;background:#FFF4E5;border-radius:8px;padding:8px 10px;margin:6px 0 14px;">This spot lists '+ms.length+' matches. Editing the label below changes the summary text only.</div>' : '';
 
   var hasPhoto = !!(s.image_url);
-  var photoSection = '<label style="'+lbl+'">Photo</label>'
-    +'<div id="awe-photo-wrap" style="position:relative;border-radius:12px;overflow:hidden;background:#F5F5F7;border:2px dashed #E8E8EC;min-height:120px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="document.getElementById(\'awe-file-inp\').click()">'
-      +(hasPhoto
-        ? '<img id="awe-photo-preview" src="'+s.image_url+'" style="width:100%;max-height:200px;object-fit:cover;display:block;">'
-        : '<div id="awe-photo-placeholder" style="text-align:center;padding:20px;"><div style="font-size:28px;">📷</div><div style="font-size:12px;font-weight:700;color:#9A9AB0;margin-top:4px;">Tap to add photo</div></div>')
-      +'<input type="file" id="awe-file-inp" accept="image/*" style="display:none;" onchange="awePhotoSelected(this)">'
+  // Photo section — same look as the Contribute Info form
+  var photoSection = '<input type="file" id="awe-file-inp" accept="image/*" style="display:none;" onchange="awePhotoSelected(this)">'
+    +'<div id="awe-photo-empty" onclick="document.getElementById(\'awe-file-inp\').click()" style="background:#F5F5F7;border:2px dashed rgba(18,161,80,.4);border-radius:14px;padding:16px;text-align:center;cursor:pointer;margin-bottom:14px;display:'+(hasPhoto?'none':'block')+';">'
+      +'<div style="font-size:24px;margin-bottom:4px;">📷</div>'
+      +'<div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px;">Add a photo <span style="color:#9A9AB0;font-weight:600;">(optional)</span></div>'
+      +'<div style="display:inline-block;background:#12A150;color:white;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:800;">Upload</div>'
     +'</div>'
-    +(hasPhoto ? '<button type="button" onclick="aweRemovePhoto(\''+_watchEsc(s.image_url)+'\')" style="margin-top:6px;background:none;border:none;color:#E8192C;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;padding:0;">✕ Remove photo</button>' : '');
+    +'<div id="awe-photo-preview" style="display:'+(hasPhoto?'block':'none')+';position:relative;border-radius:14px;overflow:hidden;border:2px solid rgba(18,161,80,.4);margin-bottom:14px;">'
+      +'<img id="awe-photo-preview-img" style="width:100%;height:140px;object-fit:cover;display:block;" src="'+(hasPhoto?_watchEsc(s.image_url):'')+'" alt="">'
+      +'<button type="button" onclick="document.getElementById(\'awe-file-inp\').click()" style="position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,.55);border:none;border-radius:6px;padding:4px 10px;font-size:10px;color:white;cursor:pointer;font-family:Inter,sans-serif;font-weight:700;">Change</button>'
+      +'<button type="button" onclick="aweRemovePhoto()" style="position:absolute;bottom:8px;left:10px;background:rgba(232,25,44,.85);border:none;border-radius:6px;padding:4px 10px;font-size:10px;color:white;cursor:pointer;font-family:Inter,sans-serif;font-weight:700;">Remove</button>'
+    +'</div>';
 
+  var resvOn = !!s.reservation_needed;
   ov.innerHTML='<div style="background:white;border-radius:16px;width:100%;max-width:460px;padding:22px;margin-top:40px;box-shadow:0 20px 60px rgba(0,0,0,.3);">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div style="font-size:17px;font-weight:900;color:#1A1A1A;">✏️ Edit spot</div><button onclick="adminWatchEditClose()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button></div>'
-    +'<div style="font-size:12px;color:#9A9AB0;">Shared by '+_watchEsc(s.host_name||'Community')+'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div style="font-size:18px;font-weight:900;color:var(--text);">Edit watch spot ⚽</div><button onclick="adminWatchEditClose()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button></div>'
+    +'<div style="font-size:13px;color:#9A9AB0;margin-bottom:18px;">Shared by '+_watchEsc(s.host_name||'Community')+'</div>'
     +multiNote
-    +'<label style="'+lbl+'">Venue name</label><input id="awe-venue" style="'+inp+'" value="'+_watchEsc(s.venue_name||'')+'">'
-    +'<label style="'+lbl+'">Address</label><input id="awe-addr" style="'+inp+'" value="'+_watchEsc(s.location||'')+'">'
-    +'<label style="'+lbl+'">Match label</label><input id="awe-match" style="'+inp+'" value="'+_watchEsc(s.match_label||'')+'">'
-    +'<div style="display:flex;gap:10px;"><div style="flex:1;"><label style="'+lbl+'">Date</label><input id="awe-date" type="date" style="'+inp+'" value="'+_watchEsc(s.match_date||'')+'"></div><div style="flex:1;"><label style="'+lbl+'">Kickoff</label><input id="awe-time" type="text" placeholder="HH:MM" style="'+inp+'" value="'+_watchEsc(s.kickoff_time||'')+'"></div></div>'
-    +'<label style="'+lbl+'">Notes</label><textarea id="awe-notes" style="'+inp+'height:70px;resize:vertical;">'+_watchEsc(s.notes||'')+'</textarea>'
-    +'<label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;font-weight:700;color:#1A1A1A;cursor:pointer;"><input type="checkbox" id="awe-resv" '+(s.reservation_needed?'checked':'')+' style="width:17px;height:17px;accent-color:#12A150;"> Reservation needed</label>'
-    +'<label style="'+lbl+'">Reservation info</label><input id="awe-resv-info" style="'+inp+'" value="'+_watchEsc(s.reservation_info||'')+'">'
-    +photoSection
-    +'<div style="display:flex;gap:10px;margin-top:18px;"><button onclick="adminWatchEditClose()" style="flex:1;background:#F0F2F5;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Cancel</button><button onclick="adminWatchSaveEdit('+id+')" style="flex:2;background:#12A150;color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Save changes</button></div>'
+    +'<label style="'+lbl+'">Venue</label>'
+    +'<input id="awe-venue" autocomplete="off" style="'+inp+'" placeholder="Search bar / restaurant…" value="'+_watchEsc(s.venue_name||'')+'" oninput="addrInput(\'awe-venue\')" onfocus="this.style.borderColor=\'#12A150\';addrInput(\'awe-venue\')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor=\'#E8E8EC\'">'
+    +'<label style="'+lbl+'">Address</label>'
+    +'<input id="awe-addr" readonly tabindex="-1" style="'+inpRO+'" placeholder="Auto-filled from the venue you select" value="'+_watchEsc(s.location||'')+'">'
+    +'<label style="'+lbl+'">Which match(es)? <span style="color:#9A9AB0;font-weight:600;text-transform:none;">— pick one or more</span></label>'
+    +'<div id="awe-tz-hint" style="font-size:11px;color:#9A9AB0;font-weight:600;margin-bottom:8px;"></div>'
+    +'<div id="awe-match-slots" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>'
+    +'<div id="awe-match-list" style="max-height:240px;overflow-y:auto;-webkit-overflow-scrolling:touch;border:2px solid #E8E8EC;border-radius:12px;background:#F5F5F7;padding:6px;margin-bottom:8px;"></div>'
+    +'<div id="awe-match-summary" style="font-size:12px;font-weight:800;color:#12A150;margin-bottom:8px;"></div>'
+    +'<button type="button" onclick="aweToggleCustom()" id="awe-custom-toggle" style="background:none;border:none;color:#12A150;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;padding:0;margin-bottom:10px;">+ Add a match not listed</button>'
+    +'<input id="awe-match-custom" style="display:none;width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;box-sizing:border-box;" placeholder="e.g. Final · Argentina vs France" oninput="aweUpdateMatchSummary()" onfocus="this.style.borderColor=\'#12A150\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
+    +'<label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;margin-bottom:12px;">'
+      +'<div><div style="font-size:14px;font-weight:800;color:var(--text);">Reservation needed?</div><div style="font-size:11px;color:#9A9AB0;margin-top:2px;">Turn on if it gets packed</div></div>'
+      +'<input id="awe-resv" type="checkbox" '+(resvOn?'checked':'')+' onchange="aweToggleReservation()" style="width:20px;height:20px;accent-color:#12A150;cursor:pointer;">'
+    +'</label>'
+    +'<div id="awe-resv-info-row" style="display:'+(resvOn?'block':'none')+';margin-bottom:12px;">'
+      +'<label style="'+lbl+'">How to reserve</label>'
+      +'<input id="awe-resv-info" style="'+inp+'margin-bottom:0;" placeholder="e.g. Call +34 600 000 000" value="'+_watchEsc(s.reservation_info||'')+'">'
+    +'</div>'
+    +'<label style="'+lbl+'">Notes <span style="color:#9A9AB0;font-weight:600;">(optional)</span></label>'
+    +'<textarea id="awe-notes" style="'+inp+'height:64px;resize:none;" placeholder="Big screen, outdoor seating, sound on...">'+_watchEsc(s.notes||'')+'</textarea>'
+    +'<div style="display:flex;gap:10px;margin-top:6px;"><button onclick="adminWatchEditClose()" style="flex:1;background:#F0F2F5;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Cancel</button><button onclick="adminWatchSaveEdit('+id+')" style="flex:2;background:linear-gradient(135deg,#12A150,#0B7A3C);color:white;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Save changes</button></div>'
   +'</div>';
   ov.style.display='flex';
+
+  // ── Pre-select the matches this spot already covers ──
+  _aweMatchSel = {};
+  var spotMatches = _watchMatchesOf(s); // [{label,dateStr,timeStr,...}]
+  var rawMatches = (s && Array.isArray(s.matches)) ? s.matches : [];
+  var customLabels = [];
+  var fixtures = _aweFixtures();
+  spotMatches.forEach(function(m, idx){
+    // Prefer matching by kickoffUTC from the raw matches array, else by label.
+    var raw = rawMatches[idx] || {};
+    var hit = null;
+    if(raw.kickoffUTC){
+      hit = fixtures.find(function(f){ return f.kickoffUTC === raw.kickoffUTC; });
+    }
+    if(!hit && m.label){
+      hit = fixtures.find(function(f){ return (f.home+' vs '+f.away).toLowerCase() === String(m.label).toLowerCase(); });
+    }
+    if(hit) _aweMatchSel[hit.id] = true;
+    else if(m.label) customLabels.push(m.label);
+  });
+  var tzHint = document.getElementById('awe-tz-hint');
+  if(tzHint) tzHint.textContent = '🕒 Times shown in ' + (typeof _detectTzPhrase==='function'? _detectTzPhrase() : (_detectTzLabel()||'your timezone'));
+  // Any matches not in the fixtures list go into the custom field.
+  if(customLabels.length){
+    var cu = document.getElementById('awe-match-custom');
+    if(cu){ cu.style.display='block'; cu.value = customLabels.join(' / '); }
+  }
+  _aweRenderMatchPicker();
+}
+
+function aweVenuePick(name, addr){
+  var v=document.getElementById('awe-venue'); if(v) v.value=name||'';
+  var a=document.getElementById('awe-addr'); if(a) a.value = addr || name || '';
+  if(typeof _addrHideDrop==='function') _addrHideDrop();
+}
+function aweToggleReservation(){
+  var on=!!(document.getElementById('awe-resv')||{}).checked;
+  var row=document.getElementById('awe-resv-info-row');
+  if(row) row.style.display = on ? 'block' : 'none';
+}
+
+// ── Edit-modal match picker (mirrors the Contribute Info picker, awe- IDs) ──
+var _aweMatchSel = {};
+function _aweFixtures(){
+  // Future fixtures (same as contribute) PLUS any already-selected past fixtures,
+  // so an existing spot's match still appears checked.
+  var now = Date.now();
+  return (WC_FIXTURES||[]).filter(function(f){
+    var d = new Date(f.kickoffUTC);
+    if(isNaN(d)) return false;
+    return d.getTime() >= now || _aweMatchSel[f.id];
+  }).sort(function(a,b){ return new Date(a.kickoffUTC) - new Date(b.kickoffUTC); });
+}
+function _aweRenderMatchPicker(){
+  var list = document.getElementById('awe-match-list');
+  var slots = document.getElementById('awe-match-slots');
+  if(!list) return;
+  var tz = _detectTzLabel();
+  var fx = _aweFixtures();
+  if(slots){
+    var times=[], seen={};
+    fx.forEach(function(f){ var t=_localTimeStr(new Date(f.kickoffUTC)); if(!seen[t]){seen[t]=1;times.push(t);} });
+    times.sort();
+    slots.innerHTML = times.map(function(t){
+      var ids = fx.filter(function(f){ return _localTimeStr(new Date(f.kickoffUTC))===t; });
+      var allOn = ids.length>0 && ids.every(function(f){ return _aweMatchSel[f.id]; });
+      return '<button type="button" onclick="aweToggleSlot(\''+t+'\')" style="border:1.5px solid '+(allOn?'#12A150':'#E8E8EC')+';background:'+(allOn?'#12A150':'white')+';color:'+(allOn?'white':'#555')+';border-radius:18px;padding:6px 11px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">'+(allOn?'✓ ':'')+'All '+t+'</button>';
+    }).join('');
+  }
+  if(!fx.length){
+    list.innerHTML = '<div style="padding:12px;font-size:13px;color:#9A9AB0;font-weight:600;">No upcoming matches in the schedule.</div>';
+    aweUpdateMatchSummary();
+    return;
+  }
+  list.innerHTML = fx.map(function(f){
+    var d = new Date(f.kickoffUTC);
+    var when = d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) + ' ' + _localTimeStr(d) + (tz?' '+tz:'');
+    var on = !!_aweMatchSel[f.id];
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:8px;cursor:pointer;background:'+(on?'rgba(18,161,80,.08)':'transparent')+';">'
+      + '<input type="checkbox" '+(on?'checked':'')+' onchange="aweToggleMatch(\''+f.id+'\')" style="width:17px;height:17px;accent-color:#12A150;cursor:pointer;flex-shrink:0;">'
+      + '<span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1;min-width:0;">'+_watchEsc(f.home+' vs '+f.away)+'</span>'
+      + '<span style="font-size:12px;color:#9A9AB0;font-weight:600;white-space:nowrap;">'+_watchEsc(when)+'</span>'
+      + '</label>';
+  }).join('');
+  aweUpdateMatchSummary();
+}
+function aweToggleMatch(id){ _aweMatchSel[id] = !_aweMatchSel[id]; _aweRenderMatchPicker(); }
+function aweToggleSlot(t){
+  var fx = _aweFixtures().filter(function(f){ return _localTimeStr(new Date(f.kickoffUTC))===t; });
+  var allOn = fx.length>0 && fx.every(function(f){ return _aweMatchSel[f.id]; });
+  fx.forEach(function(f){ _aweMatchSel[f.id] = !allOn; });
+  _aweRenderMatchPicker();
+}
+function aweUpdateMatchSummary(){
+  var el = document.getElementById('awe-match-summary');
+  if(!el) return;
+  var n = Object.keys(_aweMatchSel).filter(function(k){ return _aweMatchSel[k]; }).length;
+  var custom = (document.getElementById('awe-match-custom')||{}).value;
+  if(custom && custom.trim()) n++;
+  el.textContent = n ? ('✓ '+n+' match'+(n>1?'es':'')+' selected') : '';
+}
+function aweToggleCustom(){
+  var c = document.getElementById('awe-match-custom');
+  if(!c) return;
+  if(c.style.display==='none'){ c.style.display='block'; c.focus(); }
+  else { c.style.display='none'; c.value=''; aweUpdateMatchSummary(); }
 }
 
 function awePhotoSelected(inp){
@@ -14083,21 +14562,9 @@ function awePhotoSelected(inp){
   reader.onload = function(e){
     _awePhotoNew = e.target.result;
     _awePhotoRemove = false;
-    var wrap = document.getElementById('awe-photo-wrap');
-    if(wrap){
-      wrap.style.border = '2px solid #12A150';
-      var ph = document.getElementById('awe-photo-placeholder');
-      if(ph) ph.style.display = 'none';
-      var prev = document.getElementById('awe-photo-preview');
-      if(prev){ prev.src = _awePhotoNew; prev.style.display = 'block'; }
-      else {
-        var img = document.createElement('img');
-        img.id = 'awe-photo-preview';
-        img.src = _awePhotoNew;
-        img.style.cssText = 'width:100%;max-height:200px;object-fit:cover;display:block;';
-        wrap.insertBefore(img, wrap.firstChild);
-      }
-    }
+    var img = document.getElementById('awe-photo-preview-img'); if(img) img.src = _awePhotoNew;
+    var empty = document.getElementById('awe-photo-empty'); if(empty) empty.style.display = 'none';
+    var prev = document.getElementById('awe-photo-preview'); if(prev) prev.style.display = 'block';
   };
   reader.readAsDataURL(file);
 }
@@ -14105,32 +14572,50 @@ function awePhotoSelected(inp){
 function aweRemovePhoto(){
   _awePhotoRemove = true;
   _awePhotoNew = null;
-  var wrap = document.getElementById('awe-photo-wrap');
-  if(wrap){
-    wrap.style.border = '2px dashed #E8E8EC';
-    var prev = document.getElementById('awe-photo-preview');
-    if(prev) prev.style.display = 'none';
-    var ph = document.getElementById('awe-photo-placeholder');
-    if(ph) ph.style.display = 'block';
-    else wrap.innerHTML = '<div id="awe-photo-placeholder" style="text-align:center;padding:20px;"><div style="font-size:28px;">📷</div><div style="font-size:12px;font-weight:700;color:#9A9AB0;margin-top:4px;">Tap to add photo</div></div><input type="file" id="awe-file-inp" accept="image/*" style="display:none;" onchange="awePhotoSelected(this)">';
-  }
+  var empty = document.getElementById('awe-photo-empty'); if(empty) empty.style.display = 'block';
+  var prev = document.getElementById('awe-photo-preview'); if(prev) prev.style.display = 'none';
+  var fi = document.getElementById('awe-file-inp'); if(fi) fi.value = '';
 }
 
 function adminWatchEditClose(){ var ov=document.getElementById('adm-watch-edit-ov'); if(ov) ov.style.display='none'; }
 
 async function adminWatchSaveEdit(id){
   var g=function(i){ var el=document.getElementById(i); return el?el.value.trim():''; };
+
+  // Gather selected fixtures + optional custom match (same as the Contribute form)
+  var matches=[];
+  Object.keys(_aweMatchSel).forEach(function(fid){
+    if(!_aweMatchSel[fid]) return;
+    var f=(WC_FIXTURES||[]).find(function(x){ return x.id===fid; });
+    if(f) matches.push({ label:f.home+' vs '+f.away, kickoffUTC:f.kickoffUTC });
+  });
+  var customM=g('awe-match-custom');
+  if(customM) matches.push({ label:customM, kickoffUTC:null });
+  matches.sort(function(a,b){ return new Date(a.kickoffUTC||8.64e15) - new Date(b.kickoffUTC||8.64e15); });
+
+  if(!g('awe-venue')){ showToast('Venue name required'); return; }
+  if(!matches.length){ showToast('Please pick at least one match'); return; }
+
+  // Soonest match → legacy summary fields (sorting + older clients)
+  var first=matches[0];
+  var firstD=first.kickoffUTC?new Date(first.kickoffUTC):null;
+  var matchLabel=matches.length>1 ? (matches.length+' matches') : first.label;
+  var matchDate=(firstD && !isNaN(firstD))?_localDateStr(firstD):null;
+  var matchTime=(firstD && !isNaN(firstD))?_localTimeStr(firstD):null;
+
+  var resvNeeded=!!(document.getElementById('awe-resv')||{}).checked;
   var upd={
     venue_name:g('awe-venue')||null,
     location:g('awe-addr')||null,
-    match_label:g('awe-match')||null,
-    match_date:g('awe-date')||null,
-    kickoff_time:g('awe-time')||null,
+    match_label:matchLabel,
+    matches:matches,
+    match_date:matchDate,
+    kickoff_time:matchTime,
+    timezone:_detectTzLabel()||null,
     notes:g('awe-notes')||null,
-    reservation_needed:!!(document.getElementById('awe-resv')||{}).checked,
-    reservation_info:g('awe-resv-info')||null
+    reservation_needed:resvNeeded,
+    reservation_info:resvNeeded?(g('awe-resv-info')||null):null
   };
-  if(!upd.venue_name){ showToast('Venue name required'); return; }
 
   // Handle photo
   if(_awePhotoRemove){
@@ -14753,6 +15238,7 @@ function adminPage(page,btn){
             +'<div style="display:flex;gap:6px;flex-shrink:0;">'
               +'<button onclick="adminMessageUser('+realIdx+')" title="Send message" style="background:rgba(99,102,241,.1);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">✉️</button>'
               +'<button onclick="adminEditUserInline('+realIdx+')" title="Edit" style="background:#F5F5F7;border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">✏️</button>'
+              +'<button onclick="adminResetUserPassword('+realIdx+')" title="Reset password" style="background:rgba(245,158,11,.12);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">🔑</button>'
               +(canManageAdminRoles() && u.role && (u.role==='admin'||u.role.includes('admin')) ? '<button onclick="adminOpenRoleDialog('+realIdx+')" title="Admin Role" style="background:rgba(99,102,241,.1);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;color:#6366F1;font-weight:800;">⚙️</button>' : '')
               +'<button onclick="adminQuickBan('+realIdx+')" title="'+(u.status==='banned'?'Unban':'Ban')+'" style="background:'+(u.status==='banned'?'rgba(18,161,80,.1)':'rgba(232,25,44,.08)')+';border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">'+(u.status==='banned'?'✅':'🚫')+'</button>'
               +'<button onclick="adminDeleteUser('+realIdx+')" title="Delete" style="background:rgba(232,25,44,.06);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">🗑️</button>'
@@ -16690,6 +17176,7 @@ var _admSaveInFlight = false;
 // DEAL SHARING
 // ════════════════════════════════════════════════════════════
 var _currentShareDeal = null;
+var _currentShareUrl = '';
 
 function buildDealShareUrl(deal){
   var slug = _slugify(deal.name || deal.deal || 'deal');
@@ -16698,8 +17185,13 @@ function buildDealShareUrl(deal){
 
 function openDealShare(deal){
   _currentShareDeal = deal;
-  var shareUrl = buildDealShareUrl(deal);
+  _currentShareUrl = buildDealShareUrl(deal);
+  _openShareSheet(_currentShareUrl, 'Share Deal');
+}
 
+// Generic share entry — native sheet on mobile, custom modal on desktop.
+function _openShareSheet(shareUrl, title){
+  _currentShareUrl = shareUrl;
   // On phones, use the native OS share sheet — best UX. Gate to the mobile
   // layout (<900px) so the desktop web app shows our own modal instead of the
   // macOS/Safari share sheet. Share the link only — recipients get just the URL.
@@ -16717,7 +17209,7 @@ function openDealShare(deal){
     modal.id = 'deal-share-modal';
     modal.innerHTML = '<div style="position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;" onclick="closeDealShare()">'
       +'<div style="background:white;border-radius:16px;padding:16px;box-sizing:border-box;animation:slideUp .2s ease-out;min-width:240px;box-shadow:0 10px 40px rgba(0,0,0,.2);" onclick="event.stopPropagation()">'
-        +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:12px;text-align:center;">Share Deal</div>'
+        +'<div id="share-modal-title" style="font-size:14px;font-weight:800;color:#1A1A1A;margin-bottom:12px;text-align:center;">Share Deal</div>'
         +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;">'
           +'<button onclick="shareToPlatform(\'whatsapp\')" style="display:flex;flex-direction:column;align-items:center;gap:6px;background:#F5F5F7;border:none;border-radius:10px;padding:10px;cursor:pointer;transition:all .15s;font-size:12px;font-weight:700;color:#555;" onmouseover="this.style.background=\'#E8192C\';this.style.color=\'white\'" onmouseout="this.style.background=\'#F5F5F7\';this.style.color=\'#555\'">'
             +'<div style="font-size:20px;">💬</div>'
@@ -16741,6 +17233,8 @@ function openDealShare(deal){
     +'</div>';
     document.body.appendChild(modal);
   }
+  var titleEl = document.getElementById('share-modal-title');
+  if(titleEl) titleEl.textContent = title || 'Share';
   modal.style.display = 'flex';
 }
 
@@ -16751,9 +17245,8 @@ function closeDealShare(){
 }
 
 function shareToPlatform(platform){
-  if(!_currentShareDeal) return;
-  var deal = _currentShareDeal;
-  var dealUrl = buildDealShareUrl(deal);
+  var dealUrl = _currentShareUrl || (_currentShareDeal ? buildDealShareUrl(_currentShareDeal) : '');
+  if(!dealUrl) return;
 
   if(platform === 'whatsapp'){
     var whatsappUrl = 'https://wa.me/?text=' + encodeURIComponent(dealUrl);
@@ -17951,7 +18444,7 @@ function aRenderContent(){
       '</div>'+
     '</div>';
 
-  return creditsHTML+catsHTML+
+  return catsHTML+   // creditsHTML removed — credits config lives on the dedicated Credits admin page
     legalCard('🔑','Invite Deals — How It Works','inviteHowItWorks','adm-invite-how',
       'Each line = one step. Format: emoji | Title | Description')+
     legalCard('📄','Terms & Conditions (General)','termsGeneral','adm-terms-general',
@@ -18784,14 +19277,33 @@ async function loadMerchantData(){
     // 3. Kick off deals query (do not await yet).
     // image_url is fetched separately — inline base64 photos are ~1MB+ and
     // would block the list render for seconds on slow connections.
+    // NOTE: use select('*') — an explicit column list silently errors the whole
+    // query if ANY column is missing in the DB, which would empty "My Deals".
     var _pDeals = db.from('deals')
-      .select('id,title,emoji,deal_type,category,hours,price,was_price,off_label,is_free,description,days,time_from,time_to,slots_total,slots_sold,status,start_date,end_date')
+      .select('*')
       .eq('venue_id', meVenueId)
       .order('created_at', {ascending:false});
     var _pPhotos = db.from('deals').select('id,image_url').eq('venue_id', meVenueId);
 
     // 4. Await deals
-    var { data: dbDeals } = await _pDeals;
+    var _dealsRes = await _pDeals;
+    var dbDeals = _dealsRes.data;
+    if(_dealsRes.error) console.error('[loadMerchantData] deals query error:', _dealsRes.error.message, _dealsRes.error);
+
+    // 4b. If no deals came back for the cached venue, the cache may be stale —
+    // re-verify the merchant's venue fresh and re-query once.
+    if((!dbDeals || !dbDeals.length) && cachedVenue){
+      try {
+        var fresh = await db.from('venues').select('id,name').eq('owner_id', currentUser.id).order('created_at',{ascending:true}).limit(1).maybeSingle();
+        if(fresh && fresh.data && fresh.data.id && fresh.data.id !== meVenueId){
+          meVenueId = fresh.data.id;
+          meVenueName = fresh.data.name || meVenueName;
+          try { localStorage.setItem('_cachedVenueId_' + currentUser.id, JSON.stringify({id:meVenueId, name:meVenueName})); } catch(e){}
+          var _rq = await db.from('deals').select('*').eq('venue_id', meVenueId).order('created_at',{ascending:false});
+          if(!_rq.error && _rq.data) dbDeals = _rq.data;
+        }
+      } catch(e){ console.warn('[loadMerchantData] venue re-verify failed', e); }
+    }
 
     // 5. Kick off purchases query in parallel with deals processing
     var dealIds = (dbDeals||[]).map(function(d){return d.id;});
@@ -19313,10 +19825,30 @@ function meRenderDealsEnhanced(){
   meEnsureDealIds();           // guarantee every deal has a stable id
   var arr = dealsData || [];
 
-  // Separate active, scheduled, and paused deals
-  var activeDeal = arr.filter(function(d){ return d.status === 'active'; });
-  var scheduledDeals = arr.filter(function(d){ return d.status === 'scheduled'; });
-  var pausedDeals = arr.filter(function(d){ return d.status === 'paused'; });
+  // A deal is INACTIVE when it can no longer be sold: fully consumed (sold out),
+  // past its end date, or explicitly paused/inactive. Everything else is Active.
+  var _now = Date.now();
+  function _meIsExpired(d){
+    var ed = d.endDate || d.end_date || '';
+    if(!ed) return false;
+    var end = new Date(String(ed).slice(0,10) + 'T23:59:59');
+    return !isNaN(end) && end.getTime() < _now;
+  }
+  function _meIsSoldOut(d){
+    var total = parseInt(d.total) || 0, sold = parseInt(d.sold) || 0;
+    return total > 0 && sold >= total;
+  }
+  function _meInactiveReason(d){
+    if(_meIsSoldOut(d)) return 'Sold out';
+    if(_meIsExpired(d)) return 'Ended';
+    if(d.status === 'paused') return 'Paused';
+    if(d.status === 'inactive') return 'Inactive';
+    return '';
+  }
+  function _meIsInactive(d){ return !!_meInactiveReason(d); }
+
+  var inactiveDeals = arr.filter(_meIsInactive);
+  var activeDeal = arr.filter(function(d){ return !_meIsInactive(d); });
 
   function renderDealCard(d, index){
     var dealId = meDealKey(d);
@@ -19325,6 +19857,7 @@ function meRenderDealsEnhanced(){
     var total = parseInt(d.total) || 0;
     var sold  = parseInt(d.sold) || 0;
     var percent = total > 0 ? Math.round((sold/total)*100) : 0;
+    var inactiveReason = _meInactiveReason(d);
 
     // Sanitise the discount badge (avoids "NaN% off")
     var offText = (d.off && String(d.off).indexOf('NaN') === -1) ? d.off : '';
@@ -19342,7 +19875,7 @@ function meRenderDealsEnhanced(){
           +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+d.name+'</div>'
           +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+d.type+' · '+d.time+'</div>'
         +'</div>'
-        +'<div style="background:rgba(232,25,44,.1);color:var(--red);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'+offText+'</div>'
+        +(inactiveReason ? '<div style="background:#F0F0F4;color:#9A9AB0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'+inactiveReason+'</div>' : '<div style="background:rgba(232,25,44,.1);color:var(--red);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'+offText+'</div>')
         +'<div style="font-size:12px;font-weight:800;color:#12A150;flex-shrink:0;min-width:34px;text-align:right;">'+percent+'%</div>'
         +'<div id="me-dealchev-' + dealId + '" style="font-size:12px;color:#9A9AB0;flex-shrink:0;transition:transform .2s;transform:rotate(' + (isExpanded?'180':'0') + 'deg);">▾</div>'
       +'</div>'
@@ -19376,11 +19909,8 @@ function meRenderDealsEnhanced(){
       // Active Deals Section
       +(activeDeal.length > 0 ? '<div style="display:flex;flex-direction:column;gap:12px;"><div style="font-size:14px;font-weight:700;color:#12A150;font-family:Inter,sans-serif;padding-left:8px;">● Active (' + activeDeal.length + ')</div>' + activeDeal.map(function(d){ return renderDealCard(d); }).join('') + '</div>' : '')
 
-      // Scheduled Deals Section
-      +(scheduledDeals.length > 0 ? '<div style="display:flex;flex-direction:column;gap:12px;"><div style="font-size:14px;font-weight:700;color:#d97706;font-family:Inter,sans-serif;padding-left:8px;">📅 Scheduled (' + scheduledDeals.length + ')</div>' + scheduledDeals.map(function(d){ return renderDealCard(d); }).join('') + '</div>' : '')
-
-      // Paused Deals Section
-      +(pausedDeals.length > 0 ? '<div style="display:flex;flex-direction:column;gap:12px;"><div style="font-size:14px;font-weight:700;color:#9A9AB0;font-family:Inter,sans-serif;padding-left:8px;">⏸ Paused (' + pausedDeals.length + ')</div>' + pausedDeals.map(function(d){ return renderDealCard(d); }).join('') + '</div>' : '')
+      // Inactive Deals Section — sold out, ended (past due), or paused
+      +(inactiveDeals.length > 0 ? '<div style="display:flex;flex-direction:column;gap:12px;"><div style="font-size:14px;font-weight:700;color:#9A9AB0;font-family:Inter,sans-serif;padding-left:8px;">⚫ Inactive (' + inactiveDeals.length + ')</div>' + inactiveDeals.map(function(d){ return renderDealCard(d); }).join('') + '</div>' : '')
 
       // Empty state
       +(arr.length === 0 ? '<div class="me-empty-state"><span class="me-empty-icon">📭</span><div class="me-empty-title">No deals yet</div><div class="me-empty-text">Create your first deal to get started and attract customers</div><button onclick="meOpenCreate()" style="background:var(--red);color:white;border:none;border-radius:10px;padding:12px 20px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🎉 Create Deal</button></div>' : '')
@@ -21639,17 +22169,49 @@ function _mePublishDealInner(){
   var editDbId = newDeal.id || null;   // real Supabase id when editing a DB-backed deal
 
   // Persist to Supabase
-  if(currentUser && meVenueId){
+  if(currentUser){
     (async function(){
       try {
-        // Compress all photo slots and build JSON array (same pattern as admin/community)
+        // Resolve the merchant's venue if it isn't set yet — otherwise the deal
+        // would only be added locally and never reach the database (a "ghost").
+        if(!meVenueId){
+          try {
+            var _vr = await db.from('venues').select('id,name').eq('owner_id', currentUser.id).order('created_at',{ascending:true}).limit(1).maybeSingle();
+            if(_vr && _vr.data && _vr.data.id){
+              meVenueId = _vr.data.id;
+              meVenueName = _vr.data.name || meVenueName;
+              try { localStorage.setItem('_cachedVenueId_' + currentUser.id, JSON.stringify({id:meVenueId, name:meVenueName})); } catch(e){}
+            }
+          } catch(e){ console.warn('[mePublishDeal] venue resolve failed', e); }
+        }
+        // Still no venue → auto-create one for this merchant so they can post.
+        // (Venue RLS allows an owner to insert their own venue: owner_id = auth.uid().)
+        if(!meVenueId){
+          try {
+            var _vname = (typeof currentProfile!=='undefined' && currentProfile && currentProfile.name) || meVenueName || 'My Venue';
+            var _vins = await db.from('venues').insert({ name:_vname, owner_id:currentUser.id, active:true, status:'active' }).select('id,name').single();
+            if(!_vins.error && _vins.data && _vins.data.id){
+              meVenueId = _vins.data.id;
+              meVenueName = _vins.data.name || _vname;
+              try { localStorage.setItem('_cachedVenueId_' + currentUser.id, JSON.stringify({id:meVenueId, name:meVenueName})); } catch(e){}
+              showToast('🏷️ Created your venue "' + meVenueName + '"');
+            } else if(_vins.error){
+              console.error('[mePublishDeal] venue auto-create failed:', _vins.error.message, _vins.error);
+            }
+          } catch(e){ console.warn('[mePublishDeal] venue auto-create error', e); }
+        }
+        if(!meVenueId){
+          showToast('⚠️ Could not create or find your venue — deal was NOT saved.');
+          console.error('[mePublishDeal] aborted: no meVenueId for user', currentUser && currentUser.id);
+          return;
+        }
+        // Compress each photo and upload to Storage (keeps base64 out of the DB
+        // → big egress saver). Falls back to base64 if the bucket isn't set up.
         var meSaved = ['', '', ''];
         var meSlots = [_mePhotos[0]||'', _mePhotos[1]||'', _mePhotos[2]||''];
         for(var si=0; si<3; si++){
           var sp = meSlots[si];
-          if(sp && sp.startsWith('data:')){
-            try { meSaved[si] = await compressImage(sp, 800, 0.8); } catch(e){ meSaved[si] = sp; }
-          } else { meSaved[si] = sp; }
+          if(sp){ try { meSaved[si] = await compressAndUpload(sp, 800, 0.8, 'deals'); } catch(e){ meSaved[si] = sp; } }
         }
         var meAllPhotos = meSaved.filter(Boolean);
         var dbImgUrl = meAllPhotos.length > 1 ? JSON.stringify(meAllPhotos) : (meAllPhotos[0] || null);
@@ -21704,14 +22266,19 @@ function _mePublishDealInner(){
         }
         if(dbErr){
           console.error('[mePublishDeal] save failed:', dbErr.message, dbErr);
-          showToast('⚠️ Deal saved locally — DB error: ' + dbErr.message);
+          showToast('⚠️ Deal NOT saved — DB error: ' + dbErr.message);
         } else {
           if(savedDealId && (bkTimes.length > 0 || wasEditing)){
             await meSaveArrivalTimes(savedDealId, bkTimes);
           }
+          showToast('✅ Deal published');
           await loadDealsFromSupabase();
           if(typeof renderCoupons==='function') renderCoupons('all');
           if(typeof renderUC==='function') renderUC('all');
+          // Refresh the merchant portal so "My Deals" reflects the new row
+          if(typeof loadMerchantData==='function'){
+            try { await loadMerchantData(); if(typeof mePageNew==='function') mePageNew(_meCurrentPage||'deals'); } catch(e){}
+          }
         }
       } catch(e){
         console.warn('[Supabase] mePublishDeal save failed', e);
@@ -23002,12 +23569,16 @@ function wcFxSave(){
   } catch(e){ showToast('✅ Fixtures saved'); }
 }
 function wcFixturesCardHtml(){
+  var _open = (localStorage.getItem('hh_wcfx_open') !== 'false');
   return '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;">'
-    + '<div style="padding:16px;border-bottom:1px solid #E8E8EC;">'
-      + '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚽ World Cup Fixtures</div>'
-      + '<div style="font-size:12px;color:#9A9AB0;margin-top:4px;">Matches shown in the "Contribute Info" dropdown. Enter date &amp; time in your local timezone — viewers see it auto-converted to theirs.</div>'
+    + '<div id="wcfx-header" style="padding:16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;border-bottom:'+(_open?'1px solid #E8E8EC':'none')+';' + '" onclick="event.stopPropagation();_wcFxToggle()">'
+      + '<div>'
+        + '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚽ World Cup Fixtures</div>'
+        + '<div style="font-size:12px;color:#9A9AB0;margin-top:4px;">Matches shown in the "Contribute Info" dropdown.</div>'
+      + '</div>'
+      + '<div id="wcfx-chevron" style="font-size:20px;color:#9A9AB0;line-height:1;transform:rotate('+(_open?'0':'180')+'deg);">⌃</div>'
     + '</div>'
-    + '<div style="padding:16px;">'
+    + '<div id="wcfx-body" style="display:'+(_open?'block':'none')+';padding:16px;">'
       + '<div id="wc-fixtures-rows">' + _wcFxRowsHtml() + '</div>'
       + '<div style="display:flex;gap:8px;margin-top:6px;">'
         + '<button onclick="wcFxAddRow()" style="flex:1;background:#F5F5F7;color:#1A1A1A;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">+ Add match</button>'
@@ -23015,6 +23586,17 @@ function wcFixturesCardHtml(){
       + '</div>'
     + '</div>'
   + '</div>';
+}
+function _wcFxToggle(){
+  var b = document.getElementById('wcfx-body');
+  var c = document.getElementById('wcfx-chevron');
+  var h = document.getElementById('wcfx-header');
+  if(!b) return;
+  var open = b.style.display !== 'none';
+  b.style.display = open ? 'none' : 'block';
+  if(c) c.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+  if(h) h.style.borderBottom = open ? 'none' : '1px solid #E8E8EC';
+  try{ localStorage.setItem('hh_wcfx_open', String(!open)); }catch(e){}
 }
 
 // Multi-select match picker — future fixtures only, with time-slot quick toggles.
@@ -23099,17 +23681,21 @@ function watchSetJoined(arr){
 async function loadWatchSpots(){
   try {
     if(typeof db==='undefined'||!db.from){ watchSpots=[]; return; }
-    var r = await withTimeout(
-      db.from('match_screenings').select('*').eq('status','approved').order('match_date',{ascending:true}),
-      8000
-    );
-    if(r && r.error){ console.warn('[watch] load:', r.error.message); watchSpots=[]; return; }
+    var r = await db.from('match_screenings').select('*').eq('status','approved').order('match_date',{ascending:true});
+    if(r && r.error){ console.warn('[watch] load:', r.error.message); return; }
     watchSpots = (r && r.data) ? r.data : [];
-  } catch(e){ console.warn('[watch] load failed', e); watchSpots=[]; }
+    try { localStorage.setItem('hh_watch_cache', JSON.stringify({s:watchSpots,time:Date.now()})); } catch(e){}
+  } catch(e){ console.warn('[watch] load failed', e); }
 }
 
 function watchInitList(){
   watchSwitchView('spots');
+  // Render from cache immediately so the screen feels instant
+  try {
+    var c = localStorage.getItem('hh_watch_cache');
+    if(c){ var d=JSON.parse(c); if(Array.isArray(d.s)){ watchSpots=d.s; watchRenderList(); } }
+  } catch(e){}
+  // Then refresh from DB in background
   loadWatchSpots().then(function(){ if(_watchView==='spots') watchRenderList(); });
 }
 
@@ -23224,11 +23810,10 @@ function watchOpenSpotDetail(id){
   var resvBadge = s.reservation_needed
     ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#FFF4E5;color:#B86E00;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:800;">⚠️ Reservation needed</span>'
     : '<span style="display:inline-flex;align-items:center;gap:4px;background:#E6F7EE;color:#0B7A3C;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:800;">✓ Walk-ins OK</span>';
-  var img = s.image_url
-    ? '<img src="'+_watchEsc(s.image_url)+'" loading="lazy" style="width:100%;height:160px;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
-    : '';
+  var img = '';
   card.innerHTML =
     '<button onclick="watchCloseSpotDetail()" style="position:absolute;top:12px;right:12px;z-index:3;background:rgba(0,0,0,.55);border:none;border-radius:50%;width:34px;height:34px;font-size:17px;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;">✕</button>'
+    + '<button onclick="event.stopPropagation();openWatchShare('+s.id+')" title="Share" style="position:absolute;top:12px;right:54px;z-index:3;background:#16161E;border:none;border-radius:12px;width:36px;height:36px;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.35);transition:transform .15s;" onmouseover="this.style.transform=\'scale(1.08)\'" onmouseout="this.style.transform=\'\'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>'
     + '<div style="overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0;">'
     + (img ? '<div style="position:relative;">'+img+'</div>' : '')
     + '<div style="padding:16px;">'
@@ -23247,7 +23832,6 @@ function watchOpenSpotDetail(id){
           + '<div style="font-size:11.5px;color:#9A9AB0;font-weight:600;">Shared by '+_watchEsc(s.host_name||'Community')+'</div>'
           + '<button onclick="openSpotReport('+s.id+')" style="background:none;border:none;padding:3px 0 0;font-size:11px;font-weight:700;color:#C0C0CC;cursor:pointer;font-family:Inter,sans-serif;display:inline-flex;align-items:center;gap:4px;">⚑ Report info</button>'
         + '</div>'
-        + '<button onclick="watchToggleGoing('+s.id+')" style="flex-shrink:0;background:'+(isJoined?'#12A150':'#E6F7EE')+';color:'+(isJoined?'white':'#0B7A3C')+';border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">'+(isJoined?'✓ Going':"I'm going")+' ('+(s.going||0)+')</button>'
       + '</div>'
     + '</div>'
     + '</div>';
@@ -23257,6 +23841,27 @@ function watchCloseSpotDetail(){
   _watchDetailId=null;
   var ov=document.getElementById('watch-spot-detail-ov');
   if(ov) ov.style.display='none';
+}
+
+// Open Google Maps directions to a watch spot (quote-safe: looks the spot up
+// by id rather than injecting the address into an inline onclick string).
+function watchGoDirections(id){
+  var s=(watchSpots||[]).find(function(x){ return String(x.id)===String(id); });
+  if(!s) return;
+  var dest=(s.venue_name?s.venue_name+', ':'')+(s.location||s.venue_name||'');
+  if(!dest.trim()) return;
+  window.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(dest), '_blank');
+}
+
+// ── Share a watch spot (same UX as deal sharing) ──────────────────────
+function buildWatchShareUrl(s){
+  var slug = (typeof _slugify==='function') ? _slugify(s.venue_name||'watch-spot') : 'watch-spot';
+  return window.location.origin + '/watch/' + slug + '-' + s.id;
+}
+function openWatchShare(id){
+  var s=(watchSpots||[]).find(function(x){ return x.id===id; });
+  if(!s) return;
+  _openShareSheet(buildWatchShareUrl(s), 'Share spot ⚽');
 }
 
 // Sort key: a spot's soonest UPCOMING kickoff (ms). Upcoming first (closest
@@ -23319,11 +23924,7 @@ function watchRenderList(){
     var resvBadge = s.reservation_needed
       ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#FFF4E5;color:#B86E00;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:800;">⚠️ Reservation needed</span>'
       : '<span style="display:inline-flex;align-items:center;gap:4px;background:#E6F7EE;color:#0B7A3C;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:800;">✓ Walk-ins OK</span>';
-    var img = s.image_url
-      ? '<img src="'+_watchEsc(s.image_url)+'" loading="lazy" style="width:100%;height:120px;object-fit:cover;display:block;" onerror="this.style.display=\'none\'">'
-      : '';
     return '<div onclick="watchOpenSpotDetail('+s.id+')" style="background:white;border:1.5px solid #EEE;border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.05);cursor:pointer;">'
-      + img
       + '<div style="padding:14px;">'
         + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">'
           + '<div style="min-width:0;">'
@@ -23336,7 +23937,6 @@ function watchRenderList(){
         + '<div style="margin-bottom:12px;">'+resvBadge+'</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #F0F0F4;padding-top:10px;">'
           + '<div style="font-size:12px;color:#9A9AB0;font-weight:700;">Tap for details ›</div>'
-          + '<button onclick="event.stopPropagation();watchToggleGoing('+s.id+')" style="flex-shrink:0;background:'+(isJoined?'#12A150':'#E6F7EE')+';color:'+(isJoined?'white':'#0B7A3C')+';border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">'+(isJoined?'✓ Going':"I'm going")+' ('+(s.going||0)+')</button>'
         + '</div>'
       + '</div>'
     + '</div>';
@@ -24251,7 +24851,7 @@ function _placeWatchMarker(s, lat, lng) {
         '<div style="font-size:11px;color:#555;margin:3px 0;font-weight:700;">' + resv + '</div>' +
         '<div style="margin-top:10px;display:flex;gap:6px;">' +
           '<button onclick="goScreen(\'watch\')" style="flex:1;background:#12A150;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">View spots</button>' +
-          '<button onclick="window.open(\'https://maps.google.com/?q=' + encodeURIComponent(s.location || s.venue_name || '') + '\',\'_blank\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
+          '<button onclick="watchGoDirections(\'' + s.id + '\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
         '</div>' +
       '</div>';
     var iw = new google.maps.InfoWindow({ content: infoHtml });
@@ -24796,7 +25396,11 @@ function _setupDealMap() {
       <div style="font-size:16px;font-weight:900;color:white;">🏪 Merchant Portal</div>
       <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;">HappyHourly Platform</div>
     </div>
-    <button onclick="closeMerchant()" style="background:rgba(255,255,255,.1);border:none;border-radius:10px;padding:8px 16px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">✕ Close</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="merch-hdr-email" style="font-size:12px;font-weight:600;color:rgba(255,255,255,.6);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <button onclick="merchViewCustomer()" title="Browse the customer app" style="background:rgba(255,255,255,.14);border:none;border-radius:10px;padding:8px 14px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">🏠 Customer App</button>
+      <button onclick="closeMerchant()" style="background:rgba(255,255,255,.1);border:none;border-radius:10px;padding:8px 16px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">✕ Close</button>
+    </div>
   </div>
 
   <!-- Horizontal navigation tabs - matching Admin Panel -->
@@ -25188,36 +25792,66 @@ function _setupDealMap() {
 
 
 <!-- ══ LOGIN SCREEN ══ -->
-<div id="login-screen" style="position:fixed;inset:0;background:linear-gradient(160deg,#1a0408 0%,#2d0810 50%,#1a0408 100%);z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;font-family:'Inter',sans-serif;overflow-y:auto;">
-  <div style="text-align:center;margin-bottom:28px;">
-    <div style="font-size:52px;margin-bottom:10px;">🍹</div>
-    <div style="font-size:28px;font-weight:900;color:white;letter-spacing:-1px;">HappyHourly</div>
-    <div style="font-size:13px;color:rgba(255,255,255,.45);font-weight:500;margin-top:5px;">Your city's best happy hours</div>
+<style>
+  @keyframes hhFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  @keyframes hhGlow{0%,100%{box-shadow:0 10px 34px rgba(232,25,44,.45),inset 0 2px 8px rgba(255,255,255,.35)}50%{box-shadow:0 14px 44px rgba(255,138,61,.5),inset 0 2px 8px rgba(255,255,255,.35)}}
+  #login-screen input::placeholder{color:rgba(255,255,255,.4);font-weight:500;}
+  #login-screen input:focus{border-color:#FF8A3D !important;box-shadow:0 0 0 4px rgba(232,25,44,.16);}
+  #login-role-links .hh-rolelink{transition:color .2s,background .2s;}
+  #login-role-links .hh-rolelink:hover{color:#fff !important;background:rgba(255,255,255,.12);}
+</style>
+<div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 20px;font-family:'Inter',sans-serif;overflow-y:auto;background:radial-gradient(1100px 560px at 50% -8%,#43101f 0%,transparent 60%),radial-gradient(820px 460px at 92% 112%,#3a0a18 0%,transparent 55%),linear-gradient(160deg,#140509 0%,#210912 55%,#140509 100%);">
+
+  <!-- soft decorative glows -->
+  <div style="position:absolute;top:-90px;left:-70px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(232,25,44,.28),transparent 70%);filter:blur(26px);pointer-events:none;"></div>
+  <div style="position:absolute;bottom:-100px;right:-60px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(255,150,50,.2),transparent 70%);filter:blur(30px);pointer-events:none;"></div>
+
+  <!-- frosted glass card -->
+  <div style="position:relative;width:100%;max-width:384px;background:rgba(255,255,255,.055);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.13);border-radius:30px;padding:34px 26px 26px;box-shadow:0 26px 70px rgba(0,0,0,.55);">
+
+    <!-- logo + title -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:76px;height:76px;margin:0 auto 14px;border-radius:50%;background:linear-gradient(135deg,#E8192C,#FF8A3D);display:flex;align-items:center;justify-content:center;font-size:38px;animation:hhGlow 3.5s ease-in-out infinite,hhFloat 5s ease-in-out infinite;">🍹</div>
+      <div style="font-size:28px;font-weight:900;color:white;letter-spacing:-.6px;">HappyHourly</div>
+      <div id="login-mode-title" style="font-size:13px;color:rgba(255,255,255,.5);font-weight:500;margin-top:6px;">Your city's best happy hours</div>
+    </div>
+
+    <!-- Sign In / Sign Up toggle — customer only -->
+    <div id="auth-mode-wrap" style="display:flex;background:rgba(0,0,0,.28);border-radius:12px;padding:4px;margin-bottom:18px;">
+      <button id="mode-signin" onclick="switchAuthMode('signin')" style="flex:1;padding:9px;border-radius:9px;background:white;border:none;font-size:13px;font-weight:800;color:#1A1A1A;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;">Sign In</button>
+      <button id="mode-signup" onclick="switchAuthMode('signup')" style="flex:1;padding:9px;border-radius:9px;background:none;border:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.55);cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;">Create Account</button>
+    </div>
+
+    <!-- Input fields -->
+    <div style="display:flex;flex-direction:column;gap:11px;margin-bottom:14px;">
+      <input id="signup-name" type="text" placeholder="Full name" style="display:none;width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.13);border-radius:14px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:white;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s;" autocomplete="name">
+      <input id="login-user" type="email" placeholder="Email address" style="width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.13);border-radius:14px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:white;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s;" autocomplete="email">
+      <input id="login-pass" type="password" placeholder="Password" style="width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.13);border-radius:14px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:white;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s;" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
+      <input id="signup-confirm" type="password" placeholder="Confirm password" style="display:none;width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.13);border-radius:14px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:white;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s;" onkeydown="if(event.key==='Enter')doSignUp()">
+    </div>
+
+    <div id="login-error" style="color:#FF8AA0;font-size:13px;font-weight:700;margin-bottom:10px;min-height:18px;text-align:center;"></div>
+
+    <button type="button" id="signin-btn" onclick="_loginMode==='signup'?doSignUp():doLogin()" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 12px 32px rgba(232,25,44,.55)'" onmouseout="this.style.transform='';this.style.boxShadow='0 8px 24px rgba(232,25,44,.45)'" style="width:100%;background:linear-gradient(135deg,#E8192C,#FF6B35);color:white;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:11px;box-shadow:0 8px 24px rgba(232,25,44,.45);transition:transform .15s,box-shadow .2s;">Sign In</button>
+
+    <button type="button" id="guest-btn" onclick="doGuestLogin()" style="width:100%;background:rgba(255,255,255,.07);color:rgba(255,255,255,.85);border:1.5px solid rgba(255,255,255,.16);border-radius:14px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;transition:background .2s;" onmouseover="this.style.background='rgba(255,255,255,.13)'" onmouseout="this.style.background='rgba(255,255,255,.07)'">👤 Continue as Guest</button>
+
+    <!-- Obvious signup CTA — switches the form to Create Account. Hidden for admin. -->
+    <div id="login-signup-cta" onclick="switchAuthMode(_loginMode==='signup'?'signin':'signup')" style="text-align:center;font-size:13.5px;font-weight:700;color:#FF8A3D;cursor:pointer;margin-bottom:16px;"></div>
+
+    <div id="login-demo-hint" style="font-size:12px;color:rgba(255,255,255,.4);text-align:center;line-height:1.8;">
+      Demo account · Password: <strong style="color:rgba(255,255,255,.65);">123</strong><br>
+      <strong style="color:rgba(255,255,255,.65);">customer@happyhourly.com</strong>
+    </div>
   </div>
-  <!-- Role tabs -->
-  <div style="display:flex;background:rgba(255,255,255,.1);border-radius:14px;padding:4px;margin-bottom:16px;width:100%;max-width:340px;">
-    <button id="tab-customer" onclick="switchLoginTab('customer')" style="flex:1;padding:10px;border-radius:10px;background:white;border:none;font-size:13px;font-weight:800;color:#E8192C;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;">Customer</button>
-    <button id="tab-merchant" onclick="switchLoginTab('merchant')" style="flex:1;padding:10px;border-radius:10px;background:none;border:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.6);cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;">Merchant</button>
-    <button id="tab-admin" onclick="switchLoginTab('admin')" style="flex:1;padding:10px;border-radius:10px;background:none;border:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.6);cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;">Admin</button>
-  </div>
-  <!-- Sign In / Sign Up toggle — customer only -->
-  <div id="auth-mode-wrap" style="display:flex;background:rgba(255,255,255,.08);border-radius:10px;padding:3px;margin-bottom:20px;width:100%;max-width:340px;">
-    <button id="mode-signin" onclick="switchAuthMode('signin')" style="flex:1;padding:9px;border-radius:7px;background:white;border:none;font-size:13px;font-weight:700;color:#1A1A1A;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;">Sign In</button>
-    <button id="mode-signup" onclick="switchAuthMode('signup')" style="flex:1;padding:9px;border-radius:7px;background:none;border:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.5);cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;">Create Account</button>
-  </div>
-  <!-- Input fields -->
-  <div style="width:100%;max-width:340px;margin-bottom:16px;display:flex;flex-direction:column;gap:10px;">
-    <input id="signup-name" type="text" placeholder="Full name" style="display:none;width:100%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:white;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(232,25,44,.8)'" onblur="this.style.borderColor='rgba(255,255,255,.15)'" autocomplete="name">
-    <input id="login-user" type="email" placeholder="Email address" style="width:100%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:white;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(232,25,44,.8)'" onblur="this.style.borderColor='rgba(255,255,255,.15)'" autocomplete="email">
-    <input id="login-pass" type="password" placeholder="Password" style="width:100%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:white;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(232,25,44,.8)'" onblur="this.style.borderColor='rgba(255,255,255,.15)'" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
-    <input id="signup-confirm" type="password" placeholder="Confirm password" style="display:none;width:100%;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:white;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(232,25,44,.8)'" onblur="this.style.borderColor='rgba(255,255,255,.15)'" onkeydown="if(event.key==='Enter')doSignUp()">
-  </div>
-  <div id="login-error" style="color:#FF6B8A;font-size:13px;font-weight:700;margin-bottom:10px;min-height:20px;text-align:center;width:100%;max-width:340px;"></div>
-  <button type="button" id="signin-btn" onclick="_loginMode==='signup'?doSignUp():doLogin()" style="width:100%;max-width:340px;background:linear-gradient(135deg,#E8192C,#FF6B35);color:white;border:none;border-radius:14px;padding:17px;font-size:17px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;box-shadow:0 6px 20px rgba(232,25,44,.4);">Sign In</button>
-  <button type="button" id="guest-btn" onclick="doGuestLogin()" style="width:100%;max-width:340px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:1.5px solid rgba(255,255,255,.2);border-radius:14px;padding:10px 14px 18px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:16px;text-align:center;">👤 Continue as Guest</button>
-  <div style="font-size:12px;color:rgba(255,255,255,.35);text-align:center;line-height:1.8;">
-    Demo accounts · Password: <strong style="color:rgba(255,255,255,.6);">123</strong><br>
-    <strong style="color:rgba(255,255,255,.6);">customer@happyhourly.com</strong> · <strong style="color:rgba(255,255,255,.6);">merchant@goldentap.com</strong> · <strong style="color:rgba(255,255,255,.6);">admin@happyhourly.com</strong>
+
+  <div style="font-size:10px;color:rgba(255,255,255,.25);text-align:center;margin-top:18px;letter-spacing:.6px;">build 2026-06-16 · access-rights enforced</div>
+
+  <!-- Role login links (corner) — switch to merchant / admin login -->
+  <div id="login-role-links" style="position:absolute;bottom:18px;right:18px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+    <div id="link-merchant" class="hh-rolelink" onclick="switchLoginTab('merchant')" style="font-size:12.5px;font-weight:700;color:rgba(255,255,255,.5);cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.12);">🏪 Merchant login</div>
+    <div id="link-admin"    class="hh-rolelink" onclick="switchLoginTab('admin')"    style="font-size:12.5px;font-weight:700;color:rgba(255,255,255,.5);cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.12);">🛡 Admin login</div>
+    <div id="link-customer" class="hh-rolelink" onclick="switchLoginTab('customer')" style="display:none;font-size:12.5px;font-weight:700;color:rgba(255,255,255,.5);cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.12);">← Customer login</div>
   </div>
 </div>
 
@@ -25228,7 +25862,10 @@ function _setupDealMap() {
       <div style="font-size:16px;font-weight:900;color:white;">🛡 Admin Panel</div>
       <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;">HappyHourly Platform</div>
     </div>
-    <button onclick="closeAdmin()" style="background:rgba(255,255,255,.1);border:none;border-radius:10px;padding:8px 16px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">✕ Close</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="admin-hdr-email" style="font-size:12px;font-weight:600;color:rgba(255,255,255,.6);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <button onclick="closeAdmin()" style="background:rgba(255,255,255,.1);border:none;border-radius:10px;padding:8px 16px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">✕ Close</button>
+    </div>
   </div>
   <div class="adm-nav-wrap">
     <button class="adm-nav-btn adm-nav-on" onclick="adminPage('dashboard',this)"><span class="adm-tab-icon">📊</span><span class="adm-tab-label">Dashboard</span></button>
