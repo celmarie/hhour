@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────────────────
+# This git repository is rooted at the HOME directory (/Users/celmac).
+# The only intended content is the hhour project under dev/hhour/.
+# These patterns keep personal, system, and secret files from ever being
+# accidentally staged. Tracked project files (HTML/SQL) don't match any of
+# these, so they stay tracked.
+# ─────────────────────────────────────────────────────────────────────
+
+# Secrets & credentials
+.ssh/
+.gnupg/
+.aws/
+.npmrc
+*.pem
+*.key
+id_rsa*
+.claude.json
+.claude.json.backup
+
+# Tool / app state & caches
+.config/
+.claude/
+.copilot/
+.cache/
+.npm/
+.npm-global/
+.android/
+.gradle/
+.expo/
+.vscode/
+.vscode-shared/
+.local/
+.oracle_jre_usage/
+.anydesk/
+.Genymobile/
+.fnmt/
+.nuuid.ini
+.zsh_history
+.zsh_sessions/
+.zprofile
+.zshrc
+
+# macOS system files & user folders
+.DS_Store
+.CFUserTextEncoding
+.Trash/
+Library/
+Applications/
+Desktop/
+Documents/
+Downloads/
+Movies/
+Music/
+Pictures/
+Public/
+
+# Build artifacts
+node_modules/
+package-lock.json
+
+# Vercel
+.vercel
