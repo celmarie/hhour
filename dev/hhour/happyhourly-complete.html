@@ -8179,7 +8179,7 @@ function renderCoupons(cat){
     +'</div>'
     +'</button>' : '';
   el.innerHTML = shown.map(function(v){
-    var imgTag = v.img ? '<img src="'+v.img+'" alt="'+esc(v.name)+'" loading="lazy" onerror="this.style.display=\'none\'">' : '';
+    var imgTag = v.img ? '<img src="'+v.img+'" alt="'+esc(v.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
     var badge = v.verified ? '<div class="vbadge">✓ Verified</div>' : '<div class="vbadge" style="background:rgba(60,60,80,.8);">👥 Community</div>';
     var freeTag = (v.isFree||v.off==='FREE') ? '<div style="position:absolute;bottom:44px;left:10px;z-index:3;background:rgba(18,161,80,.9);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:5px;text-transform:uppercase;">FREE</div>' : '';
     var wasTxt = v.wasPrice ? '<div class="cimg-was">'+v.wasPrice+'</div>' : '';
@@ -8218,7 +8218,7 @@ function renderUC(cat){
     +'</div>'
     +'</button>' : '';
   el.innerHTML = shown.map(function(u){
-    var imgTag = u.img ? '<img src="'+u.img+'" alt="'+esc(u.name)+'" loading="lazy" onerror="this.style.display=\'none\'">' : '';
+    var imgTag = u.img ? '<img src="'+u.img+'" alt="'+esc(u.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
     var freeTag = (u.isFree||u.off==='FREE') ? '<div style="position:absolute;top:8px;left:8px;background:rgba(18,161,80,.9);color:white;font-size:9px;font-weight:900;padding:2px 7px;border-radius:5px;z-index:3;">FREE</div>' : '';
     var uSym = getCurrencySymbol(u.currency||'EUR');
     var wasTxt = u.wasPrice ? '<div class="cimg-was">'+uSym+u.wasPrice+'</div>' : '';
@@ -8323,7 +8323,7 @@ function renderAllDeals(tab){
   grid.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
     + filtered.map(function(d){
       var isV = d._kind==='verified';
-      var imgTag = d.img ? '<img src="'+d.img+'" alt="'+esc(d.name)+'" loading="lazy" onerror="this.style.display=\'none\'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;">' : '';
+      var imgTag = d.img ? '<img src="'+d.img+'" alt="'+esc(d.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;">' : '';
       var badgeHtml = isV
         ? '<div style="position:absolute;top:8px;left:8px;background:var(--red);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;z-index:3;">✓ Verified</div>'
         : '<div style="position:absolute;top:8px;left:8px;background:rgba(40,40,60,.8);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;z-index:3;">👥 Community</div>';
