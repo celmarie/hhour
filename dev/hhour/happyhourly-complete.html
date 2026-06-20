@@ -38,7 +38,7 @@ body{font-family:'Inter',sans-serif;background:#111;display:flex;justify-content
 
 /* SCREEN WRAP + SCREENS */
 .swrap{flex:1;overflow:hidden;position:relative;}
-.screen{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:var(--nav);opacity:0;pointer-events:none;transform:translateX(20px);transition:opacity .22s ease,transform .22s ease;background:var(--bg);}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:var(--nav);opacity:0;pointer-events:none;transform:translateX(20px);transition:opacity .22s ease,transform .22s ease;background:var(--bg);}
 .screen::-webkit-scrollbar{display:none;}
 .screen.active{opacity:1;pointer-events:all;transform:translateX(0);}
 
@@ -27413,7 +27413,7 @@ function _setupDealMap() {
   </div>
 
   <!-- Main content area -->
-  <div style="flex:1;overflow-y:auto;background:#F0F2F5;" id="me-main"></div>
+  <div style="flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;background:#F0F2F5;" id="me-main"></div>
 
 </div>
 
@@ -28070,7 +28070,7 @@ function _setupDealMap() {
     <button class="adm-nav-btn" onclick="adminPage('reviews',this)"><span class="adm-tab-icon">⭐</span><span class="adm-tab-label">Reviews</span></button>
     <button class="adm-nav-btn" onclick="adminPage('credits',this)" id="adm-btn-credits"><span class="adm-tab-icon">💎</span><span class="adm-tab-label">Credits</span></button>
   </div>
-  <div id="admin-body" style="flex:1;overflow-y:auto;padding:12px;"></div>
+  <div id="admin-body" style="flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:12px;"></div>
 </div>
 
 <!-- ══ ADMIN DEAL REVIEW OVERLAY ══════════════════════════════════════════════ -->
