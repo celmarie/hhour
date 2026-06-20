@@ -21026,7 +21026,7 @@ async function loadMerchantData(){
     // 5. Kick off purchases query in parallel with deals processing
     var dealIds = (dbDeals||[]).map(function(d){return d.id;});
     var _pPurch = dealIds.length ? db.from('voucher_purchases')
-      .select('id,code,status,created_at,deal_id,profiles(name,email),deals(title,price,slots_total,emoji)')
+      .select('id,code,status,created_at,deal_id,profiles(name),deals(title,price,slots_total,emoji)')
       .in('deal_id', dealIds)
       .order('created_at', {ascending:false})
       .limit(500)
@@ -22379,14 +22379,14 @@ async function meCheckRedeem(scannedCode){
     // 1. Look up voucher in DB with customer + deal info
     var { data: purchase, error } = await db
       .from('voucher_purchases')
-      .select('id, code, status, expires_at, qty, created_at, user_id, deal_id, stripe_payment_intent_id, profiles(name, email), deals(id, title, price, currency, hours, venue_id, booking_required, allow_unbooked, grace_period_min, time_from, time_to, days, venues(id, name, owner_id)), voucher_bookings(booking_date, arrival_time, guests, status)')
+      .select('id, code, status, expires_at, qty, created_at, user_id, deal_id, stripe_payment_intent_id, profiles(name), deals(id, title, price, currency, hours, venue_id, booking_required, allow_unbooked, grace_period_min, time_from, time_to, days, venues(id, name, owner_id)), voucher_bookings(booking_date, arrival_time, guests, status)')
       .eq('code', code)
       .maybeSingle();
 
     // Booking table/columns may not exist yet — retry with the original select
     if(error){
       var retry = await db.from('voucher_purchases')
-        .select('id, code, status, expires_at, qty, created_at, user_id, deal_id, stripe_payment_intent_id, profiles(name, email), deals(id, title, price, currency, hours, venue_id, venues(id, name, owner_id))')
+        .select('id, code, status, expires_at, qty, created_at, user_id, deal_id, stripe_payment_intent_id, profiles(name), deals(id, title, price, currency, hours, venue_id, venues(id, name, owner_id))')
         .eq('code', code).maybeSingle();
       purchase = retry.data; error = retry.error;
     }
@@ -24970,7 +24970,7 @@ function comOpenDetail(id){
 async function comLoadEventAttendees(eventId){
   try{
     var {data:attendees,error:err}=await db.from('event_rsvps')
-      .select('user_id, checked_in, checked_in_at, profiles(name, email)')
+      .select('user_id, checked_in, checked_in_at, profiles(name)')
       .eq('event_id',eventId)
       .order('created_at',{ascending:false});
 
