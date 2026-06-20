@@ -1,32 +1,41 @@
 -- ============================================================================
--- Tighten venues read-exposure (run in Supabase → SQL Editor). Safe + verified.
+-- Tighten venues read-exposure (run in Supabase → SQL Editor).
 --
--- WHY column-level (not a view): the customer deal feed reads venues through the
--- PostgREST embed deals(…,venues(name,category,dist_km)), which resolves against
--- the TABLE — so revoking anon's table access (or swapping in a view) would break
--- browsing. Column revokes keep the embed working while removing fields anon
--- never needs.
+-- NOTE: a column-level `REVOKE SELECT (col)` does NOT work on its own, because
+-- Supabase grants TABLE-level SELECT to anon/authenticated and a column revoke
+-- can't override a whole-table grant. The correct pattern is: revoke the table
+-- grant, then GRANT SELECT only on the allowed columns.
 --
--- Verified against the client: anon only ever reads venues.id / name / category /
--- dist_km. owner_id is used ONLY in signed-in contexts (a merchant finding their
--- own venue, the redemption check, the admin list); stripe_account_id is only
--- WRITTEN during onboarding, never read by the client.
+-- Goal:
+--   anon          → everything EXCEPT owner_id and stripe_account_id
+--   authenticated → everything EXCEPT stripe_account_id (keeps owner_id; signed-in
+--                   merchants/admins need it). service_role keeps full access.
+--
+-- Embed-safe: the deal feed embed deals(…,venues(name,category,dist_km)) only
+-- needs id/name/category/dist_km, all granted below.
+--
+-- MAINTENANCE: this is an explicit allow-list. If you ADD a column to venues
+-- later, add it here too (and re-run) or anon/authenticated won't be able to
+-- read it.
 -- ============================================================================
 
--- stripe_account_id: not a secret, but never read by the client → remove from
--- the read surface for everyone (writes/onboarding are unaffected).
-revoke select (stripe_account_id) on public.venues from anon, authenticated;
+-- anon: all display/location columns, but NOT owner_id / stripe_account_id
+revoke select on public.venues from anon;
+grant select (
+  id, name, category, address, city, lat, lng, emoji, image_url, dist_km,
+  verified, active, status, deleted_at, postcode, website, created_at
+) on public.venues to anon;
 
--- owner_id: a user UUID linking venue → owner. Anon never needs it; signed-in
--- merchants/admins do, so keep it for `authenticated` and revoke only for anon.
-revoke select (owner_id) on public.venues from anon;
+-- authenticated: same set PLUS owner_id (needed to find own venue / redeem /
+-- admin), but still NOT stripe_account_id.
+revoke select on public.venues from authenticated;
+grant select (
+  id, owner_id, name, category, address, city, lat, lng, emoji, image_url,
+  dist_km, verified, active, status, deleted_at, postcode, website, created_at
+) on public.venues to authenticated;
 
--- Left readable by anon (display/filter fields used by the deal feed, and venue
--- location which is inherently public): id, name, category, dist_km, address,
--- city, lat, lng, emoji, image_url, website, verified, active, status, created_at.
--- Revoking lat/lng/address would risk breaking the map for little gain, so they
--- stay. RLS still limits anon to active venues only.
-
--- Verify (as anon these should now error with "permission denied for column"):
---   select stripe_account_id from venues limit 1;
---   select owner_id          from venues limit 1;
+-- Verify (as anon, the first two should now error "permission denied for column";
+-- the third should still return rows):
+--   select owner_id          from venues limit 1;   -- ❌ denied
+--   select stripe_account_id from venues limit 1;   -- ❌ denied
+--   select id,name,category,dist_km from venues limit 1;  -- ✅ ok
