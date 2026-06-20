@@ -27891,6 +27891,23 @@ function _setupDealMap() {
   @media (prefers-reduced-motion: reduce){
     #merchant-login-screen .ml-blob{animation:none !important;}
   }
+
+  /* ══ iOS render-stability override ════════════════════════════════════════
+     backdrop-filter:blur() over a CONTINUOUSLY ANIMATED blurred backdrop crashes
+     the iOS web-content process ("A problem repeatedly occurred"). Drop the
+     expensive effects everywhere: no backdrop-filter, solid translucent fills,
+     and static (non-animated) blobs. Keeps the look without the GPU blow-up. */
+  #hh-login-card, #merchant-login-screen .ls-card{
+    -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
+    background:rgba(255,255,255,.9) !important;
+  }
+  #login-screen.ls-admin #hh-login-card{ background:rgba(15,23,38,.94) !important; }
+  #login-screen input:not([type=checkbox]), #merchant-login-screen input{
+    -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
+    background:rgba(255,255,255,.78) !important;
+  }
+  #login-screen.ls-admin input:not([type=checkbox]){ background:rgba(255,255,255,.08) !important; }
+  #login-screen .hh-blob, #merchant-login-screen .ml-blob{ animation:none !important; filter:blur(55px); opacity:.7; }
 </style>
 <div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 20px;font-family:'Inter',sans-serif;overflow:hidden;background:linear-gradient(165deg,#FFF7EF 0%,#FFE9D8 48%,#FFD9C2 100%);">
 
