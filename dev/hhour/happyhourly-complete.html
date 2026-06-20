@@ -2387,6 +2387,40 @@ body, button, input, textarea, select {
 
 </style>
 <script>
+// ── Crash-loop breaker (must run before Google Translate's element.js) ────────
+// iOS Safari shows "A problem repeatedly occurred" when the web-content process
+// crashes and auto-reloads several times in a row. The trigger here is a
+// persisted non-English Google-Translate state (the googtrans cookie): on every
+// load it re-translates the large (~1.6MB) DOM, which can exhaust memory on iOS
+// and crash the tab — and because the cookie survives reloads, it loops.
+// If we see several loads in a short window, wipe the translate state so the
+// next load is a clean, stable English render and the loop self-heals.
+(function(){
+  try{
+    var KEY='hh_boot_ts', NOW=Date.now(), WIN=12000, LIMIT=3;
+    var arr; try{ arr=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ arr=[]; }
+    if(!Array.isArray(arr)) arr=[];
+    arr.push(NOW);
+    arr=arr.filter(function(t){ return (NOW-t)<WIN; });
+    localStorage.setItem(KEY, JSON.stringify(arr));
+    if(arr.length>=LIMIT){
+      var host=location.hostname, exp='; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+      document.cookie='googtrans='+exp;
+      document.cookie='googtrans='+exp+'; domain=.'+host;
+      document.cookie='googtrans='+exp+'; domain='+host;
+      try{ localStorage.removeItem('hh-language'); }catch(e){}
+      try{ localStorage.setItem('hh_loop_recovered','1'); }catch(e){}
+      localStorage.removeItem(KEY); // reset after healing
+    }
+  }catch(e){}
+})();
+// Once the app has loaded and stayed up for a few seconds, clear the counter so
+// ordinary manual refreshes never accumulate into a false positive.
+window.addEventListener('load', function(){
+  setTimeout(function(){ try{ localStorage.removeItem('hh_boot_ts'); }catch(e){} }, 6000);
+});
+</script>
+<script>
 function googleTranslateElementInit(){
   new google.translate.TranslateElement({pageLanguage:'en',autoDisplay:false},'_gt_el');
 }
@@ -12917,6 +12951,8 @@ async function doSignUp(){
 
 function switchLoginTab(role){
   loginRole=role;
+  // Glassmorphism: admin uses the smoked dark-glass theme; customer = warm glass.
+  var _ls=document.getElementById('login-screen'); if(_ls) _ls.classList.toggle('ls-admin', role==='admin');
   // Title reflects the active login (separation per access rights)
   var _mt=document.getElementById('login-mode-title');
   if(_mt) _mt.textContent = role==='merchant' ? '🏪 Merchant login — for venue owners'
@@ -27771,6 +27807,67 @@ function _setupDealMap() {
   @media (prefers-reduced-motion: reduce){
     #login-screen *{animation:none !important;}
   }
+
+  /* ══ Glassmorphism: frosted cards over blurred gradients ══════════════════ */
+  /* Customer = warm glass (default) */
+  #hh-login-card{
+    -webkit-backdrop-filter:blur(22px) saturate(180%); backdrop-filter:blur(22px) saturate(180%);
+    background:rgba(255,255,255,.55) !important;
+    border:1px solid rgba(255,255,255,.65) !important;
+    box-shadow:0 30px 70px rgba(214,118,60,.22), inset 0 1px 0 rgba(255,255,255,.6) !important;
+  }
+  #login-screen input:not([type=checkbox]){
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    background:rgba(255,255,255,.5) !important;
+    border:1px solid rgba(255,255,255,.75) !important;
+  }
+
+  /* Admin = smoked dark glass + secure cyan accent (toggled via .ls-admin) */
+  #login-screen.ls-admin{ background:linear-gradient(165deg,#0b1220 0%,#111a2e 50%,#0a0f1c 100%) !important; }
+  #login-screen.ls-admin .hh-blob{ background:radial-gradient(circle,rgba(56,189,248,.22),transparent 70%) !important; }
+  #login-screen.ls-admin .hh-emoji{ display:none !important; }
+  #login-screen.ls-admin #hh-login-card{
+    background:rgba(17,25,40,.55) !important;
+    border:1px solid rgba(120,150,200,.25) !important;
+    box-shadow:0 30px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(160,190,230,.12) !important;
+  }
+  #login-screen.ls-admin #login-mode-title{ color:#9fb3d1 !important; }
+  /* Logo PNG has black "Hour" text — give it a light chip on dark, and calm the bounce */
+  #login-screen.ls-admin #hh-logo-badge{ background:rgba(255,255,255,.94); border-radius:16px; padding:10px 16px; box-shadow:0 8px 22px rgba(0,0,0,.35); animation:none !important; }
+  #login-screen.ls-admin input:not([type=checkbox]){
+    background:rgba(255,255,255,.06) !important;
+    border:1px solid rgba(120,150,200,.3) !important;
+    color:#e8eef7 !important;
+  }
+  #login-screen.ls-admin input::placeholder{ color:#6b7d99 !important; }
+  #login-screen.ls-admin input:focus{ border-color:#38bdf8 !important; box-shadow:0 0 0 4px rgba(56,189,248,.18) !important; background:rgba(255,255,255,.1) !important; }
+  #login-screen.ls-admin #signin-btn{ background:linear-gradient(135deg,#0ea5e9,#0369a1) !important; box-shadow:0 10px 26px rgba(3,105,161,.45) !important; }
+  #login-screen.ls-admin #signin-btn::after{ display:none !important; }
+  #login-screen.ls-admin #login-forgot-wrap a{ color:#7dd3fc !important; }
+  #login-screen.ls-admin #login-error{ color:#fca5a5 !important; }
+  #login-screen.ls-admin .hh-rolelink{ color:#9fb3d1 !important; background:rgba(255,255,255,.06) !important; border-color:rgba(120,150,200,.25) !important; }
+  #login-screen.ls-admin #login-role-links .hh-rolelink:hover{ color:#fff !important; background:rgba(56,189,248,.18) !important; border-color:rgba(56,189,248,.5) !important; }
+  #login-screen.ls-admin #login-build, #login-screen.ls-admin div[style*="rgba(120,90,70"]{ color:rgba(159,179,209,.5) !important; }
+
+  /* Merchant = mint glass */
+  #merchant-login-screen{ background:linear-gradient(165deg,#EAFBF1 0%,#CFF6E0 48%,#B7F0D2 100%) !important; }
+  #merchant-login-screen .ml-blob{ position:absolute;border-radius:50%;filter:blur(48px);pointer-events:none;animation:hhDrift 19s ease-in-out infinite; }
+  #merchant-login-screen .ls-card{
+    position:relative;
+    -webkit-backdrop-filter:blur(22px) saturate(180%); backdrop-filter:blur(22px) saturate(180%);
+    background:rgba(255,255,255,.58);
+    border:1px solid rgba(255,255,255,.7);
+    border-radius:28px;
+    box-shadow:0 30px 70px rgba(18,128,53,.18), inset 0 1px 0 rgba(255,255,255,.6);
+    padding:34px 26px 30px;
+  }
+  #merchant-login-screen input{
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    background:rgba(255,255,255,.55) !important;
+  }
+  @media (prefers-reduced-motion: reduce){
+    #merchant-login-screen .ml-blob{animation:none !important;}
+  }
 </style>
 <div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 20px;font-family:'Inter',sans-serif;overflow:hidden;background:linear-gradient(165deg,#FFF7EF 0%,#FFE9D8 48%,#FFD9C2 100%);">
 
@@ -27864,7 +27961,11 @@ function _setupDealMap() {
 
 <!-- ══ DEDICATED MERCHANT LOGIN (/merchant) — Groupon-Merchant style ══ -->
 <div id="merchant-login-screen" style="display:none;position:fixed;inset:0;z-index:999999;background:#fff;flex-direction:column;align-items:center;overflow-y:auto;padding:48px 22px;font-family:'Inter',sans-serif;box-sizing:border-box;">
-  <div style="width:100%;max-width:440px;margin:auto;">
+  <!-- mint glass backdrop blobs -->
+  <div class="ml-blob" style="top:-60px;left:-50px;width:280px;height:280px;background:radial-gradient(circle,rgba(46,166,76,.42),transparent 70%);"></div>
+  <div class="ml-blob" style="bottom:-70px;right:-50px;width:320px;height:320px;background:radial-gradient(circle,rgba(16,185,129,.32),transparent 70%);animation-delay:-7s;"></div>
+  <div class="ml-blob" style="top:44%;left:-80px;width:220px;height:220px;background:radial-gradient(circle,rgba(110,231,183,.4),transparent 70%);animation-delay:-3s;"></div>
+  <div class="ls-card" style="width:100%;max-width:440px;margin:auto;">
     <!-- Logo -->
     <div style="text-align:center;margin-bottom:14px;">
       <img src="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-logo.png?v=3" alt="Appie Hour" style="width:170px;height:auto;display:block;margin:0 auto;">
