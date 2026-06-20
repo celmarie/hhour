@@ -39,6 +39,36 @@ end $$;
 -- select * from public.admin_get_all_users();
 
 
+-- ── PART 1B — IMMEDIATE STOPGAP (safe, run now) ─────────────────────────────
+-- Revoke anon/PUBLIC execute on the ADMIN-ONLY unguarded functions. This blocks
+-- the unauthenticated (internet-wide) attack immediately and is 100% safe: every
+-- legitimate caller is a logged-in admin, so they keep the `authenticated` grant.
+-- It is NOT the full fix — a logged-in non-admin could still call these until
+-- PART 4 adds the in-function is_admin() guard — but it removes the worst case.
+-- (cancel_rsvp / increment_deal_slots_sold / watch_spot_set_going are
+-- user-callable and possibly by guests, so they are deliberately left for the
+-- proper ownership/bounds fix in PART 4 rather than an anon revoke.)
+do $$
+declare r record;
+begin
+  for r in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'admin_adjust_credits','admin_approve_event','admin_block_user',
+        'admin_deactivate_deal','admin_delete_review','admin_dismiss_report',
+        'admin_get_all_events','admin_reject_event','admin_remove_community_deal',
+        'admin_send_notification','admin_send_notification_to_users'
+      )
+  loop
+    execute format('revoke execute on function %s from public, anon', r.sig);
+    raise notice 'revoked anon/public execute on %', r.sig;
+  end loop;
+end $$;
+
+
 -- ── PART 2 — AUDIT THE REMAINING PRIVILEGED FUNCTIONS ───────────────────────
 -- The MUTATING admin_* / increment_* functions (e.g. admin_adjust_credits,
 -- increment_profile_credits, admin_deactivate_deal, admin_delete_review,
@@ -83,3 +113,22 @@ order by p.prosecdef desc, has_caller_check asc, p.proname;
 
 -- To see the full body of a specific one:
 -- select pg_get_functiondef('public.increment_profile_credits'::regproc);
+
+
+-- ── PART 3 — DUMP THE UNGUARDED FUNCTION BODIES ─────────────────────────────
+-- Run this and paste the full output. Each row is the complete CREATE statement
+-- for a SECURITY DEFINER function that currently has NO caller check. With these
+-- bodies, each can be re-issued with an is_admin() guard added (admin_* ones) or
+-- an ownership check (cancel_rsvp → user_id = auth.uid(); the increment_*/
+-- watch_spot_* ones bounded + authenticated-only).
+select string_agg(pg_get_functiondef(p.oid), E'\n\n-- ====================\n\n' order by p.proname)
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in (
+    'admin_adjust_credits','admin_approve_event','admin_block_user',
+    'admin_deactivate_deal','admin_delete_review','admin_dismiss_report',
+    'admin_get_all_events','admin_reject_event','admin_remove_community_deal',
+    'admin_send_notification_to_users','admin_send_notification',
+    'cancel_rsvp','increment_deal_slots_sold','watch_spot_set_going'
+  );
