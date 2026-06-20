@@ -3581,8 +3581,8 @@ function _loadGT(){
           <div style="background:linear-gradient(135deg,#FFF9E6,#FFF3CC);border:1.5px solid rgba(217,119,6,.2);border-radius:14px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:10px;">
             <span style="font-size:20px;">🪙</span>
             <div style="text-align:left;">
-              <div style="font-size:14px;font-weight:900;color:#92400E;">+100 Credits earned!</div>
-              <div style="font-size:10px;color:#B45309;font-weight:600;">Added to your wallet</div>
+              <div id="vc-credits-earned" style="font-size:14px;font-weight:900;color:#92400E;">+10 Credits earned!</div>
+              <div style="font-size:10px;color:#B45309;font-weight:600;">Added to your credits</div>
             </div>
           </div>
           <!-- Warning -->
@@ -3784,7 +3784,7 @@ function _loadGT(){
           <div style="font-size:20px;font-weight:800;color:white;margin-bottom:6px;">Review submitted!</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);font-weight:500;line-height:1.6;margin-bottom:18px;">Thanks for helping the community discover great happy hours!</div>
           <div style="background:rgba(255,193,7,.15);border:1px solid rgba(255,193,7,.3);border-radius:10px;padding:10px;margin-bottom:18px;">
-            <div style="font-size:13px;font-weight:800;color:#FFD166;">+25 Credits for reviewing! 🎁</div>
+            <div id="review-cr-line" style="font-size:13px;font-weight:800;color:#FFD166;">+10 Credits for reviewing! 🎁</div>
           </div>
           <button onclick="afterReview()" style="width:100%;background:white;color:#111;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">Done</button>
         </div>
@@ -10122,6 +10122,10 @@ async function _finishVoucherPurchase(paymentIntentId){
   var vdScreen = document.getElementById('screen-vdetail');
   if(vdScreen) vdScreen.scrollTop = 0;
   document.getElementById('vc-overlay').classList.add('show');
+  // Show the ACTUAL credits awarded (was hardcoded +100; real value is the
+  // configured earnBuyVoucher amount, the same one credited above).
+  var vcCr = document.getElementById('vc-credits-earned');
+  if(vcCr){ var _earned = (typeof _ccGet==='function') ? _ccGet('earnBuyVoucher', 88) : 10; vcCr.textContent = '+'+_earned+' Credits earned!'; }
   // Surface the booking on the success overlay
   var vcBk = document.getElementById('vc-booking-line');
   if(vcBk){
@@ -10797,7 +10801,7 @@ async function submitInlineReview(){
 
   closeWriteReview();
   renderDealReviews(curV);
-  showToast('⭐ Review submitted! +25 Credits earned');
+  showToast('⭐ Review submitted! +' + ((typeof _ccGet==='function')?_ccGet('earnLeaveReview',10):10) + ' Credits earned');
 }
 
 let reviewRating=0, reviewAnon=false, quickStarRating=0;
@@ -10855,6 +10859,8 @@ async function submitReview(){
   if (reviewRating === 0) { showToast('Please select a star rating first ⭐'); return; }
   const done = document.getElementById('review-done-overlay');
   if (done) { done.style.opacity = '1'; done.style.pointerEvents = 'all'; }
+  var _rcl = document.getElementById('review-cr-line');
+  if(_rcl){ _rcl.textContent = '+' + ((typeof _ccGet==='function')?_ccGet('earnLeaveReview',10):10) + ' Credits for reviewing! 🎁'; }
   var revScreen = document.getElementById('screen-review');
   if(revScreen) revScreen.scrollTop = 0;
 
@@ -10918,7 +10924,7 @@ function afterReview(){
   const tog=document.getElementById('anon-toggle');if(tog)tog.style.background='rgba(255,255,255,.15)';
   const knob=document.getElementById('anon-knob');if(knob)knob.style.left='3px';
   goScreen('myvouchers');
-  showToast('⭐ Review submitted! +25 Credits added');
+  showToast('⭐ Review submitted! +' + ((typeof _ccGet==='function')?_ccGet('earnLeaveReview',10):10) + ' Credits added');
 }
 
 function afterRedeem(){
