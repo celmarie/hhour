@@ -132,3 +132,142 @@ where n.nspname = 'public'
     'admin_send_notification_to_users','admin_send_notification',
     'cancel_rsvp','increment_deal_slots_sold','watch_spot_set_going'
   );
+
+
+-- ── PART 4 — THE FULL FIX: add authorization guards ─────────────────────────
+-- Re-issues each unguarded function with the proper check, preserving its exact
+-- behaviour and return type. Admin-only functions require public.is_admin();
+-- cancel_rsvp is scoped to the caller's own RSVP (fixes the IDOR);
+-- increment_deal_slots_sold requires login + a bounded amount; watch_spot_set_going
+-- clamps its delta. All set search_path=public (SECURITY DEFINER hardening).
+-- Idempotent — safe to re-run. (The 6-arg admin_send_notification is already
+-- guarded and is intentionally left untouched.)
+
+-- credits (CRITICAL) ----------------------------------------------------------
+create or replace function public.admin_adjust_credits(p_user_id uuid, p_delta integer, p_reason text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  update profiles set credits = greatest(0, credits + p_delta) where id = p_user_id;
+  insert into credits_ledger(user_id, delta, reason, ref) values (p_user_id, p_delta, p_reason, 'admin-adj');
+end; $$;
+
+-- user moderation -------------------------------------------------------------
+create or replace function public.admin_block_user(p_user_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  update profiles set role = 'blocked' where id = p_user_id;
+end; $$;
+
+-- event moderation ------------------------------------------------------------
+create or replace function public.admin_approve_event(p_id bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  update community_events set status = 'approved' where id = p_id;
+end; $$;
+
+create or replace function public.admin_reject_event(p_id bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  update community_events set status = 'rejected' where id = p_id;
+end; $$;
+
+create or replace function public.admin_get_all_events()
+returns setof community_events language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  return query select * from community_events order by created_at desc;
+end; $$;
+
+-- content moderation ----------------------------------------------------------
+create or replace function public.admin_deactivate_deal(p_id bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  update deals set status = 'inactive' where id = p_id;
+end; $$;
+
+create or replace function public.admin_remove_community_deal(p_id bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  update community_deals set status = 'rejected' where id = p_id;
+end; $$;
+
+create or replace function public.admin_delete_review(p_review_id bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  delete from reviews where id = p_review_id;
+end; $$;
+
+create or replace function public.admin_dismiss_report(p_id bigint)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  delete from deal_reports where id = p_id;
+end; $$;
+
+-- notifications: broadcast-by-role overload (the 5-arg one that lacked a guard)-
+create or replace function public.admin_send_notification(p_title text, p_body text, p_type text default 'system', p_icon text default '📣', p_role text default null)
+returns integer language plpgsql security definer set search_path = public as $$
+declare v_count integer;
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  insert into notifications (user_id, type, title, body, icon)
+  select id, p_type, p_title, p_body, p_icon from profiles
+  where p_role is null or role = p_role;
+  get diagnostics v_count = row_count;
+  return v_count;
+end; $$;
+
+create or replace function public.admin_send_notification_to_users(p_user_ids uuid[], p_title text, p_body text, p_type text default 'system', p_icon text default '📣')
+returns integer language plpgsql security definer set search_path = public as $$
+declare v_count integer;
+begin
+  if not public.is_admin() then raise exception 'Not authorized: admin role required'; end if;
+  insert into notifications (user_id, type, title, body, icon)
+  select unnest(p_user_ids), p_type, p_title, p_body, p_icon;
+  get diagnostics v_count = row_count;
+  return v_count;
+end; $$;
+
+-- cancel_rsvp: FIX IDOR — only the caller's own RSVP (ignore passed user_id) ---
+create or replace function public.cancel_rsvp(p_event_id bigint, p_user_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  delete from event_rsvps where event_id = p_event_id and user_id = auth.uid();
+  if found then
+    update community_events set going = greatest(0, going - 1) where id = p_event_id;
+  end if;
+end; $$;
+
+-- increment_deal_slots_sold: require login + bounded amount --------------------
+-- NOTE: robust integrity would verify a matching paid voucher_purchase; this at
+-- least blocks anon/negative/mass inflation. Tighten later if needed.
+create or replace function public.increment_deal_slots_sold(p_deal_id bigint, p_amount integer)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Not signed in'; end if;
+  if p_amount is null or p_amount < 1 or p_amount > 50 then raise exception 'Invalid amount'; end if;
+  update deals set slots_sold = slots_sold + p_amount, claimed = claimed + p_amount where id = p_deal_id;
+end; $$;
+
+-- watch_spot_set_going: clamp delta to +/-1 (intentionally guest-callable) -----
+create or replace function public.watch_spot_set_going(p_id bigint, p_delta integer)
+returns integer language plpgsql security definer set search_path = public as $$
+declare v integer;
+begin
+  update public.match_screenings
+     set going = greatest(0, coalesce(going,0) + sign(coalesce(p_delta,0))::int)
+   where id = p_id
+  returning going into v;
+  return v;
+end; $$;
+
+-- Verify after running: every row should now show has_caller_check = true
+-- (except watch_spot_set_going, which is bounded rather than auth-gated). Re-run
+-- the PART 2 query to confirm.
