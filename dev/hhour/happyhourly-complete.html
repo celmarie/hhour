@@ -2382,7 +2382,11 @@ body, button, input, textarea, select {
    phone-frame bezel. Edge-to-edge app on phones, tablets and small windows. */
 @media (max-width:899px){
   body{ background:var(--bg); }
-  .shell{ width:100vw; max-width:100vw; height:100svh; border-radius:0; box-shadow:none; }
+  /* svh is the fallback; dvh (declared after, wins where supported) tracks the
+     dynamic viewport so the shell fills the screen as the browser toolbar
+     shows/hides — otherwise the shell stays svh-short and leaves an empty gap
+     at the bottom when the toolbar retracts. */
+  .shell{ width:100vw; max-width:100vw; height:100svh; height:100dvh; border-radius:0; box-shadow:none; }
 }
 
 </style>
