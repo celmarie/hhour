@@ -10751,6 +10751,21 @@ function setInlineRating(n){
   if(lbl)lbl.textContent=_starLabels[n]||'';
 }
 
+// One review per customer per deal (anonymous still counts — user_id is always
+// stored). The DB enforces this with a unique index; this is the friendly
+// client-side pre-check. See one_review_per_user_per_deal.sql.
+async function _hasReviewedDeal(dbId, kind){
+  if(!currentUser) return false;
+  try{
+    var r = await db.from('reviews').select('id')
+      .eq('user_id', currentUser.id).eq('deal_id', dbId).eq('deal_kind', kind).limit(1);
+    return !!(r && r.data && r.data.length);
+  }catch(e){ return false; }
+}
+function _isDupReviewErr(err){
+  return !!err && (err.code === '23505' || /duplicate|unique/i.test(err.message || ''));
+}
+
 async function submitInlineReview(){
   if (inlineRating === 0) { showToast('Please select a star rating ⭐'); return; }
   var text      = (document.getElementById('vd-review-text').value || '').trim();
@@ -10760,6 +10775,11 @@ async function submitInlineReview(){
   var colors    = ['#E8192C','#7B2FBE','#2563EB','#12A150','#d97706','#0891B2'];
   var col       = colors[userName.charCodeAt(0) % colors.length];
   var deal      = vouchers.concat(ucDeals).find(function(v) { return v.id === curV; });
+  if (currentUser) {
+    var _k0 = (deal && !deal.verified) ? 'community' : 'verified';
+    var _d0 = deal && deal._dbId ? deal._dbId : (curV > 9999 ? curV - 10000 : curV);
+    if (await _hasReviewedDeal(_d0, _k0)) { showToast('You’ve already reviewed this deal'); return; }
+  }
 
   if (!dealReviews[curV]) dealReviews[curV] = [];
   dealReviews[curV].unshift({
@@ -10788,7 +10808,7 @@ async function submitInlineReview(){
       });
       if (revErr) {
         console.error('[Supabase] inline review insert error:', revErr);
-        showToast('⚠️ Review not saved: ' + (revErr.message || 'unknown error'));
+        showToast(_isDupReviewErr(revErr) ? 'You’ve already reviewed this deal' : ('⚠️ Review not saved: ' + (revErr.message || 'unknown error')));
       } else if (currentProfile) {
         var _crAmt = _ccGet('earnLeaveReview', 10);
         var newCr = (currentProfile.credits || 0) + _crAmt;
@@ -10857,6 +10877,12 @@ function toggleAnon(){
 
 async function submitReview(){
   if (reviewRating === 0) { showToast('Please select a star rating first ⭐'); return; }
+  if (currentUser) {
+    var _sd = [...vouchers, ...ucDeals].find(function(x){ return x.id === curV; });
+    var _sk = (_sd && !_sd.verified) ? 'community' : 'verified';
+    var _sid = _sd && _sd._dbId ? _sd._dbId : (curV > 9999 ? curV - 10000 : curV);
+    if (await _hasReviewedDeal(_sid, _sk)) { showToast('You’ve already reviewed this deal'); return; }
+  }
   const done = document.getElementById('review-done-overlay');
   if (done) { done.style.opacity = '1'; done.style.pointerEvents = 'all'; }
   var _rcl = document.getElementById('review-cr-line');
@@ -10899,7 +10925,7 @@ async function submitReview(){
       });
       if (revErr) {
         console.error('[Supabase] submitReview insert error:', revErr);
-        showToast('⚠️ Review not saved: ' + (revErr.message || 'unknown error'));
+        showToast(_isDupReviewErr(revErr) ? 'You’ve already reviewed this deal' : ('⚠️ Review not saved: ' + (revErr.message || 'unknown error')));
       } else if (currentProfile) {
         var _crAmt = _ccGet('earnLeaveReview', 10);
         var newCr = (currentProfile.credits || 0) + _crAmt;
