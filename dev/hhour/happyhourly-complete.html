@@ -6047,18 +6047,26 @@ async function handleAuthSession(user) {
     }catch(e){ console.log('[handleAuthSession] profile auto-create failed:', e); }
   }
 
-  // Deleted accounts: the admin keeps the row for possible restore, but the
-  // customer must have NO access. Block sign-in, sign them out, and bounce back
-  // to the login screen with a message. (Admin restore clears deleted_at.)
-  if (profile && (profile.deleted_at || profile.status === 'deleted')) {
+  // No-access accounts must be signed out and bounced to login:
+  //   • deleted (admin keeps the row for restore; clears deleted_at to restore)
+  //   • banned (status='banned', the admin "Ban User" action)
+  //   • blocked (role='blocked', admin_block_user)
+  // Banning/blocking previously only changed the admin display — enforce them at
+  // sign-in here so a banned/blocked user genuinely loses access.
+  var _isDeleted = profile && (profile.deleted_at || profile.status === 'deleted');
+  var _isBlocked = profile && (profile.status === 'banned' || profile.role === 'blocked');
+  if (_isDeleted || _isBlocked) {
     try { await db.auth.signOut(); } catch(e) {}
     currentUser = null; currentProfile = null; _lastHandledUserId = null;
     var _dsplash = document.getElementById('role-splash'); if(_dsplash) _dsplash.style.display = 'none';
     var _dls = document.getElementById('login-screen');
     if(_dls){ _dls.style.display = 'flex'; _dls.style.opacity = '1'; }
+    var _msg = _isDeleted
+      ? 'This account has been deactivated. Please contact support if you think this is a mistake.'
+      : 'This account has been suspended. Please contact support if you think this is a mistake.';
     var _dle = document.getElementById('login-error');
-    if(_dle) _dle.textContent = 'This account has been deactivated. Please contact support if you think this is a mistake.';
-    showToast('🚫 This account has been deactivated.');
+    if(_dle) _dle.textContent = _msg;
+    showToast('🚫 ' + (_isDeleted ? 'This account has been deactivated.' : 'This account has been suspended.'));
     return;
   }
 
