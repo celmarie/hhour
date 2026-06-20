@@ -22524,7 +22524,7 @@ async function meCheckRedeem(scannedCode){
         +'<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--red),#FF6B35);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:white;flex-shrink:0;">'+initials+'</div>'
         +'<div style="flex:1;min-width:0;">'
           +'<div style="font-size:15px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+customerName+'</div>'
-          +(customerEmail?'<div style="font-size:12px;color:#9A9AB0;font-family:Inter,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+customerEmail+'</div>':'')
+          +(customerEmail?'<div style="font-size:12px;color:#9A9AB0;font-family:Inter,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_maskEmail(customerEmail)+'</div>':'')
         +'</div>'
         +'<div style="font-size:11px;color:#9A9AB0;font-family:Inter,sans-serif;text-align:right;font-weight:600;">Purchased<br>'+purchasedAt+'</div>'
       +'</div>'
@@ -22870,6 +22870,13 @@ function meMaskIban(iban){
   var clean = iban.replace(/\s/g,'');
   if(clean.length <= 8) return iban;
   return clean.substring(0,4)+' **** **** '+clean.slice(-4);
+}
+// Mask a customer email for merchant/organizer views (privacy): jo•••@gmail.com
+function _maskEmail(e){
+  if(!e || typeof e !== 'string' || e.indexOf('@') < 1) return e || '';
+  var p = e.split('@'), u = p[0], d = p.slice(1).join('@');
+  var head = u.length <= 2 ? u.slice(0,1) : u.slice(0,2);
+  return head + '•••@' + d;
 }
 
 function meShowBankChangeRequest(curHolder, curIban, curBank, curSwift){
@@ -25000,7 +25007,7 @@ async function comLoadEventAttendees(eventId){
         +'<div style="width:32px;height:32px;border-radius:50%;background:'+(isChecked?'#12A150':'linear-gradient(135deg,var(--red),#FF6B35)')+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;flex-shrink:0;transition:background .2s;">'+(isChecked?'✓':initials)+'</div>'
         +'<div style="flex:1;min-width:0;">'
           +'<div style="font-size:12px;font-weight:700;color:var(--text);">'+name+'</div>'
-          +'<div style="font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(isChecked?'<span style="color:#12A150;font-weight:600;">Checked in ✓</span>':email)+'</div>'
+          +'<div style="font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(isChecked?'<span style="color:#12A150;font-weight:600;">Checked in ✓</span>':_maskEmail(email))+'</div>'
         +'</div>'
         +'<button onclick="comToggleCheckIn(\''+eventId+'\',\''+uid+'\','+isChecked+')" style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;background:'+(isChecked?'#E8F5E9':'#12A150')+';color:'+(isChecked?'#12A150':'white')+';transition:all .2s;">'+(isChecked?'Undo':'Check in')+'</button>'
       +'</div>';
