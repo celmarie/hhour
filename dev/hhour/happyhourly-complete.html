@@ -10090,10 +10090,9 @@ async function _finishVoucherPurchase(paymentIntentId){
       if(currentProfile){
         var _crAmt = _ccGet('earnBuyVoucher', 88);
         var newCr = (currentProfile.credits || 0) + _crAmt;
-        await Promise.all([
-          db.from('credits_ledger').insert({ user_id: currentUser.id, delta: _crAmt, reason: 'Voucher purchase', ref: code }),
-          db.from('profiles').update({ credits: newCr }).eq('id', currentUser.id)
-        ]);
+        // Server-side: ledger + balance via SECURITY DEFINER RPC (clients can't
+        // write credits directly anymore — see lock_profile_privileged_columns.sql)
+        await db.rpc('award_credits', { p_amount: _crAmt, p_reason: 'Voucher purchase', p_ref: code });
         currentProfile.credits = newCr;
         var cb = document.getElementById('prof-cr-balance'); if(cb) cb.textContent = newCr.toLocaleString();
       }
@@ -10103,8 +10102,8 @@ async function _finishVoucherPurchase(paymentIntentId){
         if(newW < 0) newW = 0;
         currentProfile.wallet_balance = newW;
         try{
-          await db.from('profiles').update({ wallet_balance: newW }).eq('id', currentUser.id);
-          db.from('wallet_ledger').insert({ user_id: currentUser.id, kind:'spend', euros: -_walletApplied, ref: code }).then(function(){},function(){});
+          // Server-side decrement (clients can't write wallet_balance directly).
+          await db.rpc('spend_wallet', { p_amount: _walletApplied, p_ref: code });
         }catch(e){ console.warn('[wallet spend] save failed', e); }
         if(typeof crUpdateWalletUI === 'function') crUpdateWalletUI();
       }
@@ -10493,10 +10492,7 @@ async function markRedeemed(){
       if (currentProfile) {
         var _crAmt = _ccGet('earnRedeemVenue', 25);
         var newCr = (currentProfile.credits || 0) + _crAmt;
-        await Promise.all([
-          db.from('credits_ledger').insert({ user_id: currentUser.id, delta: _crAmt, reason: 'Voucher redeemed', ref: mv.code }),
-          db.from('profiles').update({ credits: newCr }).eq('id', currentUser.id)
-        ]);
+        await db.rpc('award_credits', { p_amount: _crAmt, p_reason: 'Voucher redeemed', p_ref: mv.code });
         currentProfile.credits = newCr;
       }
     } catch (e) { console.warn('[Supabase] markRedeemed failed', e); }
@@ -10792,10 +10788,7 @@ async function submitInlineReview(){
       } else if (currentProfile) {
         var _crAmt = _ccGet('earnLeaveReview', 10);
         var newCr = (currentProfile.credits || 0) + _crAmt;
-        await Promise.all([
-          db.from('credits_ledger').insert({ user_id: currentUser.id, delta: _crAmt, reason: 'Review submitted', ref: String(curV) }),
-          db.from('profiles').update({ credits: newCr }).eq('id', currentUser.id)
-        ]);
+        await db.rpc('award_credits', { p_amount: _crAmt, p_reason: 'Review submitted', p_ref: String(curV) });
         currentProfile.credits = newCr;
         var cb = document.getElementById('prof-cr-balance'); if (cb) cb.textContent = newCr.toLocaleString();
       }
@@ -10904,10 +10897,7 @@ async function submitReview(){
       } else if (currentProfile) {
         var _crAmt = _ccGet('earnLeaveReview', 10);
         var newCr = (currentProfile.credits || 0) + _crAmt;
-        await Promise.all([
-          db.from('credits_ledger').insert({ user_id: currentUser.id, delta: _crAmt, reason: 'Review submitted', ref: String(curV) }),
-          db.from('profiles').update({ credits: newCr }).eq('id', currentUser.id)
-        ]);
+        await db.rpc('award_credits', { p_amount: _crAmt, p_reason: 'Review submitted', p_ref: String(curV) });
         currentProfile.credits = newCr;
       }
     } catch (e) { console.error('[Supabase] submitReview failed', e); showToast('⚠️ Review not saved: ' + (e.message || e)); }
@@ -24456,9 +24446,10 @@ async function crDoConvert(){
   // Persist
   if(typeof currentUser!=='undefined' && currentUser && window.db){
     try{
-      var r=await db.from('profiles').update({ credits:newCredits, wallet_balance:newWallet }).eq('id',currentUser.id);
+      // Server computes the payout at the configured rate (clients can't write
+      // credits/wallet directly); it also writes both ledger rows.
+      var r=await db.rpc('convert_credits_to_wallet', { p_credits: credits });
       if(r && r.error) console.warn('[crDoConvert] save:', r.error.message);
-      db.from('wallet_ledger').insert({ user_id:currentUser.id, kind:'convert_in', credits:credits, euros:euros, ref:'credit conversion' }).then(function(){},function(){});
     }catch(e){ console.warn('[crDoConvert] failed', e); }
   }
 }
@@ -25165,9 +25156,7 @@ async function comConfirm(id){
     // Award credits in DB
     if(currentProfile){
       var newCr=(currentProfile.credits||0)+evCr;
-      var {error:ledgerErr}=await db.from('credits_ledger').insert({user_id:currentUser.id,delta:evCr,reason:'Event joined',ref:String(m._dbId)});
-      if(ledgerErr) console.warn('[comJoinEvent] credits_ledger insert failed:', ledgerErr.message);
-      await db.from('profiles').update({credits:newCr}).eq('id',currentUser.id).catch(function(){});
+      await db.rpc('award_credits',{p_amount:evCr,p_reason:'Event joined',p_ref:String(m._dbId)}).catch(function(){});
       currentProfile.credits=newCr;
     }
   }
