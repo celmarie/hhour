@@ -2397,6 +2397,14 @@ body, button, input, textarea, select {
 // next load is a clean, stable English render and the loop self-heals.
 (function(){
   try{
+    // Never let a persisted googtrans cookie auto-translate the heavy DOM on
+    // load — that full-page Google Translate pass on a ~1.6MB DOM is what
+    // crashes iOS Safari. Translation is opt-in per session (see stSetLanguage
+    // / _reapplyLanguage), so the cookie is always wiped at boot.
+    var _host=location.hostname, _exp='; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+    document.cookie='googtrans='+_exp;
+    document.cookie='googtrans='+_exp+'; domain=.'+_host;
+    document.cookie='googtrans='+_exp+'; domain='+_host;
     var KEY='hh_boot_ts', NOW=Date.now(), WIN=12000, LIMIT=3;
     var arr; try{ arr=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ arr=[]; }
     if(!Array.isArray(arr)) arr=[];
@@ -7674,6 +7682,9 @@ var _GT_CODES = {
 };
 function stSetLanguage(val){
   var code = _GT_CODES[val] || 'en';
+  // Mark translation active for THIS session so _reapplyLanguage may run for
+  // screens revealed later (e.g. after login). Never persists to next load.
+  if(code !== 'en') window._gtSessionActive = true;
   // Keep both language selects in sync
   document.querySelectorAll('select[onchange*="stSetLanguage"]').forEach(function(s){ s.value = val; });
   // Save language preference
@@ -7710,6 +7721,10 @@ function _gtApply(code, label, retries){
 // Quiet (no toast). Forces a re-translate so static screen text gets localized too.
 function _reapplyLanguage(){
   try{
+    // Opt-in per session only: never auto-translate on page load (the full-DOM
+    // Google Translate pass crashes iOS Safari). This runs only after the user
+    // actively switches language in the current session.
+    if(!window._gtSessionActive) return;
     var lang = localStorage.getItem('hh-language');
     if(!lang || lang === 'English') return;
     var code = (typeof _GT_CODES === 'object' && _GT_CODES) ? _GT_CODES[lang] : null;
