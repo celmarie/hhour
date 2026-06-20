@@ -2381,7 +2381,11 @@ body, button, input, textarea, select {
 /* Full-bleed everywhere below the desktop dashboard breakpoint — no fake
    phone-frame bezel. Edge-to-edge app on phones, tablets and small windows. */
 @media (max-width:899px){
-  body{ background:var(--bg); }
+  /* Warm gradient (matches #login-screen) so the iOS standalone home-indicator
+     safe-area strip below the fixed login screen blends in instead of showing a
+     white band. The main app paints its own --bg on .shell/.screen and the white
+     bottom nav covers its safe area, so the app is unaffected. */
+  body{ background:linear-gradient(165deg,#FFF7EF 0%,#FFE9D8 48%,#FFD9C2 100%); background-attachment:fixed; }
   /* svh is the fallback; dvh (declared after, wins where supported) tracks the
      dynamic viewport so the shell fills the screen as the browser toolbar
      shows/hides — otherwise the shell stays svh-short and leaves an empty gap
