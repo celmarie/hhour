@@ -2437,11 +2437,22 @@ window.addEventListener('load', function(){
 });
 </script>
 <script>
+// Google Translate is loaded LAZILY — only when the user actually picks a
+// non-English language. Loading element.js at boot makes Google Translate scan
+// the entire ~1.7MB DOM on every page load, which crashes iOS Safari
+// ("A problem repeatedly occurred"). _loadGT() injects it on demand, once.
 function googleTranslateElementInit(){
   new google.translate.TranslateElement({pageLanguage:'en',autoDisplay:false},'_gt_el');
 }
+function _loadGT(){
+  if(window._gtScriptAdded) return;
+  window._gtScriptAdded = true;
+  var s=document.createElement('script');
+  s.src='//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+  s.async=true; s.defer=true;
+  document.head.appendChild(s);
+}
 </script>
-<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async defer></script>
 <style>
 /* ════════════════════════════════════════════════════════════════════════
    CUSTOMER WEB / DESKTOP VIEW  (additive only — mobile layout untouched)
@@ -7708,6 +7719,7 @@ function stSetLanguage(val){
   _gtApply(code, val, 12);
 }
 function _gtApply(code, label, retries){
+  if(typeof _loadGT === 'function') _loadGT();   // lazy-load GT on first use
   var sel = document.querySelector('.goog-te-combo');
   if(sel){
     sel.value = code;
@@ -7737,6 +7749,7 @@ function _reapplyLanguage(){
     if(!lang || lang === 'English') return;
     var code = (typeof _GT_CODES === 'object' && _GT_CODES) ? _GT_CODES[lang] : null;
     if(!code) return;
+    if(typeof _loadGT === 'function') _loadGT();   // lazy-load GT on first use
     var tries = 16;
     (function go(){
       var sel = document.querySelector('.goog-te-combo');
@@ -27907,7 +27920,9 @@ function _setupDealMap() {
     background:rgba(255,255,255,.78) !important;
   }
   #login-screen.ls-admin input:not([type=checkbox]){ background:rgba(255,255,255,.08) !important; }
-  #login-screen .hh-blob, #merchant-login-screen .ml-blob{ animation:none !important; filter:blur(55px); opacity:.7; }
+  /* Drop all decorative blur/animation on the login — pure GPU/memory savings,
+     belt-and-suspenders against the iOS crash. Gradient + solid card remain. */
+  #login-screen .hh-blob, #login-screen .hh-emoji, #merchant-login-screen .ml-blob{ display:none !important; }
 </style>
 <div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 20px;font-family:'Inter',sans-serif;overflow:hidden;background:linear-gradient(165deg,#FFF7EF 0%,#FFE9D8 48%,#FFD9C2 100%);">
 
