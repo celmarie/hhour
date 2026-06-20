@@ -5806,7 +5806,7 @@ function refreshAllViews() {
 // ── Load community events from Supabase ──────────────────────────────────────
 async function loadEventsFromSupabase(){
   try{
-    var {data:evData,error}=await db.from('community_events').select('*').eq('status','approved').order('created_at',{ascending:false});
+    var {data:evData,error}=await db.from('community_events').select('id,user_id,host_name,title,description,event_date,event_time,location,capacity,going,price,ticket_type,category,emoji,image_url,status,created_at,currency').eq('status','approved').order('created_at',{ascending:false});
     if(error){ console.warn('[loadEventsFromSupabase]',error.message); return; } // keep seed data
     if(evData&&evData.length){
       var catEmojis={cocktails:'🍹',beer:'🍺',wine:'🍷',social:'👥',food:'🍕',rooftop:'🌅'};
@@ -11865,7 +11865,7 @@ function mcOpenEventDetail(eventId){
   if(ev){ comOpenEventDetail(ev.id||ev._dbId); return; }
   // Not in memory — show detail directly from DB data already rendered
   showToast('Opening event...');
-  db.from('community_events').select('*').eq('id',eventId).single().then(function(res){
+  db.from('community_events').select('id,user_id,host_name,title,description,event_date,event_time,location,capacity,going,price,ticket_type,category,emoji,image_url,status,created_at,currency').eq('id',eventId).single().then(function(res){
     if(res.data){
       var row=res.data;
       var catEmojis={cocktails:'🍹',beer:'🍺',wine:'🍷',social:'👥',food:'🍕',rooftop:'🌅'};
@@ -15969,7 +15969,7 @@ var _admWatchRows=[];
 function adminLoadWatchSpots(){
   var c=document.getElementById('adm-watch-spots'); if(!c) return;
   if(typeof db==='undefined'||!db.from){ c.innerHTML='<div style="color:#9A9AB0;font-size:13px;">Database not available.</div>'; return; }
-  db.from('match_screenings').select('*').eq('status','approved').order('match_date',{ascending:true}).then(function(r){
+  db.from('match_screenings').select('id,user_id,host_name,venue_name,location,match_label,match_date,kickoff_time,reservation_needed,reservation_info,notes,emoji,image_url,going,status,created_at,timezone,matches,crowd_busy,crowd_ok,crowd_chill,lat,lng,slug').eq('status','approved').order('match_date',{ascending:true}).then(function(r){
     if(r&&r.error){ c.innerHTML='<div style="color:#E8192C;font-size:13px;">'+_watchEsc(r.error.message)+'</div>'; return; }
     var rows=(r&&r.data)||[];
     _admWatchRows=rows;
@@ -16264,7 +16264,7 @@ async function adminLoadSpotReports(){
 
     // Load the spots being reported so we can show context
     var spotIds=reports.map(function(x){ return x.screening_id; });
-    var spotR=await db.from('match_screenings').select('*').in('id',spotIds);
+    var spotR=await db.from('match_screenings').select('id,user_id,host_name,venue_name,location,match_label,match_date,kickoff_time,reservation_needed,reservation_info,notes,emoji,image_url,going,status,created_at,timezone,matches,crowd_busy,crowd_ok,crowd_chill,lat,lng,slug').in('id',spotIds);
     var spots=(spotR&&spotR.data)||[];
     var spotsById={};
     spots.forEach(function(s){ spotsById[s.id]=s; });
@@ -25570,7 +25570,7 @@ function watchSetJoined(arr){
 async function loadWatchSpots(){
   try {
     if(typeof db==='undefined'||!db.from){ watchSpots=[]; return; }
-    var r = await db.from('match_screenings').select('*').eq('status','approved').order('match_date',{ascending:true});
+    var r = await db.from('match_screenings').select('id,user_id,host_name,venue_name,location,match_label,match_date,kickoff_time,reservation_needed,reservation_info,notes,emoji,image_url,going,status,created_at,timezone,matches,crowd_busy,crowd_ok,crowd_chill,lat,lng,slug').eq('status','approved').order('match_date',{ascending:true});
     if(r && r.error){ console.warn('[watch] load:', r.error.message); return; }
     watchSpots = (r && r.data) ? r.data : [];
     try { localStorage.setItem('hh_watch_cache', JSON.stringify({s:watchSpots,time:Date.now()})); } catch(e){}
