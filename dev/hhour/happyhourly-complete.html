@@ -13589,7 +13589,7 @@ async function loadAdminData(){
       } catch(e){}
       try {
         var d = await withTimeout(
-          db.from('venues').select('*,profiles(id,name,email,role,created_at)').order('created_at',{ascending:false}),
+          db.from('venues').select('id,name,city,status,owner_id,created_at,profiles(name,email)').order('created_at',{ascending:false}),
           6000
         );
         return (d.data||[]).map(function(v){ return { id:v.id,name:v.name,city:v.city,status:v.status,owner_id:v.owner_id,owner_name:v.profiles&&v.profiles.name||'',owner_email:v.profiles&&v.profiles.email||'',created_at:v.created_at }; });
