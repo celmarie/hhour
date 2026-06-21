@@ -8208,7 +8208,7 @@ function renderCoupons(cat){
     +'</div>'
     +'</button>' : '';
   el.innerHTML = shown.map(function(v){
-    var imgTag = v.img ? '<img src="'+v.img+'" alt="'+esc(v.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
+    var imgTag = v.img ? '<img src="'+esc(v.img)+'" alt="'+esc(v.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
     var badge = v.verified ? '<div class="vbadge">✓ Verified</div>' : '<div class="vbadge" style="background:rgba(60,60,80,.8);">👥 Community</div>';
     var freeTag = (v.isFree||v.off==='FREE') ? '<div style="position:absolute;bottom:44px;left:10px;z-index:3;background:rgba(18,161,80,.9);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:5px;text-transform:uppercase;">FREE</div>' : '';
     var wasTxt = v.wasPrice ? '<div class="cimg-was">'+v.wasPrice+'</div>' : '';
@@ -8247,7 +8247,7 @@ function renderUC(cat){
     +'</div>'
     +'</button>' : '';
   el.innerHTML = shown.map(function(u){
-    var imgTag = u.img ? '<img src="'+u.img+'" alt="'+esc(u.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
+    var imgTag = u.img ? '<img src="'+esc(u.img)+'" alt="'+esc(u.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
     var freeTag = (u.isFree||u.off==='FREE') ? '<div style="position:absolute;top:8px;left:8px;background:rgba(18,161,80,.9);color:white;font-size:9px;font-weight:900;padding:2px 7px;border-radius:5px;z-index:3;">FREE</div>' : '';
     var uSym = getCurrencySymbol(u.currency||'EUR');
     var wasTxt = u.wasPrice ? '<div class="cimg-was">'+uSym+u.wasPrice+'</div>' : '';
@@ -8352,7 +8352,7 @@ function renderAllDeals(tab){
   grid.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
     + filtered.map(function(d){
       var isV = d._kind==='verified';
-      var imgTag = d.img ? '<img src="'+d.img+'" alt="'+esc(d.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;">' : '';
+      var imgTag = d.img ? '<img src="'+esc(d.img)+'" alt="'+esc(d.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;">' : '';
       var badgeHtml = isV
         ? '<div style="position:absolute;top:8px;left:8px;background:var(--red);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;z-index:3;">✓ Verified</div>'
         : '<div style="position:absolute;top:8px;left:8px;background:rgba(40,40,60,.8);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;z-index:3;">👥 Community</div>';
@@ -8431,7 +8431,7 @@ function renderAlerts(filter){
             <div class="msg-time">${a.time}</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
-            <div class="msg-preview">${a.title} — ${a.body}</div>
+            <div class="msg-preview">${esc(a.title)} — ${esc(a.body)}</div>
             ${a.unread?'<div class="msg-dot"></div>':''}
           </div>
         </div>
@@ -8480,7 +8480,7 @@ function openAlertDetail(id){
       +'<div>'
         +'<div class="chat-bubble">'
           +'<div class="chat-bubble-title">'+esc(a.title)+'</div>'
-          +'<div class="chat-bubble-text">'+a.body+'</div>'
+          +'<div class="chat-bubble-text">'+esc(a.body)+'</div>'
           +dealCard
         +'</div>'
       +'</div>'
@@ -8649,7 +8649,7 @@ function renderSaved(){
     var openFn = isUC ? 'openUCDeal('+s.id+')' : 'openVoucher('+s.id+')';
     // Real photo thumbnail
     var thumbInner = s.img
-      ? '<img src="'+s.img+'" alt="'+esc(s.name)+'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">'
+      ? '<img src="'+esc(s.img)+'" alt="'+esc(s.name)+'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">'
       : '<span style="font-size:28px;z-index:1;position:relative;">'+s.emoji+'</span>';
     var thumbOverlay = s.img
       ? '<div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,0,0,.3),rgba(0,0,0,.05));z-index:1;border-radius:12px;"></div>'
@@ -9949,7 +9949,7 @@ async function buyVoucher(){
       +'<div style="width:40px;height:4px;background:#E0E0E0;border-radius:2px;margin:0 auto 20px;"></div>'
       // Order summary
       +'<div style="display:flex;align-items:center;gap:14px;background:#F8F8FA;border-radius:14px;padding:14px;margin-bottom:20px;">'
-        +(deal.img ? '<img src="'+deal.img+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;">' : '<div style="width:56px;height:56px;border-radius:10px;background:rgba(232,25,44,.1);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">'+deal.emoji+'</div>')
+        +(deal.img ? '<img src="'+esc(deal.img)+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;">' : '<div style="width:56px;height:56px;border-radius:10px;background:rgba(232,25,44,.1);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">'+deal.emoji+'</div>')
         +'<div style="flex:1;min-width:0;">'
           +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(deal.name)+'</div>'
           +'<div style="font-size:12px;color:#555;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(deal.deal)+'</div>'
@@ -10555,7 +10555,7 @@ function renderDealReviews(dealId){
         +'<div style="width:36px;height:36px;border-radius:50%;background:'+r.col+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:white;flex-shrink:0;">'+r.av+'</div>'
         +'<div style="flex:1;min-width:0;">'
           +'<div style="display:flex;align-items:center;flex-wrap:wrap;">'
-            +'<span style="font-size:13px;font-weight:800;color:var(--text);">'+r.user+'</span>'
+            +'<span style="font-size:13px;font-weight:800;color:var(--text);">'+esc(r.user)+'</span>'
             +badge
             +'<span style="font-size:11px;color:var(--t3);margin-left:auto;">'+r.date+'</span>'
           +'</div>'
@@ -10593,7 +10593,7 @@ function showAllReviews(){
         +'<div style="width:36px;height:36px;border-radius:50%;background:'+r.col+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:white;flex-shrink:0;">'+r.av+'</div>'
         +'<div style="flex:1;min-width:0;">'
           +'<div style="display:flex;align-items:center;flex-wrap:wrap;">'
-            +'<span style="font-size:13px;font-weight:800;color:var(--text);">'+r.user+'</span>'
+            +'<span style="font-size:13px;font-weight:800;color:var(--text);">'+esc(r.user)+'</span>'
             +badge
           +'</div>'
           +'<div style="margin-top:3px;">'+stars+'</div>'
@@ -11837,10 +11837,10 @@ async function mcRenderMyEvents(){
         var localId = ev.id;
         return '<div onclick="mcOpenEventDetail('+localId+')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:white;cursor:pointer;border-bottom:'+(isLast?'none':'1px solid #F0F0F4')+';transition:background .12s;" ontouchstart="this.style.background=\'#F5F5F7\'" ontouchend="this.style.background=\'white\'">'
           +'<div style="width:52px;height:52px;border-radius:12px;overflow:hidden;flex-shrink:0;background:#F0F0F4;display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;">'
-            +(imgSrc ? '<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">' : emoji)
+            +(imgSrc ? '<img src="'+esc(imgSrc)+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">' : emoji)
           +'</div>'
           +'<div style="flex:1;min-width:0;">'
-            +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(ev.title||'Event')+'</div>'
+            +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(ev.title||'Event')+'</div>'
             +'<div style="font-size:12px;color:#666;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">📅 '+(ev.event_date||'TBD')+' · ⏰ '+(ev.event_time||'')+'</div>'
             +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;">'
               +'<span style="background:'+st.bg+';color:'+st.col+';font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;">'+st.label+'</span>'
@@ -11898,7 +11898,7 @@ function mcOpenRejectedDetail(dbId){
         +'<button onclick="document.getElementById(\'mc-rejected-sheet\').remove()" style="background:#F5F5F7;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#555;font-weight:700;">✕</button>'
       +'</div>'
       // Photo
-      +(imgSrc ? '<div style="height:160px;overflow:hidden;"><img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;"></div>' : '')
+      +(imgSrc ? '<div style="height:160px;overflow:hidden;"><img src="'+esc(imgSrc)+'" style="width:100%;height:100%;object-fit:cover;"></div>' : '')
       +'<div style="padding:16px 18px;">'
         // Rejection reason
         +'<div style="background:rgba(220,38,38,.06);border:1.5px solid rgba(220,38,38,.2);border-radius:12px;padding:12px 14px;margin-bottom:16px;">'
@@ -11906,8 +11906,8 @@ function mcOpenRejectedDetail(dbId){
           +'<div style="font-size:13px;color:#333;font-weight:500;line-height:1.5;">'+(reason || 'Did not meet community guidelines.')+'</div>'
         +'</div>'
         // Deal info
-        +'<div style="font-size:16px;font-weight:900;color:#1A1A1A;margin-bottom:2px;">'+(d.venue_name||'Venue')+'</div>'
-        +'<div style="font-size:13px;color:#666;margin-bottom:10px;">'+(d.title||'')+'</div>'
+        +'<div style="font-size:16px;font-weight:900;color:#1A1A1A;margin-bottom:2px;">'+esc(d.venue_name||'Venue')+'</div>'
+        +'<div style="font-size:13px;color:#666;margin-bottom:10px;">'+esc(d.title||'')+'</div>'
         +(d.description ? '<div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:10px;">'+esc(d.description)+'</div>' : '')
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">'
           +(d.price ? '<div style="background:#F5F5F7;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:2px;">PRICE</div><div style="font-size:13px;font-weight:800;color:#E8192C;">€'+parseFloat(d.price).toFixed(2)+'</div></div>' : '')
@@ -12017,12 +12017,12 @@ function mcFilter(status, btn) {
     return '<div onclick="' + clickFn + '" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:white;cursor:pointer;border-bottom:'+(isLast?'none':'1px solid #F0F0F4')+';active:background:#F5F5F7;" ontouchstart="this.style.background=\'#F5F5F7\'" ontouchend="this.style.background=\'white\'">'
       // Thumbnail
       +'<div style="width:52px;height:52px;border-radius:12px;overflow:hidden;flex-shrink:0;background:#F0F0F4;display:flex;align-items:center;justify-content:center;font-size:22px;">'
-        +(imgSrc ? '<img src="'+imgSrc+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">' : (d.emoji||'🍹'))
+        +(imgSrc ? '<img src="'+esc(imgSrc)+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">' : (d.emoji||'🍹'))
       +'</div>'
       // Text
       +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(d.venue_name||'Venue')+'</div>'
-        +'<div style="font-size:12px;color:#666;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">'+(d.title||'')+'</div>'
+        +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(d.venue_name||'Venue')+'</div>'
+        +'<div style="font-size:12px;color:#666;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">'+esc(d.title||'')+'</div>'
         +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">'
           +'<span style="display:inline-flex;align-items:center;gap:4px;background:'+st.bg+';color:'+st.col+';font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;">'+st.label+'</span>'
           +(ago ? '<span style="font-size:10px;color:#9A9AB0;font-weight:500;">'+ago+'</span>' : '')
@@ -13926,7 +13926,7 @@ async function loadAdminData(){
 function _adminRow(label, value) {
   return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #F0F0F0;">'
     +'<span style="font-size:13px;color:#9A9AB0;font-weight:600;">'+label+'</span>'
-    +'<span style="font-size:13px;font-weight:700;color:#1A1A1A;text-align:right;max-width:60%;word-break:break-all;">'+value+'</span>'
+    +'<span style="font-size:13px;font-weight:700;color:#1A1A1A;text-align:right;max-width:60%;word-break:break-all;">'+esc(value)+'</span>'
     +'</div>';
 }
 function _adminSectionTitle(title) {
@@ -14239,7 +14239,7 @@ function adminResetUserPassword(idx){
     document.body.appendChild(modal);
   }
   var to = document.getElementById('adm-pw-to');
-  if(to) to.innerHTML = 'Setting a new password for <strong>'+(u.name||u.email||'user')+'</strong><br><span style="color:#9A9AB0;">'+(u.email||'')+'</span>';
+  if(to) to.innerHTML = 'Setting a new password for <strong>'+esc(u.name||u.email||'user')+'</strong><br><span style="color:#9A9AB0;">'+esc(u.email||'')+'</span>';
   var inp = document.getElementById('adm-pw-new'); if(inp) inp.value='';
   modal.style.display = 'flex';
   setTimeout(function(){ if(inp) inp.focus(); }, 50);
@@ -14513,7 +14513,7 @@ function adminEditMerchant(idx) {
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Venue Name</label>'
           +'<input id="edit-m-venue-name" value="'+esc(m.name)+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Address</label>'
-          +'<input id="edit-m-address" autocomplete="off" value="'+(m.address||'')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" oninput="addrInput(\'edit-m-address\')" onfocus="this.style.borderColor=\'#E8192C\';addrInput(\'edit-m-address\')" onblur="addrValidate(\'edit-m-address\');setTimeout(_addrHideDrop,150);this.style.borderColor=\'#E8E8EC\'"></div>'
+          +'<input id="edit-m-address" autocomplete="off" value="'+esc(m.address||'')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" oninput="addrInput(\'edit-m-address\')" onfocus="this.style.borderColor=\'#E8192C\';addrInput(\'edit-m-address\')" onblur="addrValidate(\'edit-m-address\');setTimeout(_addrHideDrop,150);this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Venue Type</label>'
           +'<select id="edit-m-type" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
             +'<option value="">Select type...</option>'
@@ -14684,7 +14684,7 @@ function adminOpenMerchant(idx) {
         +'<div style="width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,#f093fb,#f5576c);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:white;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,.15);">'+av+'</div>'
         +'<div style="flex:1;">'
           +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;">'+esc(m.name)+'</div>'
-          +'<div style="font-size:13px;color:#9A9AB0;margin-top:3px;">'+esc(m.owner)+' · 📍 '+(m.address?m.address+(m.city?', '+esc(m.city):''):m.city||'—')+'</div>'
+          +'<div style="font-size:13px;color:#9A9AB0;margin-top:3px;">'+esc(m.owner)+' · 📍 '+(m.address?esc(m.address)+(m.city?', '+esc(m.city):''):m.city||'—')+'</div>'
           +'<div style="display:flex;gap:6px;margin-top:8px;">'
             +'<span style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;background:'+statusBg+';color:'+statusCol+';">'+m.status.toUpperCase()+'</span>'
             +'<span style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;background:rgba(99,102,241,.1);color:#6366F1;">'+(m.plan||'Free Plan')+'</span>'
@@ -14707,7 +14707,7 @@ function adminOpenMerchant(idx) {
       +_adminRow('Venue Type', m.type ? (m.type==='bar'?'🍺 Bar / Pub':m.type==='restaurant'?'🍽️ Restaurant':m.type==='cafe'?'☕ Café':m.type==='cocktail'?'🍸 Cocktail Bar':m.type==='wine'?'🍷 Wine Bar':m.type==='club'?'🎶 Club':'🏪 Other') : '—')
       +_adminRow('Owner', m.owner)
       +_adminRow('Email', m.ownerEmail||'—')
-      +_adminRow('Complete Address', (m.address?m.address+(m.city?', '+esc(m.city):'')+(m.post?' '+m.post:''):m.city||'—'))
+      +_adminRow('Complete Address', (m.address?m.address+(m.city?', '+m.city:'')+(m.post?' '+m.post:''):m.city||'—'))
       +_adminRow('Plan', m.plan||'Free')
       +_adminRow('Rating', m.rating ? '⭐ '+m.rating+' / 5.0' : '—')
       +_adminRow('Total Revenue', m.rev)
@@ -14887,14 +14887,14 @@ async function adminOpenBizApplication(idx){
       +'<div style="padding:18px 20px;">'
         // Details grid
         +'<div style="background:#F8F8FA;border-radius:12px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-          +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:3px;">VENUE NAME</div><div style="font-size:13px;font-weight:800;color:#1A1A1A;">'+(fullApp.name||'—')+'</div></div>'
+          +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:3px;">VENUE NAME</div><div style="font-size:13px;font-weight:800;color:#1A1A1A;">'+esc(fullApp.name||'—')+'</div></div>'
           +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:3px;">TYPE</div><div style="font-size:13px;font-weight:700;color:#1A1A1A;text-transform:capitalize;">'+(fullApp.type||'—')+'</div></div>'
           +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:3px;">OWNER NAME</div><div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+(fullApp.owner||'—')+'</div></div>'
           +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:3px;">EMAIL</div><a href="mailto:'+(fullApp.ownerEmail||'')+'" style="font-size:12px;font-weight:600;color:#3B82F6;word-break:break-all;text-decoration:none;">'+(fullApp.ownerEmail||'—')+'</a></div>'
           +'<div style="grid-column:1/-1;">'
             +'<div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:3px;">ADDRESS</div>'
             +'<a href="'+mapsUrl+'" target="_blank" style="font-size:13px;font-weight:700;color:#3B82F6;text-decoration:none;display:flex;align-items:center;gap:5px;">'
-              +'📍 '+(fullApp.address||'—')+(fullApp.city?', '+esc(fullApp.city):'')
+              +'📍 '+esc(fullApp.address||'—')+(fullApp.city?', '+esc(fullApp.city):'')
               +'<span style="font-size:10px;color:#3B82F6;border:1px solid #BFDBFE;background:#EFF6FF;border-radius:4px;padding:1px 5px;">Maps →</span>'
             +'</a>'
           +'</div>'
@@ -15790,7 +15790,7 @@ function adminMessageUser(idx){
     modal.onclick = adminCloseMsgModal;
     document.body.appendChild(modal);
   }
-  document.getElementById('adm-msg-to').innerHTML = 'To: <strong style="color:#1A1A1A;">'+(u.name||u.email)+'</strong> · '+(u.email||'');
+  document.getElementById('adm-msg-to').innerHTML = 'To: <strong style="color:#1A1A1A;">'+esc(u.name||u.email)+'</strong> · '+esc(u.email||'');
   document.getElementById('adm-msg-title').value = '';
   document.getElementById('adm-msg-body').value = '';
   modal.style.display = 'flex';
@@ -16271,7 +16271,7 @@ async function adminLoadSpotReports(){
 
     c.innerHTML=reports.map(function(rpt){
       var s=spotsById[rpt.screening_id];
-      var spot_info = s ? (s.venue_name||'Unknown')+(s.location?' · '+s.location:'') : 'Spot deleted';
+      var spot_info = s ? esc(s.venue_name||'Unknown')+(s.location?' · '+esc(s.location):'') : 'Spot deleted';
       return '<div style="border-bottom:1px solid #F5F5F8;padding:12px 0;display:grid;grid-template-columns:1fr auto;gap:12px;">'
         +'<div style="min-width:0;">'
           +'<div style="font-size:12.5px;font-weight:800;color:#1A1A1A;">Report: '+_watchEsc(rpt.field_reported)+' issue</div>'
@@ -16444,7 +16444,7 @@ function adminPage(page,btn){
     } else {
       html += pendingDeals.slice(0,3).map(function(d){
         return '<div onclick="adminPreviewDeal('+d.id+')" style="'+row+'cursor:pointer;" onmouseenter="this.style.background=\'#fafafa\'" onmouseleave="this.style.background=\'\'">'
-          +'<div style="width:42px;height:42px;border-radius:12px;background:rgba(232,25,44,.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">'+(d.img?'<img src="'+d.img+'" style="width:42px;height:42px;object-fit:cover;border-radius:12px;" onerror="this.outerHTML=\'📣\'">':'📣')+'</div>'
+          +'<div style="width:42px;height:42px;border-radius:12px;background:rgba(232,25,44,.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">'+(d.img?'<img src="'+esc(d.img)+'" style="width:42px;height:42px;object-fit:cover;border-radius:12px;" onerror="this.outerHTML=\'📣\'">':'📣')+'</div>'
           +'<div style="flex:1;min-width:0;">'
             +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.venue)+'</div>'
             +'<div style="font-size:12px;color:#555;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.desc)+'</div>'
@@ -16483,8 +16483,8 @@ function adminPage(page,btn){
           return '<div onclick="adminPreviewDeal('+localId+',\''+src+'\')" style="'+row+'cursor:pointer;" onmouseenter="this.style.background=\'#fff5f5\'" onmouseleave="this.style.background=\'\'">'
             +'<div style="width:42px;height:42px;border-radius:12px;background:rgba(220,38,38,.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🚩</div>'
             +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(r.name||'Deal')+'</div>'
-              +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(r.venue||'')+(r.reportedBy?' · by '+r.reportedBy:'')+' · '+(r.reportedAt||'')+'</div>'
+              +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(r.name||'Deal')+'</div>'
+              +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(r.venue||'')+(r.reportedBy?' · by '+r.reportedBy:'')+' · '+(r.reportedAt||'')+'</div>'
               +'<div style="font-size:10px;color:#dc2626;font-weight:700;margin-top:2px;">⏰ Reported as expired</div>'
             +'</div>'
             +'<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-shrink:0;">'
@@ -16543,7 +16543,7 @@ function adminPage(page,btn){
           +'<div style="flex:1;min-width:0;">'
             +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(ev.title)+'</div>'
             +'<div style="font-size:11px;color:#555;margin-top:2px;">📅 '+ev.date+' · ⏰ '+ev.time+'</div>'
-            +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">by '+ev.host+(ev.submittedAt&&ev.submittedAt!=='undefined'?' · '+ev.submittedAt:'')+'</div>'
+            +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">by '+esc(ev.host)+(ev.submittedAt&&ev.submittedAt!=='undefined'?' · '+ev.submittedAt:'')+'</div>'
             +'<div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">'
               +(ev.type==='paid'?'<span style="background:rgba(232,25,44,.08);color:#E8192C;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">'+ev.price+'</span>':'<span style="background:rgba(18,161,80,.08);color:#12A150;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;">FREE</span>')
               +'<span style="background:#F5F5F7;color:#555;font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;">'+ev.capacity+' capacity</span>'
@@ -16965,7 +16965,7 @@ function adminPage(page,btn){
               +'<div style="flex:1;min-width:0;">'
                 +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+esc(m.name)+'</div>'
                 +'<div style="font-size:11px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+m.ownerEmail+'</div>'
-                +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+esc(m.owner)+' · 📍 '+(m.address?m.address+(m.city?', '+esc(m.city):''):m.city||'—')+(isPending?' · ⏳ Awaiting approval':'')+'</div>'
+                +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+esc(m.owner)+' · 📍 '+(m.address?esc(m.address)+(m.city?', '+esc(m.city):''):m.city||'—')+(isPending?' · ⏳ Awaiting approval':'')+'</div>'
               +'</div>'
               +'<span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:800;background:'+statusBg+';color:'+statusCol+';">'+m.status+'</span>'
             +'</div>'
@@ -16995,7 +16995,7 @@ function adminPage(page,btn){
               +'<div style="flex:1;min-width:0;">'
                 +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+esc(m.name)+'</div>'
                 +'<div style="font-size:11px;color:#555;">'+esc(m.owner)+'</div>'
-                +'<div style="font-size:10px;color:#9A9AB0;margin-top:1px;">Deleted'+(delDate?' '+delDate:'')+' · 📍 '+(m.address?m.address+(m.city?', '+esc(m.city):''):m.city||'—')+'</div>'
+                +'<div style="font-size:10px;color:#9A9AB0;margin-top:1px;">Deleted'+(delDate?' '+delDate:'')+' · 📍 '+(m.address?esc(m.address)+(m.city?', '+esc(m.city):''):m.city||'—')+'</div>'
                 +'<div style="display:inline-block;margin-top:4px;font-size:10px;font-weight:800;color:'+pc.color+';background:'+pc.bg+';padding:2px 8px;border-radius:10px;">⏳ '+esc(pc.text)+'</div>'
               +'</div>'
             +'</div>'
@@ -17092,13 +17092,13 @@ function adminPage(page,btn){
               +'<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;">'
                 +'<div style="width:40px;height:40px;border-radius:50%;background:'+(deal.userCol||'#9A9AB0')+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:white;flex-shrink:0;">'+(deal.userAv||(deal.user||'??').substring(0,2).toUpperCase())+'</div>'
                 +'<div style="flex:1;">'
-                  +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;">'+(deal.venue||deal.name||'')+'</div>'
+                  +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;">'+esc(deal.venue||deal.name||'')+'</div>'
                   +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">by '+deal.user+' · '+deal.submittedAt+'</div>'
                 +'</div>'
                 +'<span style="background:rgba(217,119,6,.1);color:#B45309;font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;flex-shrink:0;">⏳ Pending</span>'
               +'</div>'
               +'<div style="background:#F9F9FB;border-radius:10px;padding:12px 14px;margin-bottom:10px;">'
-                +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;margin-bottom:4px;">'+(deal.deal||deal.desc||'')+'</div>'
+                +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;margin-bottom:4px;">'+esc(deal.deal||deal.desc||'')+'</div>'
                 +'<div style="font-size:12px;color:#555;line-height:1.5;margin-bottom:6px;">'+(deal.desc||'')+'</div>'
                 +(deal.hours?'<div style="font-size:11px;color:#9A9AB0;">⏰ '+deal.hours+(deal.days?' · 📅 '+deal.days:'')+'</div>':'')
                 +(deal.price?'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">💰 '+deal.price+'</div>':'')
@@ -17125,8 +17125,8 @@ function adminPage(page,btn){
           return '<div onclick="adminPreviewDeal('+deal.id+',\'community\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #E8E8EC;cursor:pointer;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
             +'<div style="font-size:22px;flex-shrink:0;">'+(deal.emoji||'📣')+'</div>'
             +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(deal.deal||deal.desc||'')+'</div>'
-              +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+(deal.venue||deal.name||'')+' · by '+deal.user+'</div>'
+              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(deal.deal||deal.desc||'')+'</div>'
+              +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+esc(deal.venue||deal.name||'')+' · by '+deal.user+'</div>'
             +'</div>'
             +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
               +'<button onclick="event.stopPropagation();adminOpenDealReview('+deal.id+',\'community\')" style="background:#F5F5F7;color:#555;border:1.5px solid #E8E8EC;border-radius:9px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">✏️</button>'
@@ -17148,8 +17148,8 @@ function adminPage(page,btn){
           return '<div onclick="adminPreviewDeal('+deal.id+',\'merchant\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #E8E8EC;cursor:pointer;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
             +'<div style="font-size:22px;flex-shrink:0;">'+deal.emoji+'</div>'
             +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(deal.deal||deal.name||'')+'</div>'
-              +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+(deal.name||'')+' · '+deal.price+(deal.days?' · '+deal.days:'')+'</div>'
+              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(deal.deal||deal.name||'')+'</div>'
+              +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+esc(deal.name||'')+' · '+deal.price+(deal.days?' · '+deal.days:'')+'</div>'
             +'</div>'
             +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
               +'<button onclick="event.stopPropagation();adminOpenDealReview('+deal.id+',\'merchant\')" style="background:#F5F5F7;color:#555;border:1.5px solid #E8E8EC;border-radius:9px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">✏️</button>'
@@ -17174,8 +17174,8 @@ function adminPage(page,btn){
         +rejected.map(function(deal){
           return '<div onclick="adminReviewDeal('+deal.id+')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #E8E8EC;cursor:pointer;transition:background .12s;" onmouseenter="this.style.background=\'#F8F8FA\'" onmouseleave="this.style.background=\'white\'">'
             +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(deal.venue||deal.name||'')+'</div>'
-              +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+(deal.deal||deal.desc||'').substring(0,50)+'</div>'
+              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(deal.venue||deal.name||'')+'</div>'
+              +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+esc(deal.deal||deal.desc||'').substring(0,50)+'</div>'
             +'</div>'
             +'<div style="display:flex;gap:6px;align-items:center;flex-shrink:0;" onclick="event.stopPropagation()">'
               +'<button onclick="adminRestoreDeal('+deal.id+')" style="background:rgba(217,119,6,.08);color:#B45309;border:1.5px solid rgba(217,119,6,.2);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">↩ Restore</button>'
@@ -17202,8 +17202,8 @@ function adminPage(page,btn){
           return '<div onclick="adminReviewDeal('+deal.id+',\'merchant\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #E8E8EC;cursor:pointer;transition:background .12s;" onmouseenter="this.style.background=\'#F8F8FA\'" onmouseleave="this.style.background=\'white\'">'
             +'<div style="font-size:20px;flex-shrink:0;">'+(deal.emoji||'🍺')+'</div>'
             +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:700;color:#9A9AB0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;">'+(deal.deal||deal.name||'')+'</div>'
-              +'<div style="font-size:11px;color:#bbb;margin-top:1px;">'+(deal.name||'')+' · removed '+deal._removedAt+'</div>'
+              +'<div style="font-size:13px;font-weight:700;color:#9A9AB0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;">'+esc(deal.deal||deal.name||'')+'</div>'
+              +'<div style="font-size:11px;color:#bbb;margin-top:1px;">'+esc(deal.name||'')+' · removed '+deal._removedAt+'</div>'
             +'</div>'
             +'<button onclick="event.stopPropagation();adminRevertVoucher('+deal.id+')" style="background:rgba(18,161,80,.08);color:#12A150;border:1.5px solid rgba(18,161,80,.2);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">↩ Restore</button>'
           +'</div>';
@@ -17227,8 +17227,8 @@ function adminPage(page,btn){
           return '<div onclick="adminReviewDeal('+deal.id+')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #E8E8EC;cursor:pointer;transition:background .12s;" onmouseenter="this.style.background=\'#F8F8FA\'" onmouseleave="this.style.background=\'white\'">'
             +'<div style="font-size:20px;flex-shrink:0;">'+(deal.emoji||'📣')+'</div>'
             +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:700;color:#9A9AB0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;">'+(deal.deal||deal.desc||'')+'</div>'
-              +'<div style="font-size:11px;color:#bbb;margin-top:1px;">'+(deal.venue||deal.name||'')+' · removed '+deal._removedAt+'</div>'
+              +'<div style="font-size:13px;font-weight:700;color:#9A9AB0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;">'+esc(deal.deal||deal.desc||'')+'</div>'
+              +'<div style="font-size:11px;color:#bbb;margin-top:1px;">'+esc(deal.venue||deal.name||'')+' · removed '+deal._removedAt+'</div>'
             +'</div>'
             +'<button onclick="event.stopPropagation();adminRevertCommunityDeal('+deal.id+')" style="background:rgba(18,161,80,.08);color:#12A150;border:1.5px solid rgba(18,161,80,.2);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">↩ Restore</button>'
           +'</div>';
@@ -17533,7 +17533,7 @@ function adminRenderCredits(){
         html += '<div style="'+row+'">'
           +'<div style="width:36px;height:36px;border-radius:10px;background:#E8192C;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:white;flex-shrink:0;">'+initials+'</div>'
           +'<div style="flex:1;min-width:0;">'
-            +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(u.name||'Anonymous')+'</div>'
+            +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(u.name||'Anonymous')+'</div>'
             +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">'+(u.email||'')+'</div>'
             +'<div style="height:4px;background:#F0F0F4;border-radius:2px;margin-top:6px;overflow:hidden;"><div style="height:100%;width:'+bar+'%;background:linear-gradient(90deg,#E8192C,#FF6B6B);border-radius:2px;"></div></div>'
           +'</div>'
@@ -17643,7 +17643,7 @@ function admCreditSearchUser(q){
   res.innerHTML = matches.map(function(u){
     return '<div onclick="admCreditSelectUser(\''+u.id+'\')" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid #F0F0F4;cursor:pointer;background:white;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'white\'">'
       +'<div style="width:32px;height:32px;border-radius:8px;background:#E8192C;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:white;flex-shrink:0;">'+(u.name||'?').substring(0,2).toUpperCase()+'</div>'
-      +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+(u.name||'Anonymous')+'</div><div style="font-size:11px;color:#9A9AB0;">'+(u.email||'No email')+'</div></div>'
+      +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+esc(u.name||'Anonymous')+'</div><div style="font-size:11px;color:#9A9AB0;">'+(u.email||'No email')+'</div></div>'
       +'<span style="font-size:13px;font-weight:900;color:#E8192C;">'+(u.credits||0)+' cr</span>'
     +'</div>';
   }).join('');
@@ -17828,7 +17828,7 @@ function adminRenderReviewsPage(){
             +(r.anonymous?'<span style="font-size:10px;background:#F0F2F5;color:#9A9AB0;border-radius:5px;padding:1px 6px;font-weight:700;">Anonymous</span>':'')
           +'</div>'
           +'<div style="font-size:13px;color:#FFB300;letter-spacing:0.5px;margin-bottom:4px;">'+rStars+'</div>'
-          +'<div style="font-size:13px;color:#3A3A4A;font-weight:500;line-height:1.5;white-space:pre-wrap;word-break:break-word;">'+(r.body||'<em style="color:#9A9AB0;">No text</em>')+'</div>'
+          +'<div style="font-size:13px;color:#3A3A4A;font-weight:500;line-height:1.5;white-space:pre-wrap;word-break:break-word;">'+(r.body?esc(r.body):'<em style="color:#9A9AB0;">No text</em>')+'</div>'
           +'<div style="font-size:11px;color:#9A9AB0;margin-top:6px;font-weight:600;">'+dateStr+'</div>'
         +'</div>'
         // Delete button
@@ -18479,7 +18479,7 @@ function adminReviewDeal(id){
   admRevRenderPhoto();
 
   document.getElementById('adm-rev-title').textContent = deal.deal||deal.desc||'';
-  var venueAddr = (deal.venue||deal.name||'') + (deal.address ? ' · '+esc(deal.address) : '') + (deal.dist?' · '+deal.dist:'');
+  var venueAddr = esc(deal.venue||deal.name||'') + (deal.address ? ' · '+esc(deal.address) : '') + (deal.dist?' · '+deal.dist:'');
   document.getElementById('adm-rev-venue').textContent = venueAddr;
   document.getElementById('adm-rev-hours').textContent = deal.hours||'';
   document.getElementById('adm-rev-days').textContent = deal.days||'';
@@ -18504,7 +18504,7 @@ function adminReviewDeal(id){
   var extraEl = document.getElementById('adm-rev-extra');
   if(extraEl){
     var rows = [];
-    if(deal.address) rows.push('<div style="display:flex;gap:6px;align-items:flex-start;"><span>🏠</span><span style="font-size:12px;color:#555;font-weight:500;">'+deal.address+'</span></div>');
+    if(deal.address) rows.push('<div style="display:flex;gap:6px;align-items:flex-start;"><span>🏠</span><span style="font-size:12px;color:#555;font-weight:500;">'+esc(deal.address)+'</span></div>');
     if(deal.cat)     rows.push('<div style="display:flex;gap:6px;align-items:center;"><span>🏷️</span><span style="font-size:12px;color:#555;font-weight:500;">'+deal.cat.charAt(0).toUpperCase()+deal.cat.slice(1)+'</span></div>');
     var wasNum = parseFloat(deal.wasPrice);
     var priceNum = parseFloat(deal.price);
@@ -19338,11 +19338,11 @@ function admOpenEventDetail(id){
         }).join('')
       +'</div>'
       // Event photo
-      +(ev.image_url?'<div style="border-radius:12px;overflow:hidden;margin-bottom:14px;border:1.5px solid #E8E8EC;"><img src="'+ev.image_url+'" onclick="openAttachmentViewer(this.src)" title="Click to view full size" style="width:100%;max-height:200px;object-fit:cover;display:block;cursor:zoom-in;" onerror="this.parentElement.style.display=\'none\'"></div>':'')
+      +(ev.image_url?'<div style="border-radius:12px;overflow:hidden;margin-bottom:14px;border:1.5px solid #E8E8EC;"><img src="'+esc(ev.image_url)+'" onclick="openAttachmentViewer(this.src)" title="Click to view full size" style="width:100%;max-height:200px;object-fit:cover;display:block;cursor:zoom-in;" onerror="this.parentElement.style.display=\'none\'"></div>':'')
       // Location — Google Maps link
       +(ev.location?'<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(ev.location||'')+'" target="_blank" style="display:flex;align-items:center;gap:10px;background:#F0F8FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:12px 14px;margin-bottom:14px;text-decoration:none;">'
         +'<div style="font-size:20px;">📍</div>'
-        +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+ev.location+'</div><div style="font-size:11px;color:#3B82F6;margin-top:2px;font-weight:600;">Open in Google Maps →</div></div>'
+        +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+esc(ev.location)+'</div><div style="font-size:11px;color:#3B82F6;margin-top:2px;font-weight:600;">Open in Google Maps →</div></div>'
         +'<div style="font-size:18px;">🗺️</div>'
       +'</a>':'')
       // Description
@@ -19354,7 +19354,7 @@ function admOpenEventDetail(id){
       +'<div style="background:#FFF8F0;border:1.5px solid rgba(217,119,6,.2);border-radius:12px;padding:14px;margin-bottom:16px;">'
         +'<div style="font-size:11px;font-weight:800;color:#B45309;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">👤 Submitter Details</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
-          +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:2px;">Name</div><div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+ev.host+'</div></div>'
+          +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:2px;">Name</div><div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+esc(ev.host)+'</div></div>'
           +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:2px;">Submitted</div><div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+(ev.submittedAt||dbAgo(ev.created_at)||'—')+'</div></div>'
           +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:2px;">🌐 IP Address</div><div style="font-size:13px;font-weight:700;color:#1A1A1A;font-family:monospace;">'+(ev.submitterIp||ev.submitter_ip||'Not captured')+'</div></div>'
           +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:2px;">📍 Location</div><div style="font-size:13px;font-weight:700;color:#1A1A1A;">'+(ev.submitterLocation||ev.submitter_location||'Unknown')+'</div></div>'
@@ -19458,7 +19458,7 @@ function admOpenReportDetail(repId){
       +'<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Event</div>'
       +'<div style="font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:12px;">'+rep.event_title+'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;">'
-        +'<div><span style="color:#9A9AB0;">Organizer:</span><br><span style="font-weight:700;color:#1A1A1A;">'+(rep.community_events && rep.community_events.host_name ? rep.community_events.host_name : 'Unknown')+'</span></div>'
+        +'<div><span style="color:#9A9AB0;">Organizer:</span><br><span style="font-weight:700;color:#1A1A1A;">'+esc(rep.community_events && rep.community_events.host_name ? rep.community_events.host_name : 'Unknown')+'</span></div>'
         +'<div><span style="color:#9A9AB0;">Date:</span><br><span style="font-weight:700;color:#1A1A1A;">'+(rep.community_events && rep.community_events.event_date ? rep.community_events.event_date : 'TBD')+'</span></div>'
         +'<div><span style="color:#9A9AB0;">Time:</span><br><span style="font-weight:700;color:#1A1A1A;">'+(rep.community_events && rep.community_events.event_time ? rep.community_events.event_time : 'TBD')+'</span></div>'
         +'<div><span style="color:#9A9AB0;">Location:</span><br><span style="font-weight:700;color:#1A1A1A;">'+(rep.community_events && rep.community_events.location ? rep.community_events.location : 'TBD')+'</span></div>'
@@ -19597,7 +19597,7 @@ function aRenderEvents(){
               +'<div style="font-size:16px;font-weight:900;color:#1A1A1A;font-family:Inter,sans-serif;">'+esc(ev.title)+'</div>'
               +'<span style="background:'+(ev.type==='free'?'rgba(18,161,80,.1)':'rgba(232,25,44,.08)')+';color:'+(ev.type==='free'?'#12A150':'#E8192C')+';font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;font-family:Inter,sans-serif;">'+(ev.type==='free'?'FREE':ev.price)+'</span>'
             +'</div>'
-            +'<div style="font-size:12px;color:#9A9AB0;margin-top:4px;font-family:Inter,sans-serif;">by <strong style="color:#555;">'+ev.host+'</strong> · submitted '+ev.submittedAt+'</div>'
+            +'<div style="font-size:12px;color:#9A9AB0;margin-top:4px;font-family:Inter,sans-serif;">by <strong style="color:#555;">'+esc(ev.host)+'</strong> · submitted '+ev.submittedAt+'</div>'
           +'</div>'
           +'<span style="background:rgba(217,119,6,.1);color:#B45309;font-size:10px;font-weight:800;padding:4px 10px;border-radius:20px;white-space:nowrap;font-family:Inter,sans-serif;flex-shrink:0;">⏳ Pending</span>'
         +'</div>'
@@ -19649,7 +19649,7 @@ function aRenderEvents(){
           +'<div style="font-size:26px;">'+ev.emoji+'</div>'
           +'<div style="flex:1;min-width:0;">'
             +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+esc(ev.title)+'</div>'
-            +'<div style="font-size:11px;color:#9A9AB0;font-family:Inter,sans-serif;">by '+ev.host+' · '+ev.date+'</div>'
+            +'<div style="font-size:11px;color:#9A9AB0;font-family:Inter,sans-serif;">by '+esc(ev.host)+' · '+ev.date+'</div>'
           +'</div>'
           +'<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;font-family:Inter,sans-serif;white-space:nowrap;background:'+(isApproved?'rgba(18,161,80,.1)':'rgba(220,38,38,.06)')+';color:'+(isApproved?'#12A150':'#dc2626')+';border:1px solid '+(isApproved?'rgba(18,161,80,.2)':'rgba(220,38,38,.2)')+';">'+(isApproved?'✅ Live':'✗ Rejected')+'</span>'
         +'</div>';
@@ -21261,7 +21261,7 @@ function meRenderDashNew(){
                   return '<div class="me-redemption-item">'
                     +'<div class="me-redemption-avatar">✅</div>'
                     +'<div class="me-redemption-info">'
-                      +'<div class="me-redemption-user">'+r.user+'</div>'
+                      +'<div class="me-redemption-user">'+esc(r.user)+'</div>'
                       +'<div class="me-redemption-detail">'+esc(r.deal)+' · <code class="me-redemption-code">'+r.code+'</code></div>'
                     +'</div>'
                     +'<div class="me-redemption-time">'+r.time+'</div>'
@@ -21397,7 +21397,7 @@ function meRenderDash(){
           return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #F5F5F8;">'
             +'<div style="width:36px;height:36px;border-radius:10px;background:rgba(18,161,80,.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✅</div>'
             +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;font-family:Inter,sans-serif;">'+r.user+'</div>'
+              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;font-family:Inter,sans-serif;">'+esc(r.user)+'</div>'
               +'<div style="font-size:11px;color:#9A9AB0;font-weight:500;font-family:Inter,sans-serif;">'+esc(r.deal)+' · <code style="background:#F5F5F7;padding:1px 5px;border-radius:4px;font-size:11px;">'+r.code+'</code></div>'
             +'</div>'
             +'<div style="font-size:11px;color:#9A9AB0;font-weight:500;white-space:nowrap;font-family:Inter,sans-serif;">'+r.time+'</div>'
@@ -22100,7 +22100,7 @@ function meRenderRedeem(){
         return '<div style="display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #F5F5F8;">'
           +'<div style="width:40px;height:40px;border-radius:12px;background:rgba(18,161,80,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">✅</div>'
           +'<div style="flex:1;min-width:0;">'
-            +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+r.user+'</div>'
+            +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+esc(r.user)+'</div>'
             +'<div style="font-size:11px;color:#9A9AB0;font-family:Inter,sans-serif;margin-top:2px;">'+esc(r.deal)+' · <code style="background:#F5F5F7;padding:2px 6px;border-radius:4px;font-size:10px;color:#555;font-weight:600;">'+r.code+'</code></div>'
           +'</div>'
           +'<div style="text-align:right;flex-shrink:0;">'
@@ -22616,7 +22616,7 @@ async function meConfirmRedeem(purchaseId, code, customerName, dealName, price, 
         return '<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid #F5F5F8;">'
           +'<div style="width:40px;height:40px;border-radius:12px;background:rgba(18,161,80,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">✅</div>'
           +'<div style="flex:1;min-width:0;">'
-            +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+r.user+'</div>'
+            +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+esc(r.user)+'</div>'
             +'<div style="font-size:11px;color:#9A9AB0;font-family:Inter,sans-serif;margin-top:2px;">'+esc(r.deal)+' · <code style="background:#F5F5F7;padding:1px 6px;border-radius:4px;font-size:11px;color:#555;">'+r.code+'</code>'+(r.price?' · '+r.price:'')+'</div>'
           +'</div>'
           +'<div style="font-size:11px;color:#9A9AB0;font-family:Inter,sans-serif;">'+r.time+'</div>'
@@ -24683,7 +24683,7 @@ function comCard(m,showJoin){
   var bg=m.cat==='rooftop'?'#1a2a4a,#2d4a8a':m.cat==='beer'?'#1a2a1a,#2d5a2d':m.cat==='wine'?'#2a1a3a,#5a2d6b':'#1a1a3a,#2d2d6b';
   var img=m.image_url||m.img;
   var dateStr=(m.date||'')+(m.time?' · '+m.time:'');
-  var organizer=m.host?('by '+m.host):(m.location?('📍 '+m.location):'');
+  var organizer=m.host?('by '+esc(m.host)):(m.location?('📍 '+esc(m.location)):'');
   var priceBadge='<div style="position:absolute;top:10px;right:10px;background:'+(m.type==='paid'?'rgba(232,25,44,.96)':'rgba(18,161,80,.96)')+';color:white;font-size:10px;font-weight:800;padding:4px 10px;border-radius:14px;z-index:2;">'+(m.type==='paid'?m.price:'FREE')+'</div>';
   var goingBadge=isGoing?'<div style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,.62);color:white;font-size:10px;font-weight:800;padding:4px 10px;border-radius:14px;z-index:2;">✓ Going</div>':'';
   // Meetup-style: image-forward card, title, date, organizer
@@ -24891,7 +24891,7 @@ function comRenderMyEvents(el){
           +'<div style="padding:12px 14px;">'
             +'<div style="font-size:13px;font-weight:800;color:var(--text);">'+esc(m.title)+'</div>'
             +'<div style="font-size:11px;color:var(--t3);margin-top:2px;">📅 '+m.date+' · ⏰ '+m.time+'</div>'
-            +'<div style="font-size:11px;color:var(--t3);margin-top:1px;">📍 '+m.location+'</div>'
+            +'<div style="font-size:11px;color:var(--t3);margin-top:1px;">📍 '+esc(m.location)+'</div>'
             +'<div style="font-size:12px;font-weight:800;color:'+sc+';margin-top:6px;">'+(m.status==='pending'?'⏳ Pending review':m.status==='approved'?'✅ Live':'✗ Rejected')+'</div>'
           +'</div>'
         +'</div>';
@@ -24932,7 +24932,7 @@ function comOpenDetail(id){
       +'<div style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:6px;">'+esc(m.title)+'</div>'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
         +'<div style="width:28px;height:28px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:white;">'+hostAv+'</div>'
-        +'<div style="font-size:13px;font-weight:600;color:var(--t2);">Hosted by <strong style="color:var(--text);">'+m.host+'</strong></div>'
+        +'<div style="font-size:13px;font-weight:600;color:var(--t2);">Hosted by <strong style="color:var(--text);">'+esc(m.host)+'</strong></div>'
       +'</div>'
       // Info grid
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">'
@@ -24943,7 +24943,7 @@ function comOpenDetail(id){
       // Location — clickable Google Maps link
       +'<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(m.location)+'" target="_blank" style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:14px;text-decoration:none;">'
         +'<div style="font-size:20px;">📍</div>'
-        +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--text);">'+m.location+'</div><div style="font-size:11px;color:#3B82F6;margin-top:1px;font-weight:600;">Open in Google Maps →</div></div>'
+        +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--text);">'+esc(m.location)+'</div><div style="font-size:11px;color:#3B82F6;margin-top:1px;font-weight:600;">Open in Google Maps →</div></div>'
         +'<div style="font-size:18px;">🗺️</div>'
       +'</a>'
       // Capacity bar
@@ -26834,9 +26834,9 @@ function refreshDealMapMarkers() {
       });
       _gmapMarkers.push(marker);
       var infoHtml = '<div style="font-family:Inter,sans-serif;max-width:240px;padding:4px 0;">' +
-        '<div style="font-weight:800;font-size:14px;color:#1A1A1A;">' + (deal.name||'') + '</div>' +
+        '<div style="font-weight:800;font-size:14px;color:#1A1A1A;">' + esc(deal.name||'') + '</div>' +
         (addr ? '<div style="font-size:11px;color:#888;margin:2px 0;">📍 ' + addr + '</div>' : '') +
-        '<div style="font-size:12px;color:#555;margin:3px 0;">' + (deal.deal||deal.desc||'') + '</div>' +
+        '<div style="font-size:12px;color:#555;margin:3px 0;">' + esc(deal.deal||deal.desc||'') + '</div>' +
         '<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">' +
           '<span style="font-size:14px;font-weight:800;color:#E8192C;">' + (deal.price||'') + '</span>' +
           '<span style="font-size:11px;color:#888;">' + (deal.hours||'') + '</span>' +
