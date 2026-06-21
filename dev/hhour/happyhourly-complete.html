@@ -5653,9 +5653,15 @@ async function uploadImageToStorage(dataUrl, prefix){
     if(!dataUrl.startsWith('data:')) return dataUrl;            // already a URL
     if(!(db && db.storage)) return dataUrl;
     var blob = await (await fetch(dataUrl)).blob();
-    var ext = ((blob.type.split('/')[1]||'jpg').split('+')[0]) || 'jpg';
+    // Only allow real raster image types. Never store SVG/HTML/etc. — an SVG can
+    // carry <script> and would be served active from the storage origin.
+    var ALLOWED_IMG = { 'image/jpeg':'jpg', 'image/jpg':'jpg', 'image/png':'png', 'image/webp':'webp', 'image/gif':'gif' };
+    var ext = ALLOWED_IMG[(blob.type||'').toLowerCase()];
+    if(!ext){ console.warn('[storage] rejected non-image upload type:', blob.type); return null; }
+    if(blob.size > 8 * 1024 * 1024){ console.warn('[storage] rejected oversized upload:', blob.size); return null; }
+    var safeType = blob.type.toLowerCase() === 'image/jpg' ? 'image/jpeg' : blob.type.toLowerCase();
     var path = (prefix||'img') + '/' + Date.now() + '-' + Math.random().toString(36).slice(2,8) + '.' + ext;
-    var up = await db.storage.from(HH_BUCKET).upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert:false });
+    var up = await db.storage.from(HH_BUCKET).upload(path, blob, { contentType: safeType, upsert:false });
     if(up && up.error){ console.warn('[storage] upload failed — keeping base64:', up.error.message); return dataUrl; }
     var pub = db.storage.from(HH_BUCKET).getPublicUrl(path);
     var url = pub && pub.data && pub.data.publicUrl;

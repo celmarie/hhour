@@ -60,6 +60,10 @@ module.exports = async function handler(req, res) {
   applyCors(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
 
+  // Throttle per IP — payment-intent / Connect-account creation is costly to spam.
+  const _rl = rateLimit('stripe:' + clientIp(req), 40, 10 * 60 * 1000);
+  if (!_rl.allowed) { res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
+
   const { action } = req.query;
 
   // AuthZ: every action requires a signed-in user; moving money or listing all
