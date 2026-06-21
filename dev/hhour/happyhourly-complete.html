@@ -21735,7 +21735,7 @@ function meOpenDealPreview(dealId){
       + hero
       + '<div style="padding:18px 20px 22px;">'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
-          + '<div style="font-size:20px;font-weight:900;color:#1A1A1A;flex:1;">'+(d.name||'Untitled Deal')+'</div>'
+          + '<div style="font-size:20px;font-weight:900;color:#1A1A1A;flex:1;">'+esc(d.name||'Untitled Deal')+'</div>'
           + (d.verified ? '<span style="font-size:11px;font-weight:800;color:#12A150;background:rgba(18,161,80,.1);padding:3px 9px;border-radius:20px;">✓ Verified</span>' : '')
         + '</div>'
         + '<div style="font-size:13px;color:#9A9AB0;font-weight:600;margin-bottom:14px;">'+(d.type||'Deal')+' · <span style="color:'+statusCol+';">●</span> '+statusLbl+'</div>'
@@ -21970,8 +21970,8 @@ function meOpenVoucherPurchases(dealId){
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F0F0F4;">'
           + '<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#E8192C,#FF6B35);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">'+initials+'</div>'
           + '<div style="flex:1;min-width:0;">'
-            + '<div style="font-size:13px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.buyer+'</div>'
-            + '<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">'+(p.email||'')+'</div>'
+            + '<div style="font-size:13px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(p.buyer)+'</div>'
+            + '<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">'+esc(p.email||'')+'</div>'
             + '<div style="font-size:11px;color:#9A9AB0;margin-top:3px;font-family:Courier New,monospace;">'+(p.code||'—')+' · '+fmtDate(p.date)+'</div>'
           + '</div>'
           + '<div style="text-align:right;flex-shrink:0;">'
