@@ -11521,10 +11521,10 @@ function renderMyVouchers(){
     return`
     <div class="mv-item" onclick="${isUsed?`showToast('Code: ${mv.code}')`:`openQRScreen('${mv.code}',${globalIdx})`}" style="cursor:pointer;">
       <div class="mv-top">
-        <div class="mv-img ${deal.imgClass||'ci1'}" style="${deal.img?`background-image:url('${deal.img}');background-size:cover;background-position:center;`:''}${deal.img?'':'display:flex;align-items:center;justify-content:center;font-size:32px;'}">${deal.img?'':deal.emoji||'🎟️'}</div>
+        <div class="mv-img ${deal.imgClass||'ci1'}" style="${deal.img?`background-image:url('${encodeURI(deal.img).replace(/['()]/g,'')}');background-size:cover;background-position:center;`:''}${deal.img?'':'display:flex;align-items:center;justify-content:center;font-size:32px;'}">${deal.img?'':deal.emoji||'🎟️'}</div>
         <div class="mv-info">
-          <div class="mv-name">${deal.deal||'Deal'}</div>
-          <div class="mv-venue">${deal.name||''}</div>
+          <div class="mv-name">${esc(deal.deal||'Deal')}</div>
+          <div class="mv-venue">${esc(deal.name||'')}</div>
           <div class="mv-exp">${isUsed?'Redeemed ✓':'Tap to show QR code'} · ×${mv.qty}${(!isUsed&&mv._bkDate)?` · 📅 ${new Date(mv._bkDate+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})}, ${mv._bkTime}`:''}</div>
           ${(!isUsed&&mv._needsBooking)?`<button onclick="event.stopPropagation();openBookingModal(${globalIdx},'book')" style="margin-top:6px;background:rgba(217,119,6,.1);color:#B45309;border:1.5px solid rgba(217,119,6,.3);border-radius:8px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">⚠️ Pick arrival time</button>`:''}
         </div>
@@ -11952,7 +11952,7 @@ function mcEditAndResubmit(dbId){
     }
     banner.innerHTML = '<div style="background:rgba(220,38,38,.07);border:1.5px solid rgba(220,38,38,.25);border-radius:12px;padding:12px 14px;margin-bottom:14px;">'
       +'<div style="font-size:12px;font-weight:800;color:#dc2626;margin-bottom:3px;">✕ Admin feedback on previous submission</div>'
-      +'<div style="font-size:12px;color:#555;line-height:1.5;">'+(d.rejection_reason||'Did not meet community guidelines.')+'</div>'
+      +'<div style="font-size:12px;color:#555;line-height:1.5;">'+esc(d.rejection_reason||'Did not meet community guidelines.')+'</div>'
       +'</div>';
     // Store the db ID so submitting this replaces the old rejected deal
     window._resubmitDbId = dbId;
@@ -12374,7 +12374,7 @@ function doSearch(q){
     const isUC=ucIdSet.has(String(d.id));
     const openFn=isUC?`openUCDeal('${d.id}')`:`openVoucher('${d.id}')`;
     const thumbInner=d.img
-      ?`<img src="${d.img}" alt="${d.name}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+      ?`<img src="${esc(d.img)}" alt="${esc(d.name)}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
       :`<span style="font-size:28px;">${d.emoji}</span>`;
     const avg=getDealAvgRating(d.id)||d.rating||0;
     const catDef=(appCategories||[]).find(c=>c.id===d.cat);
@@ -12390,13 +12390,13 @@ function doSearch(q){
       <div class="sthumb ${d.imgClass}" style="position:relative;overflow:hidden;${d.img?'background:#1a1a2a;':''}">${thumbInner}</div>
       <div class="sinfo">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <div class="sname">${d.name}</div>
+          <div class="sname">${esc(d.name)}</div>
           ${avg>0?`<div style="font-size:12px;font-weight:800;color:#1A1A1A;flex-shrink:0;">⭐ ${avg}</div>`:''}
         </div>
         <div class="smeta">${d.verified?'✓ Verified':'👥 Community'} · 📍 ${d.dist}${catLabel?' · '+catLabel:''}</div>
-        <div class="sdeal">${d.deal}</div>
-        ${d.desc?`<div style="font-size:12px;color:#9A9AB0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.desc}</div>`:''}
-        <div style="font-size:11.5px;color:#666;font-weight:600;margin-top:3px;">📅 ${d.days||'Daily'} · ⏰ ${d.hours||''}</div>
+        <div class="sdeal">${esc(d.deal)}</div>
+        ${d.desc?`<div style="font-size:12px;color:#9A9AB0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d.desc)}</div>`:''}
+        <div style="font-size:11.5px;color:#666;font-weight:600;margin-top:3px;">📅 ${esc(d.days||'Daily')} · ⏰ ${esc(d.hours||'')}</div>
         <div style="font-size:11.5px;margin-top:3px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <span class="deck-cd" data-from="${d.timeFrom}" data-to="${d.timeTo}" data-today="${todayAttr}"></span>
           ${d.verified?`<span style="font-weight:700;color:${availColor};">🎟️ ${avail} voucher${avail!==1?'s':''} left</span>`:''}
@@ -12507,11 +12507,11 @@ function renderUnlockedDeals(){
     <div style="background:white;border-radius:14px;border:1.5px solid rgba(123,47,190,.25);padding:14px;margin-bottom:10px;">
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">
         <div style="width:48px;height:48px;background:linear-gradient(135deg,#7B2FBE,#E8192C);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${d.emoji}</div>
-        <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">${d.name}</div><div style="font-size:12px;color:var(--t3);font-weight:500;">${d.venue} · ${d.time}</div></div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:var(--text);">${esc(d.name)}</div><div style="font-size:12px;color:var(--t3);font-weight:500;">${esc(d.venue)} · ${esc(d.time)}</div></div>
         <div style="background:rgba(123,47,190,.1);color:#7B2FBE;font-size:10px;font-weight:800;padding:4px 9px;border-radius:6px;">🔓 Unlocked</div>
       </div>
-      <div style="font-size:13px;color:var(--t2);font-weight:600;margin-bottom:10px;">🎁 ${d.deal}</div>
-      <button onclick="showToast('Buying voucher for ${d.name}...')" style="width:100%;background:linear-gradient(135deg,#7B2FBE,var(--red));color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">Buy exclusive voucher</button>
+      <div style="font-size:13px;color:var(--t2);font-weight:600;margin-bottom:10px;">🎁 ${esc(d.deal)}</div>
+      <button onclick="showToast('Buying voucher…')" style="width:100%;background:linear-gradient(135deg,#7B2FBE,var(--red));color:white;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">Buy exclusive voucher</button>
     </div>`).join('');
 }
 
@@ -12729,7 +12729,7 @@ function bizStep3Next(){
   if(ra) ra.innerHTML='<b>Name:</b> '+esc(bizData.name)+'<br><b>Email:</b> '+bizData.email+'<br><b>Phone:</b> '+bizData.phone;
   if(rv) rv.innerHTML='<b>Venue:</b> '+esc(bizData.venue)+'<br><b>Type:</b> '+bizData.type+'<br><b>Address:</b> '+bizData.addr+', '+esc(bizData.city)+(bizData.post?' '+bizData.post:'')+(bizData.web?'<br><b>Web:</b> '+bizData.web:'');
   const docNames=['Business Registration','Owner / Manager ID','Venue Photo','Alcohol Licence (optional)'];
-  if(rd) rd.innerHTML=bizData.docs.map((d,i)=>(d?'✓ '+( docsData[i]?docsData[i].name:'uploaded') :'✗ '+docNames[i]+'  <span style="color:#9A9AB0;">(skipped)</span>')).join('<br>');
+  if(rd) rd.innerHTML=bizData.docs.map((d,i)=>(d?'✓ '+( docsData[i]?esc(docsData[i].name):'uploaded') :'✗ '+docNames[i]+'  <span style="color:#9A9AB0;">(skipped)</span>')).join('<br>');
   goScreen('biz-step4');
 }
 
@@ -17099,7 +17099,7 @@ function adminPage(page,btn){
               +'</div>'
               +'<div style="background:#F9F9FB;border-radius:10px;padding:12px 14px;margin-bottom:10px;">'
                 +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;margin-bottom:4px;">'+esc(deal.deal||deal.desc||'')+'</div>'
-                +'<div style="font-size:12px;color:#555;line-height:1.5;margin-bottom:6px;">'+(deal.desc||'')+'</div>'
+                +'<div style="font-size:12px;color:#555;line-height:1.5;margin-bottom:6px;">'+esc(deal.desc||'')+'</div>'
                 +(deal.hours?'<div style="font-size:11px;color:#9A9AB0;">⏰ '+deal.hours+(deal.days?' · 📅 '+deal.days:'')+'</div>':'')
                 +(deal.price?'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">💰 '+deal.price+'</div>':'')
               +'</div>'
