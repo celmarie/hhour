@@ -17065,9 +17065,11 @@ function adminPage(page,btn){
       +'</div>'
       // Users list
       +'<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;">'
-        +'<div style="padding:12px 16px;border-bottom:1px solid #E8E8EC;font-size:13px;font-weight:700;color:#9A9AB0;">'
-          +(filteredUsers.length)+' user'+(filteredUsers.length!==1?'s':'')+((_userSearch)?' matching "'+_userSearch+'"':'')
-        +'</div>'
+        +'<button onclick="admToggleSection(\'adm-users-list\',\'adm-users-chev\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:none;border-bottom:1px solid #E8E8EC;background:none;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:700;color:#9A9AB0;">'
+          +'<span>'+(filteredUsers.length)+' user'+(filteredUsers.length!==1?'s':'')+((_userSearch)?' matching "'+_userSearch+'"':'')+'</span>'
+          +'<span id="adm-users-chev" style="font-size:14px;transition:transform .2s;transform:rotate(90deg);">›</span>'
+        +'</button>'
+        +'<div id="adm-users-list">'
         +(filteredUsers.length===0 ? emptyUsers : filteredUsers.map(function(u,i){
           var statusBg=u.status==='active'?'rgba(18,161,80,.1)':u.status==='banned'?'rgba(232,25,44,.1)':'rgba(217,119,6,.1)';
           var statusCol=u.status==='active'?'#12A150':u.status==='banned'?'#E8192C':'#d97706';
@@ -17100,6 +17102,7 @@ function adminPage(page,btn){
             +'</div>'
           +'</div>';
         }).join(''))
+        +'</div>'
       +'</div>';
 
     // Deleted users section (restore facility)
@@ -17187,9 +17190,11 @@ function adminPage(page,btn){
       +'</div>'
       // List
       +'<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;">'
-        +'<div style="padding:12px 16px;border-bottom:1px solid #E8E8EC;font-size:13px;font-weight:700;color:#9A9AB0;">'
-          +(filteredMerchants.length)+' merchant'+(filteredMerchants.length!==1?'s':'')+((_merchantSearch)?' matching "'+_merchantSearch+'"':'')
-        +'</div>'
+        +'<button onclick="admToggleSection(\'adm-merchants-list\',\'adm-merchants-chev\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border:none;border-bottom:1px solid #E8E8EC;background:none;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:700;color:#9A9AB0;">'
+          +'<span>'+(filteredMerchants.length)+' merchant'+(filteredMerchants.length!==1?'s':'')+((_merchantSearch)?' matching "'+_merchantSearch+'"':'')+'</span>'
+          +'<span id="adm-merchants-chev" style="font-size:14px;transition:transform .2s;transform:rotate(90deg);">›</span>'
+        +'</button>'
+        +'<div id="adm-merchants-list">'
         +(filteredMerchants.length===0 ? emptyMerchants : filteredMerchants.map(function(m,i){
           var isPending=m.status==='pending';
           var statusBg=m.status==='active'?'rgba(18,161,80,.1)':isPending?'rgba(217,119,6,.1)':'rgba(232,25,44,.1)';
@@ -17213,6 +17218,7 @@ function adminPage(page,btn){
             +'</div>'
           +'</div>';
         }).join(''))
+        +'</div>'
       +'</div>';
 
     // Show deleted merchants section if any exist
