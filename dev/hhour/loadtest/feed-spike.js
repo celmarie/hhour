@@ -39,9 +39,10 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate } from 'k6/metrics';
 
-// ── .env-style config — fill these in (or override with `k6 run -e KEY=val`) ──
-const SUPABASE_URL      = __ENV.SUPABASE_URL      || 'https://YOUR-PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = __ENV.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+// ── config — override with `k6 run -e APP_URL=https://...` ───────────────────
+// The browser loads the feed via the edge-cached /api/feed route, so we test that
+// (the real user path). For the raw DB path instead, see the note by FEED_URL.
+const APP_URL = __ENV.APP_URL || 'https://www.appiehour.com';
 // ──────────────────────────────────────────────────────────────────────────────
 
 const errorRate = new Rate('errors');
@@ -62,17 +63,14 @@ export const options = {
 
 // Same query the browser runs: select=* from community_deals,
 // status=approved, deleted_at is null, ordered by created_at desc.
-const FEED_URL =
-  `${SUPABASE_URL}/rest/v1/community_deals` +
-  `?select=*&status=eq.approved&deleted_at=is.null&order=created_at.desc`;
+// Edge-cached public feed — the real browser path. Raw DB alternative:
+//   `${__ENV.SUPABASE_URL}/rest/v1/community_deals?select=*&status=eq.approved&deleted_at=is.null&order=created_at.desc`
+//   (with apikey + Authorization: Bearer <anon> headers)
+const FEED_URL = `${APP_URL}/api/feed`;
 
 const params = {
-  headers: {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    Accept: 'application/json',
-  },
-  tags: { name: 'community_deals_feed' }, // groups these requests in the summary
+  headers: { Accept: 'application/json' },
+  tags: { name: 'community_feed' },
 };
 
 export default function () {
