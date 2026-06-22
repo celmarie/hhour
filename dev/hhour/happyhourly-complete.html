@@ -7653,7 +7653,7 @@ async function stSavePassword(){
   if(err) err.textContent = '';
 
   if(!cur){ if(err) err.textContent = 'Enter your current password'; return; }
-  if(nw.length < 6){ if(err) err.textContent = '⚠️ Password not acceptable — use at least 6 characters.'; return; }
+  var _pwErr = passwordStrengthError(nw); if(_pwErr){ if(err) err.textContent = '⚠️ ' + _pwErr; return; }
   if(nw !== con){ if(err) err.textContent = 'New passwords don\'t match — please re-type them.'; return; }
   if(nw === cur){ if(err) err.textContent = '⚠️ Pick a password different from your current one.'; return; }
 
@@ -7797,6 +7797,7 @@ function stToggleCookie(key, el){
     personalization: 'Personalization cookies'
   };
   showToast((stState[stateKey] ? '✓ ' : '✗ ') + (labels[key]||key) + ' ' + (stState[stateKey] ? 'enabled' : 'disabled'));
+  if(key === 'analytics'){ stState.cookiesAnalytics ? phStart() : phStop(); }
 }
 
 function stCookieAcceptAll(){
@@ -7805,6 +7806,7 @@ function stCookieAcceptAll(){
   stState.cookiesPersonalization = true;
   stSaveSettings();
   stSyncToggles();
+  phStart();
   showToast('✓ All cookies accepted');
 }
 
@@ -7814,11 +7816,13 @@ function stCookieRejectNonEssential(){
   stState.cookiesPersonalization = false;
   stSaveSettings();
   stSyncToggles();
+  phStop();
   showToast('✗ Non-essential cookies rejected');
 }
 
 function stCookieSavePreferences(){
   stSaveSettings();
+  stState.cookiesAnalytics ? phStart() : phStop();
   showToast('✓ Cookie preferences saved');
 }
 
@@ -7830,10 +7834,19 @@ function stCookieConsentAccept(){
   try { localStorage.setItem('hh-cookie-consent-shown', 'true'); } catch(e) {}
   var banner = document.getElementById('cookie-consent-banner');
   if(banner) banner.style.display = 'none';
+  phStart();
   showToast('✓ Cookie preferences updated');
 }
 
 function stCookieConsentReject(){
+  // "Reject" must actually reject the non-essential categories (incl. Analytics)
+  // before sending the user to the customize screen — otherwise opt-in analytics
+  // would start on the next boot from the default-on value.
+  stState.cookiesAnalytics = false;
+  stState.cookiesMarketing = false;
+  stState.cookiesPersonalization = false;
+  stSaveSettings();
+  phStop();
   try { localStorage.setItem('hh-cookie-consent-shown', 'true'); } catch(e) {}
   var banner = document.getElementById('cookie-consent-banner');
   if(banner) banner.style.display = 'none';
@@ -7850,6 +7863,61 @@ function stShowCookieConsentBanner(){
     }
   } catch(e) {}
 }
+
+// ══ PostHog product analytics ════════════════════════════════════════════════
+// EU cloud, strict OPT-IN: the library isn't even loaded until the user accepts
+// Analytics cookies (the consent banner has been dismissed AND stState.cookies-
+// Analytics is on). Pageviews + manual events only — no autocapture, no session
+// recording. Toggling Analytics off later calls phStop() (opt out + reset).
+var POSTHOG_KEY  = '';                       // ← paste your PostHog project API key (phc_…)
+var POSTHOG_HOST = 'https://eu.i.posthog.com';
+var _phReady = false, _phLoading = false;
+
+// Consent = the user actively dismissed the cookie banner AND left Analytics on.
+function phConsentGranted(){
+  try { return localStorage.getItem('hh-cookie-consent-shown') === 'true' && stState.cookiesAnalytics === true; }
+  catch(e){ return false; }
+}
+
+// Lazy-load the official PostHog snippet — only ever called after consent.
+function phLoadLibrary(cb){
+  if(_phReady){ if(cb) cb(); return; }
+  if(_phLoading || !POSTHOG_KEY) return;      // no key configured yet → no-op
+  _phLoading = true;
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init(POSTHOG_KEY, {
+    api_host: POSTHOG_HOST,
+    autocapture: false,            // manual events only
+    capture_pageview: false,       // SPA: we send screen views ourselves
+    disable_session_recording: true,
+    persistence: 'localStorage+cookie',
+    loaded: function(){ _phReady = true; if(cb) cb(); }
+  });
+}
+
+// Start capturing — call on consent, or on boot for a returning consented user.
+function phStart(){
+  if(!phConsentGranted()) return;
+  phLoadLibrary(function(){
+    try { posthog.opt_in_capturing(); phScreen(curScreen || 'home'); } catch(e){}
+  });
+}
+// Stop + forget — call when the user revokes Analytics consent.
+function phStop(){
+  try { if(window.posthog && _phReady){ posthog.opt_out_capturing(); posthog.reset(); } } catch(e){}
+}
+// Guarded helpers — safe no-ops until the lib is loaded AND consent is granted.
+function phCapture(event, props){
+  try { if(_phReady && phConsentGranted() && window.posthog) posthog.capture(event, props || {}); } catch(e){}
+}
+function phIdentify(id, props){
+  try { if(_phReady && phConsentGranted() && window.posthog && id) posthog.identify(String(id), props || {}); } catch(e){}
+}
+function phReset(){ try { if(_phReady && window.posthog) posthog.reset(); } catch(e){} }
+function phScreen(name){ phCapture('$pageview', { screen: name || curScreen }); }
+
+// Boot: auto-start for returning users who already consented (no-op otherwise).
+setTimeout(phStart, 1500);
 
 // ══ MERCHANT mePage + sheet helpers ══════════════════════════════════
 function mePage(page, btn){
@@ -9904,6 +9972,7 @@ async function walletPayClick(priceNum,currCode,dealName,venueName){
 
 async function buyVoucher(){
   if (!requireLogin('purchase vouchers')) return;
+  if (!requireVerifiedEmail('purchase vouchers')) return;
   _walletApplied = 0;
   var allDeals = [...vouchers, ...ucDeals];
   var deal = allDeals.find(function(d){ return d.id === curV; });
@@ -10080,6 +10149,7 @@ async function _finishVoucherPurchase(paymentIntentId){
       }).select('id').single();
       if(insRes && insRes.data) purchaseId = insRes.data.id;
       if(insRes && insRes.error) console.warn('[buyVoucher] insert returned error:', insRes.error.message);
+      try { phCapture('voucher_purchased', { deal_id: curV, qty: qty }); } catch(e){}
 
       // Reserve the chosen arrival time (race-safe RPC)
       if(isBooking && purchaseId != null){
@@ -10698,7 +10768,7 @@ async function saveForcePasswordChange(){
   var c = (document.getElementById('force-pw-confirm')||{}).value || '';
   var err = document.getElementById('force-pw-err');
   var btn = document.getElementById('force-pw-save');
-  if(n.length < 6){ if(err) err.textContent = 'Password must be at least 6 characters.'; return; }
+  var _pwErr = passwordStrengthError(n); if(_pwErr){ if(err) err.textContent = _pwErr; return; }
   if(n !== c){ if(err) err.textContent = 'Passwords do not match.'; return; }
   if(btn){ btn.disabled = true; btn.textContent = 'Saving…'; }
   try{
@@ -10883,6 +10953,7 @@ function toggleAnon(){
 
 async function submitReview(){
   if (reviewRating === 0) { showToast('Please select a star rating first ⭐'); return; }
+  if (!requireVerifiedEmail('post a review')) return;
   if (currentUser) {
     var _sd = [...vouchers, ...ucDeals].find(function(x){ return x.id === curV; });
     var _sk = (_sd && !_sd.verified) ? 'community' : 'verified';
@@ -12060,6 +12131,7 @@ function _submitDealInner(){
     showToast('🔒 Please sign in to share a deal');
     return;
   }
+  if(!requireVerifiedEmail('share a deal')) return;
   // Grab photo — required (min 1)
   if(!_ucPhotos.length){
     showToast('📷 Please add a photo of the deal first');
@@ -12274,6 +12346,7 @@ function goScreen(name){
   // later refresh stays wherever the user navigated. The router (below) sets the URL.
   if(name !== 'vdetail') _pendingSharedDeal = null;
   if(_pendingPublicPage && name !== _pendingPublicPage) _pendingPublicPage = null;
+  try { phScreen(name); } catch(e){}
   const old=document.getElementById('screen-'+curScreen);
   const next=document.getElementById('screen-'+name);
   if(!next)return;
@@ -12605,7 +12678,7 @@ function bizStep1Next(){
   const err=document.getElementById('biz-s1-err');
   if(!n||!e||!ph||!pw){if(err){err.style.display='block';err.textContent='Please fill in all fields.';} return;}
   if(!e.includes('@')){if(err){err.style.display='block';err.textContent='Please enter a valid email address.';} return;}
-  if(pw.length<8){if(err){err.style.display='block';err.textContent='Password must be at least 8 characters.';} return;}
+  var _pwErr = passwordStrengthError(pw); if(_pwErr){ if(err){ err.style.display='block'; err.textContent=_pwErr; } return; }
   if(err) err.style.display='none';
   bizData.name=n;bizData.email=e;bizData.phone=ph;bizData.pass=pw;
   goScreen('biz-step2');
@@ -12960,7 +13033,7 @@ async function doSignUp(){
   }
   if(!email){ errEl.textContent = 'Please enter your email address'; return; }
   if(!pass){ errEl.textContent = 'Please enter a password'; return; }
-  if(pass.length < 6){ errEl.textContent = 'Password must be at least 6 characters'; return; }
+  var _pwErr = passwordStrengthError(pass); if(_pwErr){ errEl.textContent = _pwErr; return; }
   if(pass !== confirm){ errEl.textContent = 'Passwords do not match'; return; }
 
   var btn = document.getElementById('signin-btn');
@@ -13009,6 +13082,7 @@ async function doSignUp(){
     if(btn){ btn.disabled=false; btn.textContent='Create Account'; }
     errEl.textContent = '';
     await handleAuthSession(user);
+    try { phIdentify(user && user.id, { role: signupRole || 'customer' }); phCapture('signed_up', { role: signupRole || 'customer' }); } catch(e){}
     var _welcome = signupRole==='merchant'
       ? '🏪 Welcome, ' + name.split(' ')[0] + '! Set up your venue & post deals.'
       : '🎉 Welcome to Appie Hour, ' + name.split(' ')[0] + '!';
@@ -13169,6 +13243,40 @@ function requireLogin(action){
   return false;
 }
 
+// Block unverified email/password accounts from sensitive writes. OAuth (Google)
+// identities are pre-verified. This is the client-side guard that pairs with the
+// Supabase "Confirm email" setting — call it at the top of any write action.
+function requireVerifiedEmail(action){
+  if(!currentUser) return true;                       // requireLogin handles signed-out
+  var verified = !!(currentUser.email_confirmed_at || currentUser.confirmed_at);
+  var provider = (currentUser.app_metadata && currentUser.app_metadata.provider) || 'email';
+  if(verified || provider !== 'email') return true;   // OAuth accounts are verified
+  showToast('📧 Verify your email to ' + (action || 'continue'));
+  setTimeout(function(){
+    var email = (currentUser && currentUser.email) || 'your email';
+    if(confirm('Please verify your email before you can ' + (action || 'do this') + '.\n\nResend the verification link to ' + email + '?')){
+      try {
+        db.auth.resend({ type:'signup', email: email }).then(
+          function(){ showToast('✅ Verification email sent — check your inbox'); },
+          function(){ showToast('Could not resend — try again shortly'); }
+        );
+      } catch(e){ showToast('Could not resend right now'); }
+    }
+  }, 400);
+  return false;
+}
+
+// Shared password policy for any flow that SETS a password (sign-up, change,
+// reset). Min length 12 + at least 3 character classes. The breached-password
+// check (HaveIBeenPwned) is enforced server-side via the Supabase setting.
+function passwordStrengthError(pw){
+  pw = pw || '';
+  if(pw.length < 12) return 'Use at least 12 characters.';
+  var classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(function(re){ return re.test(pw); }).length;
+  if(classes < 3) return 'Mix upper & lower case, numbers and symbols.';
+  return '';
+}
+
 async function doLogin(){
   try {
     console.log('doLogin called');
@@ -13231,6 +13339,7 @@ async function doLogin(){
     }
 
     console.log('Login success as', acctRole);
+    try { phIdentify(data.user.id, { role: acctRole }); phCapture('logged_in', { role: acctRole }); } catch(e){}
     errEl.textContent = '';
     // Claim the session here so the deferred onAuthStateChange handler doesn't
     // also run handleAuthSession (avoids a double-route race). The token is
@@ -13277,6 +13386,7 @@ async function doLogout(){
   // Sign out and clear ALL per-account state so the next login starts clean
   // and no data bleeds across accounts (security).
   var _prevUid = currentUser && currentUser.id;
+  try { phCapture('logged_out'); phReset(); } catch(e){}
   await db.auth.signOut().catch(function(){});
   try{
     localStorage.removeItem('hh_last_role');
@@ -13669,7 +13779,8 @@ async function loadAdminData(){
           timeFrom: r.time_from || 17, timeTo: r.time_to || 22,
           discPct: r.discount_pct || 0,
           rating: 0, timeLeft: '3h 00m',
-          rejectionReason: r.rejection_reason || ''
+          rejectionReason: r.rejection_reason || '',
+          deletedAt: r.deleted_at || null
         };
       });
       // Keep locally-submitted items not yet confirmed in DB (e.g. insert in flight or failed)
@@ -17023,6 +17134,7 @@ function adminPage(page,btn){
     var pending  = pendingCommunityDeals.filter(function(d){ return d.status==='pending';  }).sort(byRecent);
     var approved = pendingCommunityDeals.filter(function(d){ return d.status==='approved'; }).sort(byRecent);
     var rejected = pendingCommunityDeals.filter(function(d){ return d.status==='rejected'; }).sort(byRecent);
+    var scheduled = pendingCommunityDeals.filter(function(d){ return d.deletedAt; }).sort(byRecent);
     var dHtml = '';
 
     // ── REPORTED DEALS (customer flagged) ──────────────────────────────────────
@@ -17178,15 +17290,44 @@ function adminPage(page,btn){
         +'</button>'
         +'<div id="adm-rej-list" style="display:none;">'
         +rejected.map(function(deal){
-          return '<div onclick="adminReviewDeal('+deal.id+')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #E8E8EC;cursor:pointer;transition:background .12s;" onmouseenter="this.style.background=\'#F8F8FA\'" onmouseleave="this.style.background=\'white\'">'
+          var reason = deal.rejectionReason || deal.rejection_reason || '';
+          return '<div style="padding:12px 16px;border-top:1px solid #E8E8EC;">'
+            +'<div onclick="adminReviewDeal('+deal.id+')" style="cursor:pointer;margin-bottom:8px;">'
+              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(deal.venue||deal.name||'')+'</div>'
+              +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc((deal.deal||deal.desc||'').substring(0,60))+'</div>'
+              +(reason?'<div style="font-size:11px;color:#dc2626;margin-top:4px;background:rgba(220,38,38,.06);border-radius:8px;padding:5px 9px;line-height:1.4;">✗ '+esc(reason)+'</div>':'')
+            +'</div>'
+            +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'
+              +'<button onclick="adminReviewDeal('+deal.id+')" style="background:rgba(18,161,80,.08);color:#12A150;border:1.5px solid rgba(18,161,80,.2);border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">✏️ Edit &amp; Post</button>'
+              +'<button onclick="adminDeleteCommunityPermanently('+deal.id+')" style="background:rgba(220,38,38,.06);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">🗑️ Delete permanently</button>'
+            +'</div>'
+          +'</div>';
+        }).join('')
+        +'</div>'
+      +'</div>';
+    }
+
+    // ── SCHEDULED FOR PERMANENT DELETION (30-day grace, restorable) ────────────
+    if(scheduled.length > 0){
+      dHtml += '<div style="background:white;border-radius:14px;border:1.5px solid rgba(220,38,38,.25);overflow:hidden;margin-bottom:12px;">'
+        +'<button onclick="admToggleSection(\'adm-sched-list\',\'adm-sched-chev\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;">'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="font-size:14px;font-weight:800;color:#dc2626;">⏳ Scheduled for deletion</span>'
+            +'<span style="background:rgba(220,38,38,.1);color:#dc2626;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+scheduled.length+'</span>'
+          +'</div>'
+          +'<span id="adm-sched-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;">›</span>'
+        +'</button>'
+        +'<div id="adm-sched-list" style="display:none;">'
+        +'<div style="padding:8px 16px;font-size:11px;color:#9A9AB0;font-weight:600;border-top:1px solid #F0F0F4;">Erased from the database and storage after 30 days. Restore to bring back as rejected.</div>'
+        +scheduled.map(function(deal){
+          var days = 0; try { days = Math.max(0, 30 - Math.floor((Date.now() - new Date(deal.deletedAt).getTime())/86400000)); } catch(e){ days = 30; }
+          var dleft = days > 0 ? (days + ' day' + (days===1?'':'s') + ' left') : 'purging within 24h';
+          return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #E8E8EC;">'
             +'<div style="flex:1;min-width:0;">'
               +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(deal.venue||deal.name||'')+'</div>'
-              +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+esc(deal.deal||deal.desc||'').substring(0,50)+'</div>'
+              +'<div style="font-size:11px;color:#dc2626;margin-top:1px;font-weight:600;">🗑️ '+dleft+'</div>'
             +'</div>'
-            +'<div style="display:flex;gap:6px;align-items:center;flex-shrink:0;" onclick="event.stopPropagation()">'
-              +'<button onclick="adminRestoreDeal('+deal.id+')" style="background:rgba(217,119,6,.08);color:#B45309;border:1.5px solid rgba(217,119,6,.2);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">↩ Restore</button>'
-              +'<button onclick="adminDeleteCommunityDeal('+deal.id+')" style="background:#F5F5F7;color:#9A9AB0;border:1.5px solid #E8E8EC;border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif;">🗑️</button>'
-            +'</div>'
+            +'<button onclick="adminRestoreScheduledDeal('+deal.id+')" style="background:rgba(18,161,80,.08);color:#12A150;border:1.5px solid rgba(18,161,80,.2);border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">↩ Restore</button>'
           +'</div>';
         }).join('')
         +'</div>'
@@ -18297,6 +18438,55 @@ async function adminRevertCommunityDeal(id){
   showToast('↩ Community deal restored');
 }
 
+// Flag a (rejected) community submission for permanent deletion. It's hidden
+// immediately and given a 30-day grace; the daily purge cron then erases the row
+// AND its photos from storage. Recoverable within the 30 days by clearing
+// deleted_at (admin_restore_deleted_community_deal). Confirms first.
+async function adminDeleteCommunityPermanently(id){
+  var deal = pendingCommunityDeals.find(function(d){ return d.id===id; });
+  var dbId = deal ? (deal._dbId || (deal.id > 9999 ? deal.id - 10000 : deal.id)) : (id > 9999 ? id - 10000 : id);
+  if(!dbId){ showToast('Deal not found'); return; }
+  var nm = deal ? (deal.venue || deal.name || deal.deal || 'this deal') : 'this deal';
+  if(!confirm('Permanently delete "'+nm+'"?\n\nIt is hidden immediately and fully erased from the database and storage after a 30-day grace period. Within those 30 days it can still be restored.')) return;
+  var ok = false;
+  var { error } = await db.rpc('admin_delete_community_deal', { p_id: dbId });
+  if(!error){ ok = true; }
+  else {
+    // Fallback: flag directly (works if an admin UPDATE policy allows it).
+    var r2 = await db.from('community_deals').update({ deleted_at: new Date().toISOString(), status: 'removed' }).eq('id', dbId);
+    if(!r2.error){ ok = true; }
+    else { console.error('[permDelete] rpc:', error.message, '| direct:', r2.error.message); showToast('⚠️ Permanent delete failed — run admin_delete_community_deal.sql in Supabase'); return; }
+  }
+  // Purge from every in-memory list + the soft-removed localStorage marker.
+  pendingCommunityDeals = pendingCommunityDeals.filter(function(d){ return d.id!==id && d._dbId!==dbId; });
+  removedCommunityDeals = removedCommunityDeals.filter(function(d){ return d.id!==id && d._dbId!==dbId; });
+  ucDeals = ucDeals.filter(function(d){ return d.id!==id && d._dbId!==dbId; });
+  try { var _rm = JSON.parse(localStorage.getItem('hh_admin_removed_uc')||'[]').filter(function(x){ return x!==dbId; }); localStorage.setItem('hh_admin_removed_uc', JSON.stringify(_rm)); } catch(e){}
+  adminUpdateDealsBadge();
+  adminPage(typeof adminCurrentPage!=='undefined' && adminCurrentPage ? adminCurrentPage : 'deals', null);
+  showToast('🗑️ Scheduled for permanent deletion — erased in 30 days');
+}
+
+// Cancel a pending permanent-deletion within the 30-day grace — clears deleted_at
+// and puts the deal back in the Rejected list.
+async function adminRestoreScheduledDeal(id){
+  var deal = pendingCommunityDeals.find(function(d){ return d.id===id; });
+  var dbId = deal ? (deal._dbId || (deal.id > 9999 ? deal.id - 10000 : deal.id)) : (id > 9999 ? id - 10000 : id);
+  if(!dbId){ showToast('Deal not found'); return; }
+  var ok = false;
+  var { error } = await db.rpc('admin_restore_deleted_community_deal', { p_id: dbId });
+  if(!error){ ok = true; }
+  else {
+    var r2 = await db.from('community_deals').update({ deleted_at: null, status: 'rejected' }).eq('id', dbId);
+    if(!r2.error){ ok = true; }
+    else { console.error('[restoreScheduled] rpc:', error.message, '| direct:', r2.error.message); showToast('⚠️ Restore failed — run admin_delete_community_deal.sql in Supabase'); return; }
+  }
+  if(deal){ deal.deletedAt = null; deal.status = 'rejected'; }
+  adminUpdateDealsBadge();
+  adminPage(typeof adminCurrentPage!=='undefined' && adminCurrentPage ? adminCurrentPage : 'deals', null);
+  showToast('↩ Restored — back in Rejected');
+}
+
 async function adminRestoreDeal(id){
   var deal = pendingCommunityDeals.find(function(d){ return d.id===id; });
   if(!deal) return;
@@ -18608,9 +18798,14 @@ function adminReviewDeal(id){
 
   // Hide approve/reject if already decided
   var isDecided = s !== 'pending';
-  document.getElementById('adm-rev-approve-btn').style.display = 'none'; // Always hidden - Save button does both
-  document.getElementById('adm-rev-reject-btn').style.display = isDecided ? 'none' : '';
+  document.getElementById('adm-rev-approve-btn').style.display = 'none'; // Always hidden - header buttons handle it
+  document.getElementById('adm-rev-reject-btn').style.display = 'none'; // Always hidden - header Reject handles it
   document.getElementById('adm-rev-delete-btn').style.display = 'none'; // Always hidden - use reject button instead
+  // Header Approve shows for pending AND rejected (rejected → edit & re-post);
+  // Reject only for pending. Approved deals show neither.
+  var apH = document.getElementById('adm-rev-approve-hdr');
+  if(apH){ apH.style.display = (s==='pending'||s==='rejected') ? '' : 'none'; apH.textContent = (s==='rejected') ? '✓ Post' : '✓ Approve'; }
+  var rjH = document.getElementById('adm-rev-reject-hdr'); if(rjH) rjH.style.display = (s==='pending') ? '' : 'none';
   document.getElementById('adm-rev-save-btn').style.display = 'none'; // hidden until edit toggled
   // Reset edit toggle button
   var ef = document.getElementById('adm-rev-edit-form');
@@ -18851,6 +19046,60 @@ async function adminSaveAndDelete(){
   if(_admReviewSource === 'merchant') await adminDeleteVerifiedDeal(_admReviewDealId);
   else await adminDeleteCommunityDeal(_admReviewDealId);
   adminCloseReview();
+}
+
+// ── Header Approve / Reject ──────────────────────────────────────────────────
+// Approve straight away, close the review, then drop the admin overlay and open
+// the LIVE customer detail of the now-approved deal (with a banner to return).
+async function admHeaderApprove(){
+  if(!_admReviewDealId) return;
+  var id = _admReviewDealId;
+  var deal = pendingCommunityDeals.find(function(d){ return d.id===id; });
+  if(!deal){ adminCloseReview(); return; }
+  // adminApproveDeal pushes the deal into ucDeals using this id format.
+  var ucDealId = deal._dbId ? (deal._dbId + 10000) : deal.id;
+  // Saves any edit-form changes, then approves + adds to ucDeals + closes review.
+  // Works for both pending and rejected deals ("edit & post").
+  await adminSaveAndApprove();
+  admPreviewAsCustomer(ucDealId);
+}
+
+// Header Reject → existing mandatory reason-modal flow.
+function admHeaderReject(){
+  if(!_admReviewDealId) return;
+  adminRejectDeal(_admReviewDealId);
+}
+
+// Temporarily hide the admin overlay and show the deal exactly as a customer sees
+// it. A floating banner brings the admin back to the panel.
+function admPreviewAsCustomer(ucDealId){
+  try {
+    var adminRoot = document.getElementById('admin-root');
+    if(adminRoot) adminRoot.style.display = 'none';
+    if(typeof openUCDeal === 'function') openUCDeal(ucDealId);
+    _admShowPreviewBar();
+    try { window.scrollTo(0, 0); } catch(e){}
+  } catch(e){ console.warn('[admPreviewAsCustomer]', e); }
+}
+
+function _admShowPreviewBar(){
+  var bar = document.getElementById('adm-cust-preview-bar');
+  if(bar){ bar.style.display = 'flex'; return; }
+  bar = document.createElement('div');
+  bar.id = 'adm-cust-preview-bar';
+  bar.setAttribute('style','position:fixed;top:0;left:0;right:0;z-index:1000000;background:#1A1A1A;color:white;padding:11px 16px;font-family:Inter,sans-serif;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.35);');
+  bar.innerHTML = '👁️ Previewing as a customer · <span style="text-decoration:underline;">← Back to Admin</span>';
+  bar.onclick = _admExitCustomerPreview;
+  document.body.appendChild(bar);
+}
+
+function _admExitCustomerPreview(){
+  var bar = document.getElementById('adm-cust-preview-bar');
+  if(bar) bar.style.display = 'none';
+  var adminRoot = document.getElementById('admin-root');
+  if(adminRoot) adminRoot.style.display = 'flex';
+  // Refresh the admin queue so the just-approved deal reflects its new status.
+  try { if(typeof adminPage === 'function') adminPage(typeof adminCurrentPage!=='undefined' && adminCurrentPage ? adminCurrentPage : 'deals', null); } catch(e){}
 }
 
 var _admSaveInFlight = false;
@@ -22706,7 +22955,7 @@ async function meUpdateMerchantPassword(){
   var err = document.getElementById('me-set-pw-err');
   function fail(msg){ if(err){ err.textContent = msg; err.style.display='block'; } }
   if(err){ err.style.display='none'; err.textContent=''; }
-  if((n1||'').length < 6){ fail('Password must be at least 6 characters.'); return; }
+  var _pwErr = passwordStrengthError(n1); if(_pwErr){ fail(_pwErr); return; }
   if(n1 !== n2){ fail('Passwords do not match.'); return; }
   var btn = document.getElementById('me-set-pw-btn');
   if(btn){ btn.disabled = true; btn.textContent = 'Updating…'; }
@@ -26088,6 +26337,7 @@ function watchToggleReservation(){
 
 async function watchSubmit(){
   if(!currentUser){ showToast('🔒 Please sign in first'); return; }
+  if(!requireVerifiedEmail('share a spot')) return;
   var venue=(document.getElementById('watch-venue').value||'').trim();
   // Gather selected fixtures + optional custom match into a matches array.
   var matches=[];
@@ -26350,6 +26600,7 @@ function comUpdateCurrencyPreview(){
   if(curSel) comTicketCurrency=curSel.value;
 }
 async function comSubmitEvent(){
+  if(!requireVerifiedEmail('post an event')) return;
   // Photo is required
   var photoPreview=document.getElementById('com-photo-preview');
   var photoImg=document.getElementById('com-photo-preview-img');
@@ -28158,13 +28409,15 @@ function _setupDealMap() {
 <div id="admin-review-ov" style="display:none;position:fixed;inset:0;z-index:999998;background:rgba(0,0,0,.6);align-items:flex-end;font-family:'Inter',sans-serif;" onclick="if(event.target===this)adminCloseReview()">
   <div style="background:#F0F2F5;border-radius:22px 22px 0 0;width:100%;max-height:94%;display:flex;flex-direction:column;overflow:hidden;">
     <!-- Header -->
-    <div style="display:flex;align-items:center;gap:12px;padding:16px 16px 12px;background:white;border-bottom:1px solid #E8E8EC;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:16px 16px 12px;background:white;border-bottom:1px solid #E8E8EC;flex-shrink:0;">
       <button onclick="adminCloseReview()" style="background:#F5F5F7;border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#555;">✕</button>
-      <div style="flex:1;">
+      <div style="flex:1;min-width:120px;">
         <div style="font-size:15px;font-weight:900;color:#1A1A1A;">Review Submission</div>
         <div style="font-size:11px;color:#9A9AB0;font-weight:500;" id="adm-rev-sub-lbl">Community deal</div>
       </div>
       <button id="adm-rev-edit-toggle" onclick="admToggleEditForm()" style="background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:5px 12px;font-size:12px;font-weight:800;color:#1A1A1A;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;">✏️ Edit</button>
+      <button id="adm-rev-approve-hdr" onclick="admHeaderApprove()" style="background:#12A150;color:white;border:none;border-radius:10px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;display:none;">✓ Approve</button>
+      <button id="adm-rev-reject-hdr" onclick="admHeaderReject()" style="background:white;color:#E8192C;border:1.5px solid #E8192C;border-radius:10px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;display:none;">✗ Reject</button>
       <button id="adm-rev-photos-btn" onclick="if(_admRevPhotos.length)openAdminPhotoFullscreen(0);else alert('No photos loaded: '+_admRevPhotos.length)" style="background:#E8192C;color:white;border:none;border-radius:10px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;display:none;">📸 View Photos</button>
       <span id="adm-rev-status-pill" style="font-size:10px;font-weight:800;padding:4px 10px;border-radius:20px;background:rgba(217,119,6,.1);color:#B45309;">⏳ Pending</span>
     </div>
