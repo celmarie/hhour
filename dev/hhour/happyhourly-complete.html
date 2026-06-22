@@ -17343,6 +17343,7 @@ function adminPage(page,btn){
     }
     var pending  = pendingCommunityDeals.filter(function(d){ return d.status==='pending';  }).sort(byRecent);
     var approved = pendingCommunityDeals.filter(function(d){ return d.status==='approved'; }).sort(byRecent);
+    var paused   = pendingCommunityDeals.filter(function(d){ return d.status==='paused';   }).sort(byRecent);
     var rejected = pendingCommunityDeals.filter(function(d){ return d.status==='rejected'; }).sort(byRecent);
     var scheduled = pendingCommunityDeals.filter(function(d){ return d.deletedAt; }).sort(byRecent);
     var dHtml = '';
@@ -17443,29 +17444,39 @@ function adminPage(page,btn){
     +'</div>';
 
     // ── LIVE COMMUNITY DEALS (approved) ────────────────────────────────────────
-    if(approved.length > 0){
+    if(approved.length || paused.length){
+      var _liveRows = approved.concat(paused);
       dHtml += '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:12px;">'
         +'<button onclick="admToggleSection(\'adm-live-community\',\'adm-live-c-chev\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:none;border-bottom:1px solid #E8E8EC;background:none;cursor:pointer;font-family:Inter,sans-serif;">'
-          +'<div style="display:flex;align-items:center;gap:8px;">'
+          +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
             +'<span style="font-size:14px;font-weight:800;color:#1A1A1A;">✅ Live Community Deals</span>'
             +'<span style="background:rgba(18,161,80,.1);color:#12A150;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+approved.length+' live</span>'
+            +(paused.length ? '<span style="background:rgba(217,119,6,.12);color:#B45309;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+paused.length+' paused</span>' : '')
           +'</div>'
           +'<span id="adm-live-c-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
         +'</button>'
         +'<div id="adm-live-community">'
-        +approved.map(function(deal){
-          return '<div onclick="adminPreviewDeal('+deal.id+',\'community\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #E8E8EC;cursor:pointer;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
-            +'<div style="font-size:22px;flex-shrink:0;">'+(deal.emoji||'📣')+'</div>'
-            +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(deal.deal||deal.desc||'')+'</div>'
-              +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+esc(deal.venue||deal.name||'')+' · by '+deal.user+'</div>'
-            +'</div>'
-            +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
-              +'<button onclick="event.stopPropagation();adminOpenDealReview('+deal.id+',\'community\')" style="background:#F5F5F7;color:#555;border:1.5px solid #E8E8EC;border-radius:9px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">✏️</button>'
-              +'<button onclick="event.stopPropagation();adminDeleteCommunityDeal('+deal.id+')" style="background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:9px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗑️</button>'
-            +'</div>'
-          +'</div>';
-        }).join('')
+          +'<div style="padding:10px 16px;border-bottom:1px solid #F0F0F4;">'
+            +'<input id="adm-live-search" type="text" placeholder="🔍 Search live deals…" oninput="admFilterLiveDeals(this.value)" onclick="event.stopPropagation()" style="width:100%;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:9px 12px;font-size:13px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;box-sizing:border-box;">'
+          +'</div>'
+          +_liveRows.map(function(deal){
+            var isPaused = deal.status === 'paused';
+            var hay = esc(((deal.deal||deal.desc||'')+' '+(deal.venue||deal.name||'')+' '+(deal.user||'')).toLowerCase());
+            return '<div class="adm-live-row" data-q="'+hay+'" onclick="adminPreviewDeal('+deal.id+',\'community\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #E8E8EC;cursor:pointer;'+(isPaused?'opacity:.55;':'')+'" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
+              +'<div style="font-size:22px;flex-shrink:0;">'+(deal.emoji||'📣')+'</div>'
+              +'<div style="flex:1;min-width:0;">'
+                +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(deal.deal||deal.desc||'')+(isPaused?' <span style="font-size:9px;font-weight:800;color:#B45309;background:rgba(217,119,6,.12);padding:1px 6px;border-radius:6px;vertical-align:middle;">⏸ PAUSED</span>':'')+'</div>'
+                +'<div style="font-size:11px;color:#9A9AB0;margin-top:1px;">'+esc(deal.venue||deal.name||'')+' · by '+esc(deal.user||'')+'</div>'
+              +'</div>'
+              +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">'
+                +'<button onclick="event.stopPropagation();adminOpenDealReview('+deal.id+',\'community\')" title="Edit" style="background:#F5F5F7;color:#555;border:1.5px solid #E8E8EC;border-radius:9px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">✏️</button>'
+                +(isPaused
+                  ? '<button onclick="event.stopPropagation();adminResumeDeal('+deal.id+')" title="Resume — show to customers" style="background:rgba(18,161,80,.1);color:#12A150;border:1.5px solid rgba(18,161,80,.2);border-radius:9px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">▶</button>'
+                  : '<button onclick="event.stopPropagation();adminPauseDeal('+deal.id+')" title="Pause — hide from customers" style="background:rgba(217,119,6,.1);color:#B45309;border:1.5px solid rgba(217,119,6,.2);border-radius:9px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">⏸</button>')
+                +'<button onclick="event.stopPropagation();adminDeleteCommunityDeal('+deal.id+')" title="Delete" style="background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:9px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗑️</button>'
+              +'</div>'
+            +'</div>';
+          }).join('')
         +'</div>'
       +'</div>';
     }
@@ -18348,6 +18359,60 @@ function adminPreviewDeal(id, source){
   var adminEl = document.getElementById('admin-root');
   if(adminEl) adminEl.style.display = 'none';
   openDeal(deal);
+}
+
+// Live-search filter for the admin "Live Community Deals" list (client-side, no re-render).
+function admFilterLiveDeals(q){
+  q = (q || '').trim().toLowerCase();
+  var rows = document.querySelectorAll('#adm-live-community .adm-live-row');
+  for(var i=0;i<rows.length;i++){
+    var hay = rows[i].getAttribute('data-q') || '';
+    rows[i].style.display = (!q || hay.indexOf(q) !== -1) ? 'flex' : 'none';
+  }
+}
+
+// Pause a live deal: status→'paused'. The feed only shows status='approved', so it
+// instantly disappears for customers — but the row + all its data are preserved.
+async function adminPauseDeal(id){
+  var deal = pendingCommunityDeals.find(function(d){ return d.id===id; });
+  if(!deal){ showToast('Deal not found'); return; }
+  var dbId = deal._dbId || (deal.id > 9999 ? deal.id - 10000 : deal.id);
+  var { error } = await db.from('community_deals').update({status:'paused'}).eq('id', dbId);
+  if(error){ console.error('[adminPauseDeal]', error.message); showToast('⚠️ Could not pause — '+error.message); return; }
+  deal.status = 'paused';
+  // Hide from the live customer feed in this session (next load also excludes non-approved).
+  ucDeals = ucDeals.filter(function(d){ var did = d._dbId || (d.id>9999 ? d.id-10000 : d.id); return did !== dbId; });
+  if(typeof renderUC === 'function') renderUC('all');
+  if(typeof renderAllDeals === 'function') renderAllDeals(typeof _adCurTab !== 'undefined' ? _adCurTab : 'all');
+  showToast('⏸ Deal paused — hidden from customers');
+  setTimeout(function(){ adminPage('deals', null); }, 50);
+}
+
+// Resume a paused deal: status→'approved' and add it back to the live feed.
+async function adminResumeDeal(id){
+  var deal = pendingCommunityDeals.find(function(d){ return d.id===id; });
+  if(!deal){ showToast('Deal not found'); return; }
+  var dbId = deal._dbId || (deal.id > 9999 ? deal.id - 10000 : deal.id);
+  var { error } = await db.from('community_deals').update({status:'approved'}).eq('id', dbId);
+  if(error){ console.error('[adminResumeDeal]', error.message); showToast('⚠️ Could not resume — '+error.message); return; }
+  deal.status = 'approved';
+  var ucDealId = deal._dbId ? (deal._dbId + 10000) : deal.id;
+  if(!ucDeals.some(function(d){ var did = d._dbId || (d.id>9999 ? d.id-10000 : d.id); return did === dbId; })){
+    ucDeals.unshift({
+      id: ucDealId, _dbId: deal._dbId, _sessionAdded: true,
+      emoji: deal.emoji || '📣', imgClass: deal.imgClass || 'uc1', img: deal.img || '',
+      name: deal.venue || deal.name || '', deal: deal.desc || deal.deal || '', desc: deal.desc || '',
+      price: deal.price || 'Free', wasPrice: deal.wasPrice || '', isFree: deal.isFree || false,
+      off: deal.off || 'DEAL', dist: deal.dist || '—', distKm: deal.distKm || 0, rating: deal.rating || 4.2,
+      cat: deal.cat || 'bars', user: deal.user || 'Community', ago: deal.ago || 'Recently', timeLeft: deal.timeLeft || '3h 00m',
+      claimed: deal.claimed || 0, days: deal.days || '', hours: deal.hours || '', timeFrom: 17, timeTo: 22,
+      verified: false, type: 'community', discPct: deal.discPct || 0, tags: ['Community'], perks: deal.perks || []
+    });
+  }
+  if(typeof renderUC === 'function') renderUC('all');
+  if(typeof renderAllDeals === 'function') renderAllDeals(typeof _adCurTab !== 'undefined' ? _adCurTab : 'all');
+  showToast('▶ Deal resumed — live again');
+  setTimeout(function(){ adminPage('deals', null); }, 50);
 }
 
 async function adminApproveDeal(id){
