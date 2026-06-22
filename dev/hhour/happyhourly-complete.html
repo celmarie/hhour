@@ -5257,6 +5257,30 @@ var BUILD_VERSION = '2026-06-22a';
   } catch(e){}
 })();
 
+// ── Security audit logging ───────────────────────────────────────────────────
+// Fire-and-forget write to the security_events log via the sanitizing RPC.
+// NEVER pass passwords/tokens — this strips secret-looking keys client-side too
+// (defense in depth; the RPC sanitizes again and captures IP/UA server-side).
+function logSecurityEvent(type, severity, meta, targetId){
+  try {
+    var clean = {};
+    if(meta && typeof meta === 'object'){
+      Object.keys(meta).forEach(function(k){
+        if(/(password|passwd|pwd|secret|token|jwt|api[_-]?key|authorization|bearer|otp|cvv|card|ssn)/i.test(k)) return;
+        var v = meta[k];
+        if(typeof v === 'string' && v.length > 300) v = v.slice(0, 300);
+        clean[k] = v;
+      });
+    }
+    if(window.db) db.rpc('log_security_event', {
+      p_type: String(type || 'event').slice(0, 80),
+      p_severity: (severity === 'warn' || severity === 'critical') ? severity : 'info',
+      p_target: targetId || null,
+      p_meta: clean
+    }).then(function(){}, function(){});
+  } catch(e){}
+}
+
 let currentUser = null;
 let currentProfile = null;
 let _lastHandledUserId = null; // guards the per-account reset against double auth-callbacks
@@ -13321,6 +13345,9 @@ async function doLogin(){
 
     if (error) {
       console.error('Login error:', error);
+      // Audit: failed login (no email/password — IP captured server-side). An
+      // 'admin' tab failure is the higher-signal case.
+      logSecurityEvent('failed_login', loginRole === 'admin' ? 'warn' : 'info', { tab: loginRole || 'customer', status: error.status || null });
       // Supabase returns the same "Invalid login credentials" whether the email is
       // unknown or the password is wrong. For customer login (where self-signup is
       // allowed) route them into Create Account — if the email actually does exist,
@@ -13361,6 +13388,8 @@ async function doLogin(){
 
     console.log('Login success as', acctRole);
     try { phIdentify(data.user.id, { role: acctRole }); phCapture('logged_in', { role: acctRole }); } catch(e){}
+    // Audit: privileged logins are important events worth recording.
+    if(acctRole === 'admin' || acctRole === 'super_admin') logSecurityEvent('admin_login', 'info', { role: acctRole });
     errEl.textContent = '';
     // Claim the session here so the deferred onAuthStateChange handler doesn't
     // also run handleAuthSession (avoids a double-route race). The token is
@@ -13547,7 +13576,7 @@ function merchViewCustomer(){
 var _adminRoles = {
   'super_admin': {
     name: 'Super Admin',
-    pages: ['dashboard','analytics','users','merchants','deals','events','payouts','finance','content','worldcup','settings','notifications','reviews','credits'],
+    pages: ['dashboard','analytics','users','merchants','deals','events','payouts','finance','content','worldcup','security','settings','notifications','reviews','credits'],
     canManageRoles: true
   },
   'admin': {
@@ -17439,8 +17468,86 @@ function adminPage(page,btn){
     adminRenderSettings();
   } else if(page==='worldcup'){
     adminRenderWorldCup();
+  } else if(page==='security'){
+    body.innerHTML='<div style="padding:32px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;">Loading security log…</div>';
+    adminLoadSecurity();
   }
 }
+// Super-admin Security log + live pattern alerts (computed from recent events).
+async function adminLoadSecurity(){
+  var body = document.getElementById('admin-body');
+  if(!body) return;
+  if(!currentProfile || currentProfile.role !== 'super_admin'){
+    body.innerHTML = '<div style="padding:32px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:700;">🛡️ Super-admin only</div>';
+    return;
+  }
+  var rows = [];
+  try {
+    var r = await db.from('security_events').select('*').order('created_at',{ascending:false}).limit(500);
+    if(r && r.error){ body.innerHTML = '<div style="padding:32px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;">⚠️ Run security_events_audit_log.sql in Supabase to enable the log.</div>'; return; }
+    rows = (r && r.data) || [];
+  } catch(e){ rows = []; }
+
+  var sevColor = { info:'#6B7280', warn:'#B45309', critical:'#dc2626' };
+  var sevBg    = { info:'rgba(107,114,128,.1)', warn:'rgba(217,119,6,.12)', critical:'rgba(220,38,38,.12)' };
+
+  // ── Pattern alerts: scan the last 15 minutes ──
+  var now = Date.now();
+  var recent = rows.filter(function(e){ return (now - new Date(e.created_at).getTime()) <= 15*60*1000; });
+  var alerts = [];
+  var failByIp = {};
+  recent.filter(function(e){ return e.event_type==='failed_login' && e.ip; }).forEach(function(e){ failByIp[e.ip]=(failByIp[e.ip]||0)+1; });
+  Object.keys(failByIp).forEach(function(ip){ if(failByIp[ip]>=5) alerts.push({sev:'critical', txt:'🔓 '+failByIp[ip]+' failed logins from '+ip+' in 15 min — possible credential stuffing'}); });
+  var denyByActor = {};
+  recent.filter(function(e){ return e.event_type==='permission_denied' && e.actor_id; }).forEach(function(e){ denyByActor[e.actor_id]=(denyByActor[e.actor_id]||0)+1; });
+  Object.keys(denyByActor).forEach(function(a){ if(denyByActor[a]>=5) alerts.push({sev:'critical', txt:'⛔ '+denyByActor[a]+' permission-denied from one account in 15 min — probing'}); });
+  var rl = recent.filter(function(e){ return e.event_type==='rate_limit'; }).length;
+  if(rl>=10) alerts.push({sev:'warn', txt:'🚦 '+rl+' rate-limit hits in 15 min — unusual traffic'});
+
+  var html = '<div style="padding:4px 2px 16px;">';
+  // Alerts
+  if(alerts.length){
+    html += alerts.map(function(a){ return '<div style="background:'+sevBg[a.sev]+';border:1.5px solid '+sevColor[a.sev]+';border-radius:12px;padding:12px 14px;margin-bottom:8px;font-size:13px;font-weight:700;color:'+sevColor[a.sev]+';">'+esc(a.txt)+'</div>'; }).join('');
+  } else {
+    html += '<div style="background:rgba(18,161,80,.08);border:1.5px solid rgba(18,161,80,.25);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;font-weight:700;color:#12A150;">✓ No active alerts (last 15 min)</div>';
+  }
+  // Severity counts
+  var c = {info:0,warn:0,critical:0};
+  rows.forEach(function(e){ if(c[e.severity]!=null) c[e.severity]++; });
+  html += '<div style="display:flex;gap:8px;margin:6px 0 14px;">'
+    + [['Critical',c.critical,'#dc2626'],['Warnings',c.warn,'#B45309'],['Info',c.info,'#6B7280']].map(function(s){
+        return '<div style="flex:1;background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:900;color:'+s[2]+';">'+s[1]+'</div><div style="font-size:11px;color:#9A9AB0;font-weight:600;">'+s[0]+'</div></div>';
+      }).join('') + '</div>';
+  // Event list
+  html += '<div style="background:white;border:1.5px solid #E8E8EC;border-radius:14px;overflow:hidden;">'
+    + '<div style="padding:12px 14px;border-bottom:1px solid #E8E8EC;font-size:13px;font-weight:800;color:#1A1A1A;">Recent events <span style="color:#9A9AB0;font-weight:600;">('+rows.length+')</span></div>';
+  if(!rows.length){
+    html += '<div style="padding:24px;text-align:center;color:#9A9AB0;font-size:13px;">No events logged yet.</div>';
+  } else {
+    html += rows.slice(0,200).map(function(e){
+      var col = sevColor[e.severity]||'#6B7280';
+      var when = '';
+      try { when = new Date(e.created_at).toLocaleString(); } catch(_){}
+      var metaStr = '';
+      try { metaStr = (e.meta && Object.keys(e.meta).length) ? JSON.stringify(e.meta) : ''; } catch(_){}
+      return '<div style="padding:10px 14px;border-bottom:1px solid #F2F2F5;">'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+          + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:'+col+';background:'+(sevBg[e.severity]||'rgba(107,114,128,.1)')+';padding:2px 7px;border-radius:6px;">'+esc(e.severity||'info')+'</span>'
+          + '<span style="font-size:13px;font-weight:700;color:#1A1A1A;">'+esc(e.event_type||'event')+'</span>'
+          + '<span style="font-size:11px;color:#9A9AB0;margin-left:auto;">'+esc(when)+'</span>'
+        + '</div>'
+        + '<div style="font-size:11px;color:#9A9AB0;margin-top:3px;word-break:break-word;">'
+          + (e.ip?('IP '+esc(e.ip)+' · '):'')
+          + (e.actor_id?('actor '+esc(String(e.actor_id).slice(0,8))+' · '):'')
+          + esc(metaStr.slice(0,160))
+        + '</div>'
+      + '</div>';
+    }).join('');
+  }
+  html += '</div></div>';
+  body.innerHTML = html;
+}
+
 function aApprovePayout(id){
   var p=adminPayoutQueue.find(function(x){return x.id===id;});
   if(!p) return;
@@ -18484,6 +18591,7 @@ async function adminDeleteCommunityPermanently(id){
   ucDeals = ucDeals.filter(function(d){ return d.id!==id && d._dbId!==dbId; });
   try { var _rm = JSON.parse(localStorage.getItem('hh_admin_removed_uc')||'[]').filter(function(x){ return x!==dbId; }); localStorage.setItem('hh_admin_removed_uc', JSON.stringify(_rm)); } catch(e){}
   adminUpdateDealsBadge();
+  logSecurityEvent('admin_delete_deal', 'warn', { deal_db_id: dbId, name: String(nm).slice(0,80) });
   adminPage(typeof adminCurrentPage!=='undefined' && adminCurrentPage ? adminCurrentPage : 'deals', null);
   showToast('🗑️ Scheduled for permanent deletion — erased in 30 days');
 }
@@ -28418,6 +28526,7 @@ function _setupDealMap() {
     <button class="adm-nav-btn" onclick="adminPage('finance',this)"><span class="adm-tab-icon">⚙️</span><span class="adm-tab-label">Finance</span></button>
     <button class="adm-nav-btn" onclick="adminPage('content',this)"><span class="adm-tab-icon">📝</span><span class="adm-tab-label">Content</span></button>
     <button class="adm-nav-btn" onclick="adminPage('worldcup',this)"><span class="adm-tab-icon">⚽</span><span class="adm-tab-label">World Cup</span></button>
+    <button class="adm-nav-btn" id="adm-nav-security" onclick="adminPage('security',this)" style="display:none;"><span class="adm-tab-icon">🛡️</span><span class="adm-tab-label">Security</span></button>
     <button class="adm-nav-btn" onclick="adminPage('settings',this)"><span class="adm-tab-icon">🔐</span><span class="adm-tab-label">Settings</span></button>
     <button class="adm-nav-btn" onclick="adminPage('notifications',this)"><span class="adm-tab-icon">🔔</span><span class="adm-tab-label">Alerts</span></button>
     <button class="adm-nav-btn" onclick="adminPage('reviews',this)"><span class="adm-tab-icon">⭐</span><span class="adm-tab-label">Reviews</span></button>
