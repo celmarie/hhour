@@ -5731,6 +5731,21 @@ function dbAgo(ts) {
   return (s / 86400 | 0) + 'd ago';
 }
 
+// Community feed via the edge-cached /api/feed route — absorbs traffic spikes so
+// the browser fleet doesn't hammer Supabase directly. Falls back to a direct,
+// limited query if the route is unavailable. Returns the { data, error } shape
+// the loader expects, so dbUCToLocal mapping is unchanged.
+async function fetchCommunityFeed(){
+  try {
+    var res = await fetch('/api/feed', { headers: { 'Accept': 'application/json' } });
+    if(res.ok){
+      var rows = await res.json();
+      if(Array.isArray(rows)) return { data: rows, error: null };
+    }
+  } catch(e){ /* fall through to the direct query */ }
+  return await db.from('community_deals').select('*').eq('status','approved').is('deleted_at', null).order('created_at', { ascending: false }).limit(100);
+}
+
 // ── Load public deals (no auth required) ──────────────────────────────────────
 async function loadDealsFromSupabase() {
   _dealsLoading = true;
@@ -5743,7 +5758,7 @@ async function loadDealsFromSupabase() {
       db.from('deals').select('*, venues(name,category,dist_km)')
         .eq('status', 'active')
         .order('claimed', { ascending: false }),
-      db.from('community_deals').select('*').eq('status', 'approved').order('created_at', { ascending: false })
+      fetchCommunityFeed()
     ]);
 
     if (dr.error) console.error('[Supabase] deals fetch error:', dr.error.message);
