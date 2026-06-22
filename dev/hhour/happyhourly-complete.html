@@ -17352,10 +17352,14 @@ function adminPage(page,btn){
     // ── LIVE COMMUNITY DEALS (approved) ────────────────────────────────────────
     if(approved.length > 0){
       dHtml += '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:12px;">'
-        +'<div style="padding:14px 16px;border-bottom:1px solid #E8E8EC;display:flex;align-items:center;justify-content:space-between;">'
-          +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;">✅ Live Community Deals</div>'
-          +'<span style="background:rgba(18,161,80,.1);color:#12A150;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+approved.length+' live</span>'
-        +'</div>'
+        +'<button onclick="admToggleSection(\'adm-live-community\',\'adm-live-c-chev\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:none;border-bottom:1px solid #E8E8EC;background:none;cursor:pointer;font-family:Inter,sans-serif;">'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="font-size:14px;font-weight:800;color:#1A1A1A;">✅ Live Community Deals</span>'
+            +'<span style="background:rgba(18,161,80,.1);color:#12A150;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+approved.length+' live</span>'
+          +'</div>'
+          +'<span id="adm-live-c-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
+        +'</button>'
+        +'<div id="adm-live-community">'
         +approved.map(function(deal){
           return '<div onclick="adminPreviewDeal('+deal.id+',\'community\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #E8E8EC;cursor:pointer;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
             +'<div style="font-size:22px;flex-shrink:0;">'+(deal.emoji||'📣')+'</div>'
@@ -17369,16 +17373,21 @@ function adminPage(page,btn){
             +'</div>'
           +'</div>';
         }).join('')
+        +'</div>'
       +'</div>';
     }
 
     // ── LIVE VERIFIED DEALS (merchant) ─────────────────────────────────────────
     if(vouchers.length > 0){
       dHtml += '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:12px;">'
-        +'<div style="padding:14px 16px;border-bottom:1px solid #E8E8EC;display:flex;align-items:center;justify-content:space-between;">'
-          +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;">🏪 Merchant Deals</div>'
-          +'<span style="background:rgba(37,99,235,.08);color:#1D4ED8;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+vouchers.length+' active</span>'
-        +'</div>'
+        +'<button onclick="admToggleSection(\'adm-merchant-deals\',\'adm-merch-chev\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:none;border-bottom:1px solid #E8E8EC;background:none;cursor:pointer;font-family:Inter,sans-serif;">'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="font-size:14px;font-weight:800;color:#1A1A1A;">🏪 Merchant Deals</span>'
+            +'<span style="background:rgba(37,99,235,.08);color:#1D4ED8;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+vouchers.length+' active</span>'
+          +'</div>'
+          +'<span id="adm-merch-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
+        +'</button>'
+        +'<div id="adm-merchant-deals">'
         +vouchers.slice().sort(function(a,b){ return (b._updatedAt||b._createdAt||'') > (a._updatedAt||a._createdAt||'') ? 1 : -1; }).map(function(deal){
           return '<div onclick="adminPreviewDeal('+deal.id+',\'merchant\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #E8E8EC;cursor:pointer;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
             +'<div style="font-size:22px;flex-shrink:0;">'+deal.emoji+'</div>'
@@ -17392,6 +17401,7 @@ function adminPage(page,btn){
             +'</div>'
           +'</div>';
         }).join('')
+        +'</div>'
       +'</div>';
     }
 
