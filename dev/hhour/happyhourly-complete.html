@@ -13270,10 +13270,10 @@ async function handleGoogleCredential(resp){
                     || (data.user.user_metadata && data.user.user_metadata.role) || '';
         var _role = _profRole || _jwtRole || 'customer';   // new Google users have no profile yet → customer
         if(_role === 'merchant' || _role === 'admin' || _role === 'super_admin'){
+          // Generic message (matches doLogin) — never reveal the account exists
+          // under another role, so a wrong-portal login gives nothing away.
           await db.auth.signOut().catch(function(){});
-          if(errEl) errEl.textContent = (_role === 'merchant')
-            ? 'This is the customer login. Please use the business login to access your venue.'
-            : 'This is the customer login. Please use the admin login.';
+          if(errEl) errEl.textContent = 'Invalid email or password.';
           return;
         }
       }
