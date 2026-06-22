@@ -27035,6 +27035,8 @@ window.addEventListener('resize', function(){
 var _gmapInited = false;
 var _gmapObj = null;
 var _gmapMarkers = [];
+var _gmapMarkersAt = 0;            // when pins were last placed (map cache freshness)
+var MAP_STALE_MS = 5 * 60 * 1000;  // re-fetch/re-place only after 5 min, not every visit
 var _currentVenueName = '';
 var _gmapsLoading = false;
 var _gmapsLoadCallbacks = [];
@@ -27294,6 +27296,7 @@ function refreshDealMapMarkers() {
     console.warn('[refreshDealMapMarkers] Map not initialized yet');
     return;
   }
+  _gmapMarkersAt = Date.now();   // pins freshly placed — cache stays warm for MAP_STALE_MS
 
   // Remove all existing markers
   _gmapMarkers = _gmapMarkers || [];
@@ -27434,9 +27437,14 @@ function initDealMap() {
     return;
   }
 
-  // Refresh data in the BACKGROUND — never block the map build on it. The map
-  // renders immediately from already-loaded vouchers/ucDeals; once fresh data
-  // (and watch spots) arrive, markers are re-placed.
+  // Cache: if the map is already built and its pins were placed recently, just
+  // show it as-is — no re-fetch, no clearing/re-placing pins. This stops the map
+  // "refreshing" on every visit. Only reload when the data is stale (>5 min).
+  var fresh = _gmapInited && _gmapObj && _gmapMarkers.length && (Date.now() - _gmapMarkersAt) < MAP_STALE_MS;
+  if (fresh) return;
+
+  // Stale (or first build): refresh data in the BACKGROUND — never block the map
+  // build. Once fresh data (and watch spots) arrive, markers are re-placed.
   Promise.resolve()
     .then(function(){ return loadDealsFromSupabase().catch(function(e){ console.warn('[initDealMap] reload failed:', e); }); })
     .then(function(){ return _watchFeatureOn ? loadWatchSpots().catch(function(){}) : null; })
@@ -27447,6 +27455,7 @@ function initDealMap() {
   // instead of bailing into refresh (which needs an existing map).
   if (_gmapInited && _gmapObj) { refreshDealMapMarkers(); return; }
   _gmapInited = true;
+  _gmapMarkersAt = Date.now();
   _loadGMapsAPI(_setupDealMap);
 }
 
