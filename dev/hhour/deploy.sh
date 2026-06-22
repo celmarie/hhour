@@ -18,6 +18,11 @@ HTML="happyhourly-complete.html"
 VJSON="version.json"
 V="$(date +%Y%m%d%H%M%S)"
 
+# Were these files already clean? If so, the only change after the bump is the
+# bump itself, so it's safe to auto-commit. If they had other edits, we won't
+# stage them — we'll just print the manual command instead.
+PRE_DIRTY="$(git status --porcelain -- "$HTML" "$VJSON" 2>/dev/null || true)"
+
 # Bump the embedded version in the app + the server version file, in sync.
 perl -i -pe "s/var BUILD_VERSION = '[^']*';/var BUILD_VERSION = '${V}';/" "$HTML"
 printf '{ "v": "%s" }\n' "$V" > "$VJSON"
@@ -32,4 +37,18 @@ vercel deploy --prod --yes
 
 echo ""
 echo "✓ deployed build ${V}"
-echo "  commit the bump:  git add ${HTML} ${VJSON} && git commit -m \"chore(deploy): build ${V}\""
+
+if [ -z "$PRE_DIRTY" ]; then
+  # Tree was clean for these files → the only diff is the bump. Safe to commit.
+  git add "$HTML" "$VJSON"
+  git commit -m "chore(deploy): build ${V}" >/dev/null
+  if git push >/dev/null 2>&1; then
+    echo "✓ committed + pushed the version bump"
+  else
+    echo "✓ committed the version bump (push when ready: git push)"
+  fi
+else
+  # They had other uncommitted edits — don't risk bundling them.
+  echo "⚠ ${HTML}/${VJSON} had other uncommitted changes — NOT auto-committing."
+  echo "  commit the bump yourself:  git add ${HTML} ${VJSON} && git commit -m \"chore(deploy): build ${V}\""
+fi
