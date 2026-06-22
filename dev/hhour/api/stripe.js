@@ -1,5 +1,6 @@
 const { applyCors } = require('./_cors');
 const { rateLimit, clientIp } = require('./_ratelimit');
+const { audit } = require('./_audit');
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -62,7 +63,7 @@ module.exports = async function handler(req, res) {
 
   // Throttle per IP — payment-intent / Connect-account creation is costly to spam.
   const _rl = rateLimit('stripe:' + clientIp(req), 40, 10 * 60 * 1000);
-  if (!_rl.allowed) { res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
+  if (!_rl.allowed) { audit(req, { type: 'rate_limit', severity: 'warn', meta: { route: 'stripe', action: req.query && req.query.action } }); res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
 
   const { action } = req.query;
 
@@ -71,6 +72,7 @@ module.exports = async function handler(req, res) {
   const caller = await getCaller(req);
   if (caller.error) return res.status(caller.status).json({ error: caller.error });
   if ((action === 'create_payout' || action === 'list_accounts') && !caller.isAdmin) {
+    audit(req, { type: 'permission_denied', severity: 'warn', actor: caller.user && caller.user.id, meta: { route: 'stripe', action: action, need: 'admin' } });
     return res.status(403).json({ error: 'Admins only' });
   }
 
@@ -98,7 +100,7 @@ module.exports = async function handler(req, res) {
       const { account_id, return_url, refresh_url } = req.body || {};
       if (!account_id) return res.status(400).json({ error: 'account_id required' });
       if (!caller.isAdmin && !(await callerOwnsAccount(caller.user.id, account_id))) {
-        return res.status(403).json({ error: 'Not your account' });
+        { audit(req, { type: 'permission_denied', severity: 'warn', actor: caller.user && caller.user.id, meta: { route: 'stripe', action: action, reason: 'not_account_owner' } }); return res.status(403).json({ error: 'Not your account' }); }
       }
 
       // Validate the client-supplied redirects against our own hosts; never
@@ -118,7 +120,7 @@ module.exports = async function handler(req, res) {
       const { account_id } = req.body || req.query;
       if (!account_id) return res.status(400).json({ error: 'account_id required' });
       if (!caller.isAdmin && !(await callerOwnsAccount(caller.user.id, account_id))) {
-        return res.status(403).json({ error: 'Not your account' });
+        { audit(req, { type: 'permission_denied', severity: 'warn', actor: caller.user && caller.user.id, meta: { route: 'stripe', action: action, reason: 'not_account_owner' } }); return res.status(403).json({ error: 'Not your account' }); }
       }
 
       const account = await stripe.accounts.retrieve(account_id);
@@ -145,6 +147,7 @@ module.exports = async function handler(req, res) {
         description: description || 'HappyHourly payout',
       });
 
+      audit(req, { type: 'stripe_payout', severity: 'warn', actor: caller.user && caller.user.id, meta: { route: 'stripe', account_id: account_id, amount_cents: transfer.amount, currency: currency } });
       return res.json({ transfer_id: transfer.id, amount: transfer.amount, status: 'created' });
     }
 

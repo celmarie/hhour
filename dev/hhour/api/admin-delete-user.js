@@ -1,5 +1,6 @@
 const { applyCors } = require('./_cors');
 const { rateLimit, clientIp } = require('./_ratelimit');
+const { audit } = require('./_audit');
 // Serverless endpoint: an ADMIN permanently deletes a user ("Delete forever").
 // This removes the auth.users record (service-role only), which cascades to the
 // profiles row (profiles.id references auth.users on delete cascade). Once gone,
@@ -32,7 +33,7 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const _rl = rateLimit('admin-delete-user:' + clientIp(req), 20, 10 * 60 * 1000);
-  if (!_rl.allowed) { res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
+  if (!_rl.allowed) { audit(req, { type: 'rate_limit', severity: 'warn', meta: { route: 'admin-delete-user' } }); res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
 
   const url = process.env.SUPABASE_URL || 'https://hjzyqhfuvcswfcvkjsyv.supabase.co';
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -74,7 +75,7 @@ module.exports = async function handler(req, res) {
     const { data: prof, error: profErr } = await admin
       .from('profiles').select('role').eq('id', callerId).single();
     if (profErr || !prof || prof.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Super admins only' });
+      { audit(req, { type: 'permission_denied', severity: 'warn', actor: callerId, target: user_id, meta: { route: 'admin-delete-user', need: 'super_admin' } }); return res.status(403).json({ error: 'Super admins only' }); }
     }
 
     // 3) Don't let an admin delete their own account by accident.
@@ -119,6 +120,7 @@ module.exports = async function handler(req, res) {
     // Do not re-add a storage .remove() call here.
     var blobsRetained = Array.from(new Set(blobPaths)).length;
 
+    audit(req, { type: 'admin_delete_user', severity: 'warn', actor: callerId, target: user_id, meta: { route: 'admin-delete-user' } });
     return res.json({ ok: true, blobsRetained });
   } catch (e) {
     return res.status(500).json({ error: e.message || 'Unknown error' });
