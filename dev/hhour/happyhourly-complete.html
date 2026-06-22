@@ -12228,6 +12228,7 @@ function _submitDealInner(){
   var price=isFreeSelected?'Free':(priceRaw?(sym+parseFloat(priceRaw).toFixed(2)):'');
   var wasRaw=(document.getElementById('uc-deal-was')||{value:''}).value.trim();
   if(!wasRaw){showToast('Please enter original price 💰');return;}
+  if(!isFreeSelected){ var _pr=priceRuleError(priceRaw, wasRaw); if(_pr){ showToast('⚠️ '+_pr); return; } }
   var was=wasRaw?(sym+parseFloat(wasRaw).toFixed(2)):'';
   var off=(document.getElementById('uc-deal-off')||{value:''}).value.trim()||'DEAL';
 
@@ -13334,6 +13335,16 @@ function passwordStrengthError(pw){
   if(pw.length < 12) return 'Use at least 12 characters.';
   var classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(function(re){ return re.test(pw); }).length;
   if(classes < 3) return 'Mix upper & lower case, numbers and symbols.';
+  return '';
+}
+
+// Deal-price rule: the deal price must be LOWER than the original price.
+// Returns an error message if violated, else '' (skips when free or either is blank).
+function priceRuleError(priceRaw, wasRaw){
+  var p = parseFloat(String(priceRaw).replace(/[^0-9.]/g, ''));
+  var w = parseFloat(String(wasRaw).replace(/[^0-9.]/g, ''));
+  if(isNaN(p) || isNaN(w) || w <= 0) return '';   // nothing to compare (free / blank)
+  if(p >= w) return 'Deal price must be lower than the original price.';
   return '';
 }
 
@@ -19150,6 +19161,11 @@ function admCollectEdits(){
 
 async function adminSaveAndApprove(){
   if(!_admReviewDealId) return;
+  var _pr = priceRuleError(
+    (document.getElementById('adm-edit-price')||{}).value,
+    (document.getElementById('adm-edit-was')||{}).value
+  );
+  if(_pr){ showToast('⚠️ '+_pr); return; }
   var edits = admCollectEdits();
   var deal = pendingCommunityDeals.find(function(d){return d.id===_admReviewDealId;});
   if(deal) Object.assign(deal, edits);
@@ -24320,6 +24336,7 @@ function _mePublishDealInner(){
   var cat=(document.getElementById('me-deal-cat').value||'bars');
   var off=(document.getElementById('me-deal-off').value||'').trim()||'DEAL';
   var wasRaw=(document.getElementById('me-deal-was').value||'').trim();
+  if(!isFreeSelected){ var _pr=priceRuleError(priceRaw, wasRaw); if(_pr){ highlight('me-deal-price'); highlight('me-deal-was'); showToast('⚠️ '+_pr); return; } }
   var was=wasRaw?(sym+parseFloat(wasRaw).toFixed(2)):'';
   var total=parseInt(document.getElementById('me-deal-total').value||'100')||100;
   var fmt12=function(t){var p=t.split(':'),h=parseInt(p[0]),m=p[1],ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+m+ap;};
