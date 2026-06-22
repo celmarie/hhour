@@ -5328,8 +5328,18 @@ let _authInitialized = false;
 let _sessionRouted = false;
 
 // Listen for auth state changes to keep user logged in
+var _isPwRecovery = false;
 db.auth.onAuthStateChange(function(event, session){
   console.log('[onAuthStateChange] event:', event, 'hasSession:', !!session);
+  // Password-reset link: Supabase fires PASSWORD_RECOVERY with a temporary session.
+  // Don't log them into the app — force them to set a new password first.
+  if(event === 'PASSWORD_RECOVERY'){
+    if(session && session.user) currentUser = session.user;
+    _authInitialized = true;            // block the normal route
+    _isPwRecovery = true;
+    setTimeout(function(){ try { showForcePasswordChange(true); } catch(e){} }, 300);
+    return;
+  }
   if(session && session.user){
     console.log('[onAuthStateChange] Session found, user:', session.user.email);
     currentUser = session.user;
@@ -10845,7 +10855,7 @@ async function saveBirthdateGate(){
 
 // Forced password change on first login (for admin/merchant accounts created by
 // an admin with a temporary password). Blocking — they must set a new password.
-function showForcePasswordChange(){
+function showForcePasswordChange(isRecovery){
   if(document.getElementById('force-pw-ov')) return;
   var ov = document.createElement('div');
   ov.id = 'force-pw-ov';
@@ -10854,7 +10864,7 @@ function showForcePasswordChange(){
     '<div style="background:#fff;border-radius:24px;max-width:360px;width:100%;padding:26px 24px;box-shadow:0 20px 60px rgba(0,0,0,.35);font-family:Inter,sans-serif;">'
     + '<div style="font-size:38px;text-align:center;margin-bottom:8px;">🔐</div>'
     + '<div style="font-size:19px;font-weight:900;color:#1A1A1A;text-align:center;margin-bottom:6px;">Set a new password</div>'
-    + '<div style="font-size:13px;color:#8A7B72;text-align:center;font-weight:500;margin-bottom:18px;line-height:1.5;">Your account uses a temporary password. Please choose a new one to continue.</div>'
+    + '<div style="font-size:13px;color:#8A7B72;text-align:center;font-weight:500;margin-bottom:18px;line-height:1.5;">' + (isRecovery ? 'Choose a new password to finish resetting your account.' : 'Your account uses a temporary password. Please choose a new one to continue.') + '</div>'
     + '<input id="force-pw-new" type="password" placeholder="New password (min 6 chars)" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:14px;padding:13px 15px;font-family:Inter,sans-serif;font-size:15px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;margin-bottom:10px;">'
     + '<input id="force-pw-confirm" type="password" placeholder="Confirm new password" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:14px;padding:13px 15px;font-family:Inter,sans-serif;font-size:15px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;">'
     + '<div id="force-pw-err" style="color:#E8192C;font-size:12.5px;font-weight:700;min-height:16px;margin:8px 2px 0;text-align:center;"></div>'
@@ -10880,6 +10890,7 @@ async function saveForcePasswordChange(){
     if(currentProfile) currentProfile.must_change_password = false;
     var o = document.getElementById('force-pw-ov'); if(o) o.remove();
     showToast('✅ Password updated');
+    if(_isPwRecovery){ _isPwRecovery = false; setTimeout(function(){ try { window.location.replace('/'); } catch(e){} }, 800); }
   }catch(e){ if(err) err.textContent = (e && e.message) || 'Could not set password'; if(btn){ btn.disabled=false; btn.textContent='Set password & continue'; } }
 }
 
