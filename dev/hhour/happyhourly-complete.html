@@ -10993,7 +10993,7 @@ async function submitInlineReview(){
 
   closeWriteReview();
   renderDealReviews(curV);
-  showToast('⭐ Review submitted! +' + ((typeof _ccGet==='function')?_ccGet('earnLeaveReview',10):10) + ' Credits earned');
+  // (No toast — the "Review submitted!" overlay already confirms it.)
 }
 
 let reviewRating=0, reviewAnon=false, quickStarRating=0;
@@ -11123,7 +11123,7 @@ function afterReview(){
   const tog=document.getElementById('anon-toggle');if(tog)tog.style.background='rgba(255,255,255,.15)';
   const knob=document.getElementById('anon-knob');if(knob)knob.style.left='3px';
   goScreen('myvouchers');
-  showToast('⭐ Review submitted! +' + ((typeof _ccGet==='function')?_ccGet('earnLeaveReview',10):10) + ' Credits added');
+  // (No toast — the "Review submitted!" overlay already confirms it.)
 }
 
 function afterRedeem(){
@@ -13271,6 +13271,15 @@ async function handleGoogleCredential(resp){
 
 // Render Google's official button into #gsi-button. Returns true on success.
 function initGsiButton(){
+  // On mobile (esp. iOS Safari) Google's GIS popup (ux_mode:'popup') flow hangs,
+  // so use the full-page redirect (signInWithOAuth) instead — reliable on mobile.
+  var isMobile = (window.matchMedia && window.matchMedia('(max-width:899px)').matches)
+              || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+  if(isMobile){
+    var rb = document.getElementById('google-btn'); if(rb) rb.style.display = 'flex';
+    var gb = document.getElementById('gsi-button');  if(gb) gb.style.display = 'none';
+    return true;   // stop polling — the redirect button is the mobile path
+  }
   if(!(window.google && google.accounts && google.accounts.id)) return false;
   var c = document.getElementById('gsi-button');
   if(!c) return false;
