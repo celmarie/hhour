@@ -13428,9 +13428,11 @@ function requireVerifiedEmail(action){
 // check (HaveIBeenPwned) is enforced server-side via the Supabase setting.
 function passwordStrengthError(pw){
   pw = pw || '';
-  if(pw.length < 12) return 'Use at least 12 characters.';
-  var classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(function(re){ return re.test(pw); }).length;
-  if(classes < 3) return 'Mix upper & lower case, numbers and symbols.';
+  if(pw.length < 8) return 'Use at least 8 characters.';
+  if(!/[a-z]/.test(pw)) return 'Add a lowercase letter (a–z).';
+  if(!/[A-Z]/.test(pw)) return 'Add an uppercase letter (A–Z).';
+  if(!/[0-9]/.test(pw)) return 'Add a number (0–9).';
+  if(!/[^A-Za-z0-9]/.test(pw)) return 'Add a special character (e.g. !@#$).';
   return '';
 }
 
