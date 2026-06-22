@@ -7573,7 +7573,6 @@ function stToggle(key, el){
     vouchers:'Voucher updates', credits:'Credits notifications',
     community:'Community notifications', location:'Location sharing', public:'Public profile',
   };
-  showToast((stState[key] ? '✓ ' : '✗ ') + (labels[key]||key) + ' ' + (stState[key] ? 'enabled' : 'disabled'));
   if(key==='dark') stApplyDark(stState[key]);
 }
 
@@ -10325,6 +10324,7 @@ async function _finishVoucherPurchase(paymentIntentId){
 }
 
 function saveDeal(dealId, kind){
+  if(isGuest){ requireLogin('save deals'); return; }
   // Save a deal from card click (not the detail view)
   var isSaved = savedDeals.some(function(s){return s.id===dealId;});
   if(isSaved){
@@ -10354,6 +10354,7 @@ function saveDeal(dealId, kind){
 }
 
 async function toggleSaveCurrentDeal(){
+  if(isGuest){ requireLogin('save deals'); return; }
   const all  = [...vouchers, ...ucDeals];
   const deal = all.find(function(x) { return x.id === curV; });
   if (!deal) return;
@@ -10365,7 +10366,6 @@ async function toggleSaveCurrentDeal(){
   if (idx > -1) {
     savedDeals.splice(idx, 1);
     if (btn) btn.textContent = '🤍';
-    showToast('Removed from saved');
     if (currentUser) {
       try { await db.from('saved_deals').delete().eq('user_id', currentUser.id).eq('deal_id', dbId).eq('deal_kind', kind); }
       catch (e) { console.warn('[Supabase] removeSaved failed', e); }
@@ -10378,7 +10378,6 @@ async function toggleSaveCurrentDeal(){
       days: deal.days || '', hours: deal.hours || ''
     });
     if (btn) btn.textContent = '❤️';
-    showToast('Saved! ❤️');
     if (currentUser) {
       try { await db.from('saved_deals').upsert({ user_id: currentUser.id, deal_id: dbId, deal_kind: kind }); }
       catch (e) { console.warn('[Supabase] saveDeal failed', e); }
@@ -12436,6 +12435,7 @@ function goScreen(name){
   // Block accidental nav while file picker is open (phantom tap on mobile)
   if(_photoPickerActive && name !== curScreen) return;
   if(name==='myvouchers' && isGuest){ requireLogin('view vouchers'); return; }
+  if(name==='saved' && isGuest){ requireLogin('view saved deals'); return; }
   if(name==='alerts' && isGuest){ requireLogin('view alerts'); return; }
   if(name==='credits' && isGuest){ requireLogin('view credits & rewards'); return; }
   if(name==='watch' && !_watchFeatureOn){ goScreen('deals'); return; }
