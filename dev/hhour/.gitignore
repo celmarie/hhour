@@ -1,0 +1,6 @@
+.vercel
+
+# Secrets — never commit env files. Keep only .env.example (no real values).
+.env
+.env.*
+!.env.example
