@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const _rl = rateLimit('admin-delete-user:' + clientIp(req), 20, 10 * 60 * 1000);
+  const _rl = await rateLimit('admin-delete-user:' + clientIp(req), 20, 10 * 60 * 1000);
   if (!_rl.allowed) { audit(req, { type: 'rate_limit', severity: 'warn', meta: { route: 'admin-delete-user' } }); res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
 
   const url = process.env.SUPABASE_URL || 'https://hjzyqhfuvcswfcvkjsyv.supabase.co';

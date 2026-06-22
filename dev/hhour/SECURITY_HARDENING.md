@@ -45,11 +45,15 @@ click the link.
 - **Vercel → your project → Firewall:** turn on **Attack Challenge Mode** (or add
   rules) to challenge bot/flood traffic at the edge before it reaches the app.
 
-## 5. (Optional) Durable, multi-instance API rate limiting 🟢
-Today `api/_ratelimit.js` is in-memory (per warm instance, resets on cold start) —
-fine for the low-volume admin/stripe routes, but not a hard guarantee. For durable
-limits, back it with **Upstash Redis** (`UPSTASH_REDIS_REST_URL` / `_TOKEN` env vars)
-and swap the limiter to `@upstash/ratelimit`. Ask me to wire this if you want it.
+## 5. Durable, multi-instance API rate limiting 🟢  (code done — just add creds)
+`api/_ratelimit.js` is **already wired** for Upstash Redis. To activate global,
+cold-start-proof limits:
+1. Create a free **Upstash Redis** database → https://console.upstash.com
+2. **Vercel → Project → Settings → Environment Variables** add:
+   `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` → redeploy.
+3. That's it — counts move to Redis (shared across all instances/regions). With no
+   creds it falls back to the in-memory limiter (today's behavior), and any Upstash
+   hiccup falls back too, so a request is never blocked by the limiter itself.
 
 ---
 

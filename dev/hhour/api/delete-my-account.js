@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
   applyCors(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const _rl = rateLimit('delete-my-account:' + clientIp(req), 5, 60 * 60 * 1000);
+  const _rl = await rateLimit('delete-my-account:' + clientIp(req), 5, 60 * 60 * 1000);
   if (!_rl.allowed) { audit(req, { type: 'rate_limit', severity: 'warn', meta: { route: 'delete-my-account' } }); res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
 
   const url = process.env.SUPABASE_URL || 'https://hjzyqhfuvcswfcvkjsyv.supabase.co';

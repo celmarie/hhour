@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  const _rl = rateLimit('send-email:' + clientIp(req), 10, 10 * 60 * 1000);
+  const _rl = await rateLimit('send-email:' + clientIp(req), 10, 10 * 60 * 1000);
   if (!_rl.allowed) { audit(req, { type: 'rate_limit', severity: 'warn', meta: { route: 'send-email' } }); res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
 
   const { type, email, name, data } = req.body;

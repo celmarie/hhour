@@ -62,7 +62,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   // Throttle per IP — payment-intent / Connect-account creation is costly to spam.
-  const _rl = rateLimit('stripe:' + clientIp(req), 40, 10 * 60 * 1000);
+  const _rl = await rateLimit('stripe:' + clientIp(req), 40, 10 * 60 * 1000);
   if (!_rl.allowed) { audit(req, { type: 'rate_limit', severity: 'warn', meta: { route: 'stripe', action: req.query && req.query.action } }); res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
 
   const { action } = req.query;

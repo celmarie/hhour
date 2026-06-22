@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
   applyCors(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const _rl = rateLimit('notify:' + clientIp(req), 30, 10 * 60 * 1000);
+  const _rl = await rateLimit('notify:' + clientIp(req), 30, 10 * 60 * 1000);
   if (!_rl.allowed) { audit(req, { type: 'rate_limit', severity: 'warn', meta: { route: 'notify' } }); res.setHeader('Retry-After', String(_rl.retryAfter)); return res.status(429).json({ error: 'Too many requests — please try again later' }); }
 
   // URL is public (already shipped in the client), so default it — only the
