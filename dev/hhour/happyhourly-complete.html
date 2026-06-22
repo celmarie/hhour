@@ -19,6 +19,20 @@
 <link rel="apple-touch-icon" href="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-icon.png?v=4">
 <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Appie Hour%22%2C%22short_name%22%3A%22Appie Hour%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23E8192C%22%2C%22theme_color%22%3A%22%23E8192C%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fhjzyqhfuvcswfcvkjsyv.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fphotos%2Fappie-icon.png?v=4%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
 <title>Appie Hour — All-in-One</title>
+<script>
+/* Portal deep-link boot guard: on a /merchant or /fireclay (admin) URL, mark
+   <html> immediately so the consumer dashboard never flashes before the portal
+   (or login) resolves. Cleared by openMerchantDash/openAdmin, or this safety timeout. */
+(function(){
+  try {
+    var p = (location.pathname || '').toLowerCase().replace(/\/+$/, '');
+    if (p === '/merchant' || p.indexOf('/merchant/') === 0 || p === '/fireclay' || p.indexOf('/fireclay/') === 0) {
+      document.documentElement.classList.add('portal-boot');
+      setTimeout(function(){ document.documentElement.classList.remove('portal-boot'); }, 6000);
+    }
+  } catch(e){}
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -28,6 +42,21 @@
   --bg:#F5F5F7; --white:#fff; --text:#1A1A1A; --t2:#555; --t3:#6B6B6B;
   --border:#EBEBEB; --nav:72px; --green:#12A150;
 }
+
+/* Portal boot splash — covers the consumer UI on a /merchant or /fireclay refresh
+   until the portal/login resolves (z below merch-root/admin-root/login so they
+   paint over it). Prevents the customer-dashboard flash. */
+#portal-boot-splash{ display:none; }
+html.portal-boot #portal-boot-splash{
+  display:flex; position:fixed; inset:0; z-index:99990;
+  background:#F0F2F5; align-items:center; justify-content:center; flex-direction:column; gap:16px;
+}
+#portal-boot-splash .pbs-spin{
+  width:42px; height:42px; border-radius:50%;
+  border:4px solid rgba(232,25,44,.18); border-top-color:#E8192C;
+  animation:pbsSpin .8s linear infinite;
+}
+@keyframes pbsSpin{ to{ transform:rotate(360deg); } }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Inter',sans-serif;background:#111;display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:visible;}
 
@@ -2808,6 +2837,10 @@ function _loadGT(){
 </style>
 </head>
 <body>
+<div id="portal-boot-splash" aria-hidden="true">
+  <div class="pbs-spin"></div>
+  <div style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:#9A9AB0;">Loading…</div>
+</div>
 <!-- Role Detection Splash - Hide until auth is complete -->
 <div id="role-splash" style="position:fixed;inset:0;z-index:999999;background:#F0F2F5;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;font-family:Inter,sans-serif;">
   <div style="text-align:center;">
@@ -13514,7 +13547,11 @@ async function doLogout(){
   // Re-apply URL-based login so /merchant shows the merchant screen after logout.
   if(typeof _applyLoginPrefill === 'function') _applyLoginPrefill();
 }
+// Clears the portal boot splash (see the /merchant /fireclay guard in <head>).
+function _endPortalBoot(){ try { document.documentElement.classList.remove('portal-boot'); } catch(e){} }
+
 function openAdmin(){
+  _endPortalBoot();
   // Hard guard: only admins/super-admins may ever see the admin UI.
   var _r = currentProfile && currentProfile.role;
   if(_r && _r !== 'admin' && _r !== 'super_admin'){
@@ -13543,6 +13580,7 @@ function openAdmin(){
 }
 function closeAdmin(){var el=document.getElementById('admin-root');if(el)el.style.display='none';localStorage.removeItem('hh_admin_page');doLogout();}
 function openMerchantDash(){
+  _endPortalBoot();
   // Hard guard: ONLY merchants may see the merchant portal.
   // (Customers → blocked. Admins → admin-only, also blocked here.)
   var _r = currentProfile && currentProfile.role;
