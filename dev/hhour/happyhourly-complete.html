@@ -5489,7 +5489,7 @@ async function mForgotPassword(){
   var merr = document.getElementById('m-login-error');
   if(!em){ if(merr) merr.textContent = 'Enter your email above, then tap “Forgot your password?”'; return; }
   try {
-    var r = await db.auth.resetPasswordForEmail(em, { redirectTo: window.location.origin + '/merchant' });
+    var r = await db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/merchant' }));
     if(merr) merr.textContent = (r && r.error) ? ('⚠️ ' + r.error.message) : ('✅ Password reset link sent to ' + em);
   } catch(e){ if(merr) merr.textContent = '⚠️ ' + (e.message || e); }
 }
@@ -5498,7 +5498,7 @@ async function custForgotPassword(){
   var err = document.getElementById('login-error');
   if(!em){ if(err) err.textContent = 'Enter your email above, then tap “Forgot your password?”'; return; }
   try {
-    var r = await db.auth.resetPasswordForEmail(em, { redirectTo: window.location.origin + '/' });
+    var r = await db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/' }));
     if(err) err.textContent = (r && r.error) ? ('⚠️ ' + r.error.message) : ('✅ Password reset link sent to ' + em);
   } catch(e){ if(err) err.textContent = '⚠️ ' + (e.message || e); }
 }
@@ -13141,8 +13141,9 @@ async function doSignUp(){
     var { data, error } = await db.auth.signUp({
       email: email,
       password: pass,
-      options: { data: { name: name, first_name: first, last_name: (isMerchantSignup?'':last), role: signupRole } }
+      options: _captchaOpts({ data: { name: name, first_name: first, last_name: (isMerchantSignup?'':last), role: signupRole } })
     });
+    _captchaReset();
 
     // Email already has an account — either an explicit error, or Supabase's
     // obfuscated case (returns a user with an empty identities array). Send them
@@ -13307,6 +13308,9 @@ function initGsiButton(){
   setTimeout(function(){ _waitGsi(n+1); }, 250);
 })(0);
 
+// Render the CAPTCHA widget on the login screen (no-op unless _CAPTCHA_SITE_KEY set).
+setTimeout(function(){ try{ _captchaInit(); }catch(e){} }, 600);
+
 // Fallback only: classic redirect OAuth (used if GIS fails to load).
 async function loginWithGoogleRedirect(){
   var errEl = document.getElementById('login-error');
@@ -13318,6 +13322,53 @@ async function loginWithGoogleRedirect(){
   }catch(e){
     if(errEl) errEl.textContent = 'Google sign-in failed: ' + (e.message || e);
   }
+}
+
+// ── Bot protection: Cloudflare Turnstile CAPTCHA ─────────────────────────────
+// INERT until you (1) paste your Turnstile site key below AND (2) enable CAPTCHA
+// in Supabase → Auth with the matching secret. With an empty key: no widget, no
+// token, and the auth calls are byte-for-byte unchanged — zero behavior change.
+var _CAPTCHA_SITE_KEY = '';   // ← paste your Cloudflare Turnstile site key to activate
+var _captchaTok = '';
+var _captchaWidgetId = null;
+
+function _captchaActive(){ return !!_CAPTCHA_SITE_KEY; }
+function _captchaToken(){ return _captchaTok || ''; }
+// Merge captchaToken into a Supabase auth options object — only when active.
+function _captchaOpts(base){
+  var o = base || {};
+  if(_captchaActive() && _captchaToken()) o.captchaToken = _captchaToken();
+  return o;
+}
+// Single-use token: reset the widget after each auth attempt so the next works.
+function _captchaReset(){
+  try { if(window.turnstile && _captchaWidgetId != null) turnstile.reset(_captchaWidgetId); } catch(e){}
+  _captchaTok = '';
+}
+// Lazy-load the Turnstile script + render the widget into #captcha-box.
+function _captchaInit(){
+  if(!_captchaActive()) return;
+  if(!window.turnstile){
+    if(!document.getElementById('cf-turnstile-js')){
+      var s = document.createElement('script');
+      s.id = 'cf-turnstile-js';
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      s.async = true; s.defer = true;
+      document.head.appendChild(s);
+    }
+    return setTimeout(_captchaInit, 300);
+  }
+  var c = document.getElementById('captcha-box');
+  if(!c || _captchaWidgetId != null) return;
+  c.style.display = 'flex';
+  try {
+    _captchaWidgetId = turnstile.render(c, {
+      sitekey: _CAPTCHA_SITE_KEY,
+      callback: function(t){ _captchaTok = t; },
+      'expired-callback': function(){ _captchaTok = ''; },
+      'error-callback': function(){ _captchaTok = ''; }
+    });
+  } catch(e){ console.warn('[captcha] render failed', e); }
 }
 
 function doGuestLogin(){
@@ -13412,7 +13463,8 @@ async function doLogin(){
     errEl.textContent = 'Signing in…';
     console.log('Calling auth...');
 
-    var { data, error } = await db.auth.signInWithPassword({ email: u, password: p });
+    var { data, error } = await db.auth.signInWithPassword({ email: u, password: p, options: _captchaOpts() });
+    _captchaReset();
 
     if (error) {
       console.error('Login error:', error);
@@ -28512,6 +28564,7 @@ function _setupDealMap() {
     </div>
 
     <div id="login-error" style="color:#E8192C;font-size:13px;font-weight:700;margin-bottom:10px;min-height:18px;text-align:center;"></div>
+    <div id="captcha-box" style="display:none;justify-content:center;margin-bottom:12px;"></div>
 
     <button type="button" id="signin-btn" onclick="_loginMode==='signup'?doSignUp():doLogin()" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 16px 34px rgba(255,107,53,.5)'" onmouseout="this.style.transform='';this.style.boxShadow='0 10px 26px rgba(255,107,53,.4)'" style="width:100%;background:linear-gradient(135deg,#FF5A5F,#FF7A33 60%,#FF9E3D);color:white;border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:11px;box-shadow:0 10px 26px rgba(255,107,53,.4);transition:transform .15s,box-shadow .2s;">Sign In</button>
 
