@@ -5491,8 +5491,9 @@ async function mForgotPassword(){
   if(!em){ if(merr) merr.textContent = 'Enter your email above, then tap “Forgot your password?”'; return; }
   try {
     var r = await db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/merchant' }));
+    _captchaReset('captcha-box');
     if(merr) merr.textContent = (r && r.error) ? ('⚠️ ' + r.error.message) : ('✅ Password reset link sent to ' + em);
-  } catch(e){ if(merr) merr.textContent = '⚠️ ' + (e.message || e); }
+  } catch(e){ _captchaReset('captcha-box'); if(merr) merr.textContent = '⚠️ ' + (e.message || e); }
 }
 async function custForgotPassword(){
   var em = ((document.getElementById('login-user')||{}).value || '').trim();
@@ -5500,8 +5501,9 @@ async function custForgotPassword(){
   if(!em){ if(err) err.textContent = 'Enter your email above, then tap “Forgot your password?”'; return; }
   try {
     var r = await db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/' }));
+    _captchaReset('captcha-box');
     if(err) err.textContent = (r && r.error) ? ('⚠️ ' + r.error.message) : ('✅ Password reset link sent to ' + em);
-  } catch(e){ if(err) err.textContent = '⚠️ ' + (e.message || e); }
+  } catch(e){ _captchaReset('captcha-box'); if(err) err.textContent = '⚠️ ' + (e.message || e); }
 }
 function mOpenLangPicker(){
   if(document.getElementById('m-lang-ov')) return;
