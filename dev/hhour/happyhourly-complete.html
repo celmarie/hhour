@@ -5524,21 +5524,23 @@ async function mForgotPassword(){
   var em = ((document.getElementById('m-login-email')||{}).value || '').trim();
   var merr = document.getElementById('m-login-error');
   if(!em){ if(merr) merr.textContent = 'Enter your email above, then tap “Forgot your password?”'; return; }
+  if(merr) merr.textContent = '⏳ Sending reset link…';
   try {
-    var r = await db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/merchant' }));
+    var r = await withTimeout(db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/merchant' })), 15000);
     _captchaReset('captcha-box');
     if(merr) merr.textContent = (r && r.error) ? ('⚠️ ' + r.error.message) : ('✅ Password reset link sent to ' + em);
-  } catch(e){ _captchaReset('captcha-box'); if(merr) merr.textContent = '⚠️ ' + (e.message || e); }
+  } catch(e){ _captchaReset('captcha-box'); if(merr) merr.textContent = (e && /timeout/i.test(e.message||'')) ? '⚠️ Network is slow — please try again.' : ('⚠️ ' + ((e && e.message) || e)); }
 }
 async function custForgotPassword(){
   var em = ((document.getElementById('login-user')||{}).value || '').trim();
   var err = document.getElementById('login-error');
   if(!em){ if(err) err.textContent = 'Enter your email above, then tap “Forgot your password?”'; return; }
+  if(err) err.textContent = '⏳ Sending reset link…';
   try {
-    var r = await db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/' }));
+    var r = await withTimeout(db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/' })), 15000);
     _captchaReset('captcha-box');
     if(err) err.textContent = (r && r.error) ? ('⚠️ ' + r.error.message) : ('✅ Password reset link sent to ' + em);
-  } catch(e){ _captchaReset('captcha-box'); if(err) err.textContent = '⚠️ ' + (e.message || e); }
+  } catch(e){ _captchaReset('captcha-box'); if(err) err.textContent = (e && /timeout/i.test(e.message||'')) ? '⚠️ Network is slow — please try again.' : ('⚠️ ' + ((e && e.message) || e)); }
 }
 function mOpenLangPicker(){
   if(document.getElementById('m-lang-ov')) return;
