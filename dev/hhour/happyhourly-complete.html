@@ -5410,6 +5410,16 @@ async function initializeAuth(){
   }
 }
 
+// iOS keeps offering "Fill Password" for the hidden login/merchant forms even after
+// sign-in, because their password fields stay autofill-eligible. Disable all
+// login/signup inputs while signed in (re-enabled here when login is actually shown)
+// so iOS stops prompting over the app.
+function _lockLoginInputs(lock){
+  ['login-user','login-pass','signup-confirm','signup-first','signup-last','m-login-email','m-login-pass'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.disabled = !!lock;
+  });
+}
 function showLoginScreen(){
   // Hide the role-detection splash — otherwise it lingers behind the login screen
   // (same z-index) and reappears on top of the app after a guest signs in.
@@ -5417,6 +5427,7 @@ function showLoginScreen(){
   if(splash) splash.style.display = 'none';
   var ls = document.getElementById('login-screen');
   if(ls){ ls.style.display = 'flex'; ls.style.opacity = '1'; }
+  _lockLoginInputs(false);   // login is needed now → re-enable the fields
   updateGuestVisibility();
   updateLogoutBtnLabel();
   _applyLoginPrefill();
@@ -6110,6 +6121,7 @@ function subscribeToMyNotifications(){
 // ── Handle a valid session (login + page restore) ─────────────────────────────
 async function handleAuthSession(user) {
   currentUser = user;
+  try { _lockLoginInputs(true); } catch(e){}   // signed in → stop iOS "Fill Password" prompts
   // Robustly fetch the profile (which carries the authoritative role). Right
   // after sign-in the auth token can lag attaching to PostgREST, which makes
   // the first query run as anon → 0 rows → null profile → everyone defaulted
