@@ -5200,6 +5200,7 @@ function _loadGT(){
         <div style="font-size:12px;color:var(--t2);line-height:1.6;">Add your Google Maps key to <code>GMAPS_KEY</code> in the script and reload.</div>
       </div>
       <div id="deal-map" style="flex:1;width:100%;min-height:0;"></div>
+      <div id="map-offline" style="display:none;flex:1;width:100%;min-height:0;overflow-y:auto;background:var(--bg);box-sizing:border-box;"></div>
     </div>
 
   </div><!-- /swrap -->
@@ -27659,7 +27660,63 @@ function _watchMapItems() {
   });
 }
 
+// Offline fallback for the map: Google can't stream tiles with no connection (and
+// caching its tiles violates Google's ToS), so show the last-cached nearby deals
+// as a tappable list instead of a broken gray map.
+function _renderOfflineMapList(){
+  var off = document.getElementById('map-offline'); if(!off) return;
+  var all = (((typeof vouchers!=='undefined'&&vouchers)?vouchers:[]).concat((typeof ucDeals!=='undefined'&&ucDeals)?ucDeals:[]));
+  all = all.slice().sort(function(a,b){ return ((a.distKm!=null?a.distKm:999)) - ((b.distKm!=null?b.distKm:999)); });
+  var h = '<div style="text-align:center;padding:22px 14px 14px;">'
+    + '<div style="font-size:34px;margin-bottom:6px;">🗺️</div>'
+    + '<div style="font-size:15px;font-weight:800;color:var(--text);">Map needs internet</div>'
+    + '<div style="font-size:12.5px;color:var(--t2);margin-top:4px;line-height:1.5;">Here are your last-saved nearby deals.<br>Reconnect to see the live map.</div>'
+    + '</div>';
+  if(!all.length){
+    h += '<div style="text-align:center;color:var(--t3);font-size:13px;padding:24px 16px;">No saved deals yet — open the app online once to load them.</div>';
+  } else {
+    h += '<div style="padding:0 14px 16px;">';
+    all.forEach(function(d){
+      var isV = d.verified === true;
+      var name = d.name || d.venue || 'Deal';
+      var addr = d.address || '';
+      var dist = (typeof d.distKm==='number' && d.distKm) ? (d.distKm.toFixed(1)+' km') : (d.dist||'');
+      var emoji = d.emoji || (isV ? '🍹' : '📣');
+      h += '<div onclick="openDealById(\''+d.id+'\',\''+(isV?'v':'uc')+'\')" style="display:flex;align-items:center;gap:12px;background:white;border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;">'
+        + '<div style="font-size:24px;flex-shrink:0;">'+emoji+'</div>'
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:14px;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(name)+'</div>'
+          + (addr ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📍 '+esc(addr)+'</div>' : '')
+        + '</div>'
+        + (dist ? '<div style="font-size:11px;font-weight:800;color:var(--t3);flex-shrink:0;">'+esc(dist)+'</div>' : '')
+      + '</div>';
+    });
+    h += '</div>';
+  }
+  off.innerHTML = h;
+}
+// Re-render the map view when connectivity changes while the Map screen is open.
+window.addEventListener('offline', function(){ var s=document.getElementById('screen-map'); if(s && s.classList.contains('active') && typeof initDealMap==='function') initDealMap(); });
+window.addEventListener('online', function(){
+  var s=document.getElementById('screen-map'); if(!s || !s.classList.contains('active')) return;
+  var o=document.getElementById('map-offline'); if(o) o.style.display='none';
+  var m=document.getElementById('deal-map'); if(m) m.style.display='';
+  try { if(typeof _gmapObj!=='undefined' && _gmapObj && window.google) google.maps.event.trigger(_gmapObj,'resize'); } catch(e){}
+  if(typeof initDealMap==='function') initDealMap();
+});
+
 function initDealMap() {
+  // Offline: show the cached nearby-deals list instead of the (unavailable) live map.
+  var _mapOff = document.getElementById('map-offline');
+  var _mapEl  = document.getElementById('deal-map');
+  if(!navigator.onLine){
+    var _ml = document.getElementById('map-loading'); if(_ml) _ml.style.display = 'none';
+    if(_mapEl) _mapEl.style.display = 'none';
+    if(_mapOff){ _mapOff.style.display = 'block'; _renderOfflineMapList(); }
+    return;
+  }
+  if(_mapOff) _mapOff.style.display = 'none';
+  if(_mapEl && _mapEl.style.display === 'none') _mapEl.style.display = '';
   if (GMAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
     document.getElementById('map-loading').style.display = 'none';
     document.getElementById('map-nokey').style.display = 'block';
