@@ -21667,6 +21667,9 @@ var mePayoutHistory=[
 
 async function loadMerchantData(){
   if(!currentUser) return;
+  // Offline-first: show this merchant's last-cached deals immediately, so the
+  // dashboard isn't empty with no connection (refreshed below when online).
+  try { var _mc = localStorage.getItem('hh_merch_deals_' + currentUser.id); if(_mc){ var _mcd = JSON.parse(_mc); if(Array.isArray(_mcd.d) && _mcd.d.length) dealsData = _mcd.d; } } catch(e){}
   try {
     // 1. Try cached venue ID first (avoids re-query)
     var cachedVenue = localStorage.getItem('_cachedVenueId_' + currentUser.id);
@@ -21759,6 +21762,12 @@ async function loadMerchantData(){
           status: d.status||'active'
         };
       });
+      // Cache a slim copy (drop base64 photos — they'd blow the storage quota;
+      // Storage-URL photos are cached by the service worker) for offline viewing.
+      try {
+        var _slim = dealsData.map(function(d){ var c = Object.assign({}, d); c.img = (c.img && c.img.indexOf('http')===0) ? c.img : ''; c.photos = (c.photos||[]).filter(function(p){ return p && p.indexOf('http')===0; }); return c; });
+        localStorage.setItem('hh_merch_deals_' + currentUser.id, JSON.stringify({d:_slim, time:Date.now()}));
+      } catch(e){}
     }
 
     // 6b. Deals are ready — refresh the open page now; purchases keep loading below
