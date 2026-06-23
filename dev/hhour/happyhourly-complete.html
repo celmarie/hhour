@@ -2388,7 +2388,7 @@ body, button, input, textarea, select {
   /* Bottom nav — frosted glass, hairline border, safe-area padding */
   .bnav{
     height:calc(var(--nav) + env(safe-area-inset-bottom, 0px));
-    padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));
+    padding-bottom:calc(3px + env(safe-area-inset-bottom, 0px));
     background:rgba(255,255,255,.92);
     -webkit-backdrop-filter:saturate(180%) blur(20px);
     backdrop-filter:saturate(180%) blur(20px);
@@ -2423,6 +2423,15 @@ body, button, input, textarea, select {
      shows/hides — otherwise the shell stays svh-short and leaves an empty gap
      at the bottom when the toolbar retracts. */
   .shell{ width:100vw; max-width:100vw; height:100svh; height:100dvh; border-radius:0; box-shadow:none; }
+}
+
+/* Added-to-Home-Screen (standalone): there's no browser toolbar, so 100vh is the
+   whole screen. Pin the shell + login to it — some iOS builds report dvh short in
+   standalone, which leaves an empty strip below the bottom nav / login screen. */
+@media all and (display-mode:standalone){
+  html, body{ height:100vh; }
+  .shell{ height:100vh; }
+  #login-screen{ height:100vh; }
 }
 
 </style>
