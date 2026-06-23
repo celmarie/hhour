@@ -5510,6 +5510,7 @@ function _showMerchantLogin(show){
   if(ml) ml.style.display = show ? 'flex' : 'none';
   if(show && ls) ls.style.display = 'none';
   if(show){
+    try { _lockLoginInputs(false); } catch(e){}   // merchant login shown → re-enable its fields
     var lbl = document.getElementById('m-lang-label');
     if(lbl){ var cur=''; try{ cur=localStorage.getItem('hh-language')||'English'; }catch(e){} lbl.textContent = cur || 'English'; }
   }
@@ -5929,6 +5930,18 @@ function loadDealsFromCache(){
       if(typeof renderUC === 'function') renderUC('all');
     }
   }catch(e){ ucDeals = []; }
+  // Hydrate community events from cache too, so the Meetups tab works offline.
+  try {
+    var cachedEv = localStorage.getItem('hh_events_cache');
+    if(cachedEv){
+      var dataE = JSON.parse(cachedEv);
+      if(Array.isArray(dataE.e) && dataE.e.length){
+        comMeetups = dataE.e;
+        var _cc = document.getElementById('com-tab-content');
+        if(_cc && typeof comCurrentTab!=='undefined' && comCurrentTab==='meetups' && typeof comRenderMeetups==='function') comRenderMeetups(_cc);
+      }
+    }
+  } catch(e){}
 }
 
 // ── Real-time subscriptions for deals ──────────────────────────────────────
@@ -5984,6 +5997,7 @@ async function loadEventsFromSupabase(){
           image_url:row.image_url||''};
       });
       comMeetups=fresh; // DB has real events — use them
+      try { localStorage.setItem('hh_events_cache', JSON.stringify({e:comMeetups, time:Date.now()})); } catch(e){}
     }
     // If evData is empty array, keep the seed data (don't clear it)
   }catch(e){ console.warn('[loadEventsFromSupabase]',e); }
@@ -28697,7 +28711,7 @@ function _setupDealMap() {
       </div>
       <input id="login-user" type="email" placeholder="Email address" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="email">
       <div style="position:relative;">
-        <input id="login-pass" type="password" placeholder="Password" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 48px 15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
+        <input id="login-pass" type="password" placeholder="Password" disabled style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 48px 15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
         <button type="button" onclick="togglePw('login-pass')" title="Show / hide password" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.04);border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7B72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
@@ -28774,7 +28788,7 @@ function _setupDealMap() {
     <!-- Password -->
     <label style="display:block;font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:8px;">Password</label>
     <div style="position:relative;margin-bottom:14px;">
-      <input id="m-login-pass" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:16px 48px 16px 16px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
+      <input id="m-login-pass" type="password" autocomplete="current-password" disabled style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:16px 48px 16px 16px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
       <button type="button" onclick="mTogglePw()" title="Show / hide password" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#F0F0F4;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
         <svg id="m-pw-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B76" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
