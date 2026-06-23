@@ -2849,6 +2849,26 @@ function _loadGT(){
 </style>
 </head>
 <body>
+<!-- Offline note — shown whenever there's no internet. Data on screen is the
+     last-cached deals (served from localStorage); login & fresh data need a connection. -->
+<div id="offline-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:1000000;background:#B45309;color:#fff;text-align:center;font-size:12.5px;font-weight:800;padding:calc(7px + env(safe-area-inset-top,0px)) 14px 7px;font-family:'Inter',sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.2);">📡 You’re offline — showing your last-saved deals</div>
+<script>
+(function(){
+  function _updOfflineBar(){ var b=document.getElementById('offline-bar'); if(b) b.style.display = navigator.onLine ? 'none' : 'block'; }
+  window.addEventListener('offline', _updOfflineBar);
+  window.addEventListener('online', function(){
+    _updOfflineBar();
+    try { if(typeof loadDealsFromSupabase==='function') loadDealsFromSupabase(); if(typeof loadEventsFromSupabase==='function') loadEventsFromSupabase(); } catch(e){}
+  });
+  document.addEventListener('DOMContentLoaded', _updOfflineBar);
+  _updOfflineBar();
+  // Service worker — caches the app shell + libraries + fonts + deal photos so the
+  // app opens offline. Deal data comes from the localStorage cache the app keeps.
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(e){ console.warn('[sw] register failed', e); }); });
+  }
+})();
+</script>
 <div id="portal-boot-splash" aria-hidden="true">
   <div class="pbs-spin"></div>
   <div style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:#9A9AB0;">Loading…</div>
@@ -6902,8 +6922,10 @@ document.addEventListener('DOMContentLoaded', async function(){
     if (_ls) _ls.style.display = 'none';
   }
 
-  // Load public deals, events and config in parallel; fetch settings once (not on every render)
-  await Promise.all([loadDealsFromSupabase(), loadEventsFromSupabase(), loadAppConfig()]);
+  // Load public deals, events and config in parallel; fetch settings once (not on every render).
+  // allSettled (not all) so that offline — when these reject — boot still continues and the
+  // cached deals already hydrated by loadDealsFromCache() stay on screen.
+  await Promise.allSettled([loadDealsFromSupabase(), loadEventsFromSupabase(), loadAppConfig()]);
   loadFooterFromDB(); loadWatchSettingFromDB(); loadWcFixturesFromDB();
 
   // Render deals now that we have fresh data
