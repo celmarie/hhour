@@ -5478,6 +5478,11 @@ function mTogglePw(){
   var p = document.getElementById('m-login-pass');
   if(p) p.type = (p.type === 'password') ? 'text' : 'password';
 }
+// Generic show/hide password toggle (customer login eye button).
+function togglePw(id){
+  var p = document.getElementById(id);
+  if(p) p.type = (p.type === 'password') ? 'text' : 'password';
+}
 async function doMerchantLogin(){
   var em = (document.getElementById('m-login-email')||{}).value || '';
   var pw = (document.getElementById('m-login-pass')||{}).value || '';
@@ -13500,13 +13505,12 @@ async function doLogin(){
       // doSignUp() will detect "already registered" and bounce them back to Sign In.
       var _invalidCreds = /invalid login credentials|invalid email or password/i.test(error.message || '')
         || error.status === 400;
-      if (_invalidCreds && loginRole !== 'admin' && loginRole !== 'merchant') {
-        switchAuthMode('signup');
-        var _confirmEl = document.getElementById('signup-confirm');
-        if (_confirmEl) _confirmEl.value = p;   // prefill confirm so they only add their name
-        errEl.textContent = "No account found with those details — let's get you set up below 👇";
-        var _nameEl = document.getElementById('signup-first');
-        if (_nameEl) setTimeout(function(){ _nameEl.focus(); }, 50);
+      // Wrong email/password: keep exactly what they typed so they can review and
+      // fix it — don't wipe the form or yank customers over to the signup screen.
+      if (_invalidCreds) {
+        errEl.textContent = (loginRole === 'customer')
+          ? 'Invalid email or password. Double-check your details — or tap “Create Account” if you’re new.'
+          : 'Invalid email or password.';
         return;
       }
       errEl.textContent = error.message;
@@ -28647,7 +28651,12 @@ function _setupDealMap() {
         <input id="signup-dob" type="date" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;">
       </div>
       <input id="login-user" type="email" placeholder="Email address" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="email">
-      <input id="login-pass" type="password" placeholder="Password" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
+      <div style="position:relative;">
+        <input id="login-pass" type="password" placeholder="Password" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 48px 15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
+        <button type="button" onclick="togglePw('login-pass')" title="Show / hide password" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.04);border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7B72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
       <input id="signup-confirm" type="password" placeholder="Confirm password" style="display:none;width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')doSignUp()">
     </div>
 
