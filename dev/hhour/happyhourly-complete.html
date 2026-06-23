@@ -21671,6 +21671,13 @@ async function loadMerchantData(){
   // dashboard isn't empty with no connection (refreshed below when online).
   try { var _mc = localStorage.getItem('hh_merch_deals_' + currentUser.id); if(_mc){ var _mcd = JSON.parse(_mc); if(Array.isArray(_mcd.d) && _mcd.d.length) dealsData = _mcd.d; } } catch(e){}
   try {
+    var _vc = localStorage.getItem('hh_merch_vouchers_' + currentUser.id);
+    if(_vc){ var _vcd = JSON.parse(_vc);
+      if(Array.isArray(_vcd.v)){ vouchersData = _vcd.v; meVoucherPurchaseMap = {}; vouchersData.forEach(function(v){ meVoucherPurchaseMap[String(v.id)] = v; }); }
+      if(typeof _vcd.bal === 'number') meCurrentBalance = _vcd.bal;
+    }
+  } catch(e){}
+  try {
     // 1. Try cached venue ID first (avoids re-query)
     var cachedVenue = localStorage.getItem('_cachedVenueId_' + currentUser.id);
     var venue;
@@ -21842,6 +21849,16 @@ async function loadMerchantData(){
         var totalRev = purch.reduce(function(s,p){ return s + priceToNum(p.deals && p.deals.price); }, 0);
         var comm = (finConfig.commission || 15) / 100;
         meCurrentBalance = parseFloat((totalRev * (1 - comm)).toFixed(2));
+
+        // Cache vouchers/bookings for offline viewing — buyer EMAIL is omitted
+        // (PII shouldn't persist in browser storage); codes/names/status remain.
+        try {
+          var _vslim = vouchersData.map(function(v){
+            return { id:v.id, name:v.name, emoji:v.emoji, sold:v.sold, redeemed:v.redeemed, total:v.total, priceNum:v.priceNum, price:v.price, rev:v.rev,
+              purchases: (v.purchases||[]).map(function(p){ return { code:p.code, buyer:p.buyer, status:p.status, date:p.date, price:p.price }; }) };
+          });
+          localStorage.setItem('hh_merch_vouchers_' + currentUser.id, JSON.stringify({v:_vslim, bal:meCurrentBalance, time:Date.now()}));
+        } catch(e){}
       }
   } catch(e){ console.warn('[Supabase] loadMerchantData failed', e); }
 }
