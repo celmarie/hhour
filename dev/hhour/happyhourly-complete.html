@@ -14024,6 +14024,7 @@ async function loadAdminData(){
         else if(r.is_free) offVal = 'FREE';
         return {
           id: r.id, _dbId: r.id, _userId: r.user_id || null,
+          submitterIp: r.submitter_ip||'', submitterLocation: r.submitter_location||'',
           venue: r.venue_name||'', name: r.venue_name||'',
           deal: r.title||'', desc: r.description||'',
           address: r.address||'',
@@ -17474,10 +17475,14 @@ function adminPage(page,btn){
 
     // ── PENDING COMMUNITY SUBMISSIONS ──────────────────────────────────────────
     dHtml += '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:12px;">'
-      +'<div style="padding:14px 16px;border-bottom:1px solid #E8E8EC;display:flex;align-items:center;justify-content:space-between;">'
-        +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;">Community submissions</div>'
-        +(pending.length?'<span style="background:rgba(217,119,6,.1);color:#B45309;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+pending.length+' pending</span>':'<span style="font-size:12px;color:#9A9AB0;">All clear ✓</span>')
-      +'</div>'
+      +'<button onclick="admToggleSection(\'adm-pending-community\',\'adm-pending-chev\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:none;border-bottom:1px solid #E8E8EC;background:none;cursor:pointer;font-family:Inter,sans-serif;">'
+        +'<div style="display:flex;align-items:center;gap:8px;">'
+          +'<span style="font-size:14px;font-weight:800;color:#1A1A1A;">Community submissions</span>'
+          +(pending.length?'<span style="background:rgba(217,119,6,.1);color:#B45309;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+pending.length+' pending</span>':'<span style="font-size:12px;color:#9A9AB0;">All clear ✓</span>')
+        +'</div>'
+        +'<span id="adm-pending-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
+      +'</button>'
+      +'<div id="adm-pending-community">'
       +(pending.length===0
         ? '<div style="padding:28px 16px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">✅</div><div style="font-size:14px;font-weight:700;color:#9A9AB0;">No pending submissions</div></div>'
         : pending.map(function(deal){
@@ -17505,6 +17510,7 @@ function adminPage(page,btn){
             +'</div>';
           }).join('')
       )
+      +'</div>'
     +'</div>';
 
     // ── LIVE COMMUNITY DEALS (approved) ────────────────────────────────────────
@@ -18964,6 +18970,7 @@ function adminOpenDealReview(id, source){
     document.getElementById('adm-rev-avatar').style.background = '#1D4ED8';
     document.getElementById('adm-rev-user').textContent = deal.name||'Merchant';
     document.getElementById('adm-rev-ago').textContent = deal.days||'';
+    var _mle=document.getElementById('adm-rev-loc'); if(_mle) _mle.style.display='none';
     document.getElementById('adm-rev-meta').innerHTML = '<span style="font-size:11px;font-weight:700;background:#EFF6FF;color:#1D4ED8;padding:3px 10px;border-radius:20px;">✓ Verified Merchant</span>';
     var pill = document.getElementById('adm-rev-status-pill');
     pill.textContent='● Active'; pill.style.background='rgba(18,161,80,.1)'; pill.style.color='#12A150';
@@ -19123,6 +19130,13 @@ function adminReviewDeal(id){
   document.getElementById('adm-rev-avatar').style.background = deal.userCol||'#E8192C';
   document.getElementById('adm-rev-user').textContent = deal.user||'Community';
   document.getElementById('adm-rev-ago').textContent = deal.submittedAt||deal.ago||'';
+  (function(){
+    var le = document.getElementById('adm-rev-loc'); if(!le) return;
+    var loc = deal.submitterLocation || '', ip = deal.submitterIp || '';
+    le.style.display = 'block';
+    if(loc || ip){ le.innerHTML = '📍 ' + esc(loc || 'Unknown location') + (ip ? (' · <span style="font-family:monospace;color:#9A9AB0;">'+esc(ip)+'</span>') : ''); }
+    else { le.textContent = '📍 Location not captured'; }
+  })();
 
   // Extra submission details row
   var extraEl = document.getElementById('adm-rev-extra');
@@ -29178,6 +29192,7 @@ function _setupDealMap() {
           <div>
             <div id="adm-rev-user" style="font-size:13px;font-weight:700;color:#1A1A1A;"></div>
             <div id="adm-rev-ago" style="font-size:11px;color:#9A9AB0;"></div>
+            <div id="adm-rev-loc" style="font-size:11px;color:#6B6B76;margin-top:3px;display:none;"></div>
           </div>
         </div>
       </div>
