@@ -16751,12 +16751,15 @@ function adminPage(page,btn){
     }
 
     // ── ② STAT SUMMARY ──────────────────────────────────────────────────────────
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">'
-      +[['💰','€18,420','Revenue'],['🎟️','463','Vouchers'],['🏪','4','Merchants'],['👥','892','Users']].map(function(s){
-        return '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:14px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.04);">'
-          +'<div style="font-size:20px;margin-bottom:6px;">'+s[0]+'</div>'
-          +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;line-height:1;">'+s[1]+'</div>'
-          +'<div style="font-size:10px;color:#9A9AB0;font-weight:600;margin-top:4px;">'+s[2]+'</div>'
+    // Real counts: active venues (excludes pending applications) + total registered users.
+    var _merchCount = (typeof adminMerchants!=='undefined' && adminMerchants) ? adminMerchants.filter(function(m){ return m._source !== 'application'; }).length : 0;
+    var _userCount  = (typeof adminUsers!=='undefined' && adminUsers) ? adminUsers.length : 0;
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'
+      +[['🏪',String(_merchCount),'Merchants'],['👥',String(_userCount),'Users']].map(function(s){
+        return '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.04);">'
+          +'<div style="font-size:22px;margin-bottom:6px;">'+s[0]+'</div>'
+          +'<div style="font-size:22px;font-weight:900;color:#1A1A1A;line-height:1;">'+s[1]+'</div>'
+          +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;margin-top:5px;">'+s[2]+'</div>'
         +'</div>';
       }).join('')
     +'</div>';
