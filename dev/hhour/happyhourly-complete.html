@@ -2396,6 +2396,10 @@ body, button, input, textarea, select {
     box-shadow:0 -4px 24px rgba(20,20,40,.06);
   }
   .screen{ padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom, 0px)); }
+  /* Push every non-Deals screen's header below the iPhone notch / status bar so the
+     title & back button aren't covered by the earpiece/battery (the Deals hero already
+     includes its own safe-area-top padding). */
+  .screen:not(#screen-deals) > *:first-child{ padding-top:calc(env(safe-area-inset-top, 0px) + 14px) !important; }
   .niw{ width:42px; height:30px; border-radius:12px; }
   .ni.on .niw{ background:rgba(232,25,44,.10); }
   .nlbl{ font-size:10.5px; }
