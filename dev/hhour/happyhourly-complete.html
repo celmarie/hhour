@@ -17555,7 +17555,7 @@ function adminPage(page,btn){
         +'<span id="adm-pending-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
       +'</button>'
       +'<div id="adm-pending-community">'
-      +(pending.length>1 ? '<div style="padding:10px 16px;border-bottom:1px solid #F0F0F4;"><button onclick="adminApproveAllPending()" style="width:100%;background:rgba(18,161,80,.1);color:#12A150;border:1.5px solid rgba(18,161,80,.25);border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✅ Approve all '+pending.length+' pending</button></div>' : '')
+      +(pending.length>1 ? '<div style="padding:7px 16px;border-bottom:1px solid #F0F0F4;text-align:right;"><button onclick="adminApproveAllPending()" style="background:none;border:none;color:#9A9AB0;font-size:11.5px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;padding:2px 4px;">Approve all '+pending.length+' →</button></div>' : '')
       +(pending.length===0
         ? '<div style="padding:28px 16px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">✅</div><div style="font-size:14px;font-weight:700;color:#9A9AB0;">No pending submissions</div></div>'
         : pending.map(function(deal){
