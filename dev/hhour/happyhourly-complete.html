@@ -14929,7 +14929,8 @@ async function adminSaveNewMerchant() {
 
   try {
     // Create profile for owner if not exists
-    var { data: existingOwner } = await db.from('profiles').select('id').eq('email', ownerEmail).single().catch(()=>({data:null}));
+    var existingOwner = null;
+    try { var _eoRes = await db.from('profiles').select('id').eq('email', ownerEmail).maybeSingle(); existingOwner = _eoRes && _eoRes.data; } catch(e){ existingOwner = null; }
     var ownerId = existingOwner?.id;
     if (!ownerId) {
       var { data: newProfile } = await db.from('profiles')
@@ -15429,7 +15430,8 @@ async function adminBizAppApprove(idx){
     //    emailed temp password + forced password change on first login).
     var ownerId = null;
     var createdLogin = false;
-    var { data: existing } = await db.from('profiles').select('id').eq('email', app.ownerEmail).maybeSingle().catch(function(){ return {data:null}; });
+    var existing = null;
+    try { var _exRes = await db.from('profiles').select('id').eq('email', app.ownerEmail).maybeSingle(); existing = _exRes && _exRes.data; } catch(e){ existing = null; }
     if(existing && existing.id){
       ownerId = existing.id;
       await db.from('profiles').update({role:'merchant'}).eq('id', ownerId);
@@ -15478,15 +15480,15 @@ async function adminBizAppApprove(idx){
 
     // 5. Store Stripe account ID on venue/profile
     if(stripeAccountId){
-      await db.from('venues').update({stripe_account_id: stripeAccountId}).eq('id', venueRow.id).catch(function(){});
+      await Promise.resolve(db.from('venues').update({stripe_account_id: stripeAccountId}).eq('id', venueRow.id)).catch(function(){});
     }
 
     // 6. Mark application approved
-    await db.from('merchant_applications').update({
+    await Promise.resolve(db.from('merchant_applications').update({
       status: 'approved',
       stripe_account_id: stripeAccountId || null,
       stripe_onboarding_url: onboardingUrl || null
-    }).eq('id', app._appId).catch(function(){ return db.from('merchant_applications').update({status:'approved'}).eq('id', app._appId); });
+    }).eq('id', app._appId)).catch(function(){ return db.from('merchant_applications').update({status:'approved'}).eq('id', app._appId); });
 
     // 7. Remove from local list and refresh
     adminMerchants.splice(idx, 1);
@@ -15527,7 +15529,7 @@ async function adminBizAppReject(idx){
   var app = adminMerchants[idx];
   if(!app || !app._appId) return;
   try {
-    await db.from('merchant_applications').update({status:'rejected', rejection_reason: reason}).eq('id', app._appId).catch(function(){
+    await Promise.resolve(db.from('merchant_applications').update({status:'rejected', rejection_reason: reason}).eq('id', app._appId)).catch(function(){
       // rejection_reason column may not exist yet — try without it
       return db.from('merchant_applications').update({status:'rejected'}).eq('id', app._appId);
     });
@@ -23442,7 +23444,7 @@ async function meConfirmRedeem(purchaseId, code, customerName, dealName, price, 
         user_id: customerId, delta: crAmt,
         reason: 'Voucher redeemed at venue', ref: code
       });
-      await db.rpc('increment_profile_credits', {p_user_id: customerId, p_amount: crAmt}).catch(function(){});
+      await Promise.resolve(db.rpc('increment_profile_credits', {p_user_id: customerId, p_amount: crAmt})).catch(function(){});
     } catch(ce){ console.warn('[meConfirmRedeem] credits error:', ce); }
 
     // 3. Log locally
@@ -25229,7 +25231,7 @@ async function crLoadLeaderboard(){
   try{
     // Try the SECURITY DEFINER RPC first, fall back to direct query
     var profiles=[];
-    var {data:d1}=await db.rpc('admin_get_all_profiles').catch(function(){return{data:null};});
+    var {data:d1}=await Promise.resolve(db.rpc('admin_get_all_profiles')).catch(function(){return{data:null};});
     if(d1&&d1.length) profiles=d1;
     else{
       var {data:d2}=await db.from('profiles').select('id,name,credits').order('credits',{ascending:false}).limit(10);
@@ -26051,14 +26053,14 @@ async function comConfirm(id){
         console.log('[comConfirm] RSVP saved successfully');
       }
       // Update event going count
-      await db.from('community_events').update({going:m.going}).eq('id',m._dbId).catch(function(e){
+      await Promise.resolve(db.from('community_events').update({going:m.going}).eq('id',m._dbId)).catch(function(e){
         console.warn('[comConfirm] Update going count failed:', e.message);
       });
     }catch(e){ console.error('[comConfirm] Exception:', e); }
     // Award credits in DB
     if(currentProfile){
       var newCr=(currentProfile.credits||0)+evCr;
-      await db.rpc('award_credits',{p_amount:evCr,p_reason:'Event joined',p_ref:String(m._dbId)}).catch(function(){});
+      await Promise.resolve(db.rpc('award_credits',{p_amount:evCr,p_reason:'Event joined',p_ref:String(m._dbId)})).catch(function(){});
       currentProfile.credits=newCr;
     }
   }
@@ -26076,8 +26078,8 @@ async function comCancelRSVP(id){
     try{
       var {error:e1}=await db.rpc('cancel_rsvp',{p_event_id:m._dbId,p_user_id:currentUser.id});
       if(e1){
-        await db.from('event_rsvps').delete().eq('event_id',m._dbId).eq('user_id',currentUser.id).catch(function(){});
-        await db.from('community_events').update({going:m.going}).eq('id',m._dbId).catch(function(){});
+        await Promise.resolve(db.from('event_rsvps').delete().eq('event_id',m._dbId).eq('user_id',currentUser.id)).catch(function(){});
+        await Promise.resolve(db.from('community_events').update({going:m.going}).eq('id',m._dbId)).catch(function(){});
       }
     }catch(e){ console.warn('[comCancelRSVP]',e); }
   }
