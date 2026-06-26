@@ -18782,6 +18782,7 @@ async function adminConfirmReject(id){
   deal.status = 'rejected';
   deal.rejectionReason = reason;
   document.getElementById('adm-reject-modal').remove();
+  try { if(typeof adminCloseReview==='function') adminCloseReview(); } catch(e){}   // also close the Review Submission window
 
   alerts.unshift({
     id: alerts.length, type: 'new', icon: '❌', cls: 'ai-red',
