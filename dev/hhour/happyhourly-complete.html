@@ -15505,7 +15505,9 @@ async function adminBizAppApprove(idx){
 
     // 7. Remove from local list and refresh
     adminMerchants.splice(idx, 1);
-    document.getElementById('adm-bizapp-modal').remove();
+    // Close whichever modal launched this (business-app review OR merchant detail).
+    var _bm=document.getElementById('adm-bizapp-modal'); if(_bm) _bm.remove();
+    var _mm=document.getElementById('admin-merchant-modal'); if(_mm) _mm.remove();
     await loadAdminData();
     // Optimistic: ensure the just-created venue shows even if the reload missed it.
     if(venueRow && venueRow.id && !adminMerchants.some(function(m){ return m._venueId===venueRow.id; })){
@@ -15567,8 +15569,10 @@ async function adminApproveMerchant(idx) {
     return;
   }
   if (!m._venueId) {
+    // Pending application (no venue yet) → run the app-approve flow, which CREATES
+    // the venue + login + Stripe account. (The plain venue-activate below needs a venue.)
+    if (m._appId != null && typeof adminBizAppApprove === 'function') { adminBizAppApprove(idx); return; }
     showToast('❌ Venue ID missing - cannot save');
-    console.log('[adminApproveMerchant] _venueId missing!', m);
     return;
   }
   m.status = 'active';
@@ -15590,6 +15594,11 @@ async function adminRejectMerchant(idx) {
     return;
   }
   if (!m._venueId) {
+    // Pending application (no venue) → open the proper review modal to reject with a reason.
+    if (m._appId != null && typeof adminOpenBizApplication === 'function') {
+      var _mm=document.getElementById('admin-merchant-modal'); if(_mm) _mm.remove();
+      adminOpenBizApplication(idx); return;
+    }
     showToast('❌ Venue ID missing - cannot save');
     return;
   }
