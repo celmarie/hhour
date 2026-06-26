@@ -2754,6 +2754,7 @@ function _loadGT(){
   /* ── HERO: replaces the mobile red header + map strip on web ── */
   #screen-deals .red-hdr{ display:none !important; }
   #home-map-strip{ display:none !important; }
+  #home-events-card{ display:block !important; }   /* Events entry card — web only */
   #web-hero{
     display:block !important; position:relative; overflow:hidden;
     border-radius:18px 18px 0 0;
@@ -3037,6 +3038,20 @@ function _loadGT(){
           </div>
           <div style="position:relative;z-index:1;flex-shrink:0;width:34px;height:34px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#12A150" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVENTS card (web home entry — hidden on mobile, the bottom nav covers it there) -->
+      <div id="home-events-card" style="display:none;padding:16px 16px 0;">
+        <div onclick="goScreen('community')" style="position:relative;overflow:hidden;cursor:pointer;border-radius:18px;background:#fff;border:1.5px solid #ECECEC;padding:16px 18px;display:flex;align-items:center;gap:16px;box-shadow:0 4px 16px rgba(0,0,0,.06);">
+          <div style="flex-shrink:0;width:58px;height:58px;border-radius:16px;background:linear-gradient(135deg,#EEF2FF,#DCE4FF);display:flex;align-items:center;justify-content:center;font-size:30px;position:relative;">🎉<span style="position:absolute;top:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:#E8192C;border:2px solid #fff;"></span></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:18px;font-weight:900;color:#1A1A1A;letter-spacing:-.3px;font-family:Inter,sans-serif;">Events</div>
+            <div style="font-size:13px;color:#E8192C;font-weight:700;font-family:Inter,sans-serif;margin-top:2px;">Meetups &amp; events</div>
+          </div>
+          <div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#F5F5F7;display:flex;align-items:center;justify-content:center;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#9A9AB0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
         </div>
       </div>
