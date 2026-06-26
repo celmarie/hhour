@@ -5394,8 +5394,10 @@ db.auth.onAuthStateChange(function(event, session){
   } else {
     console.log('[onAuthStateChange] No session');
     currentUser = null;
-    // Only show login if we've finished initializing
-    if(_authInitialized && !_isPublicDeepLink() && document.getElementById('login-screen')){
+    // Only force the login screen on login-required portals (merchant/admin) and
+    // when we're not already browsing as a guest. The customer site stays guest-first,
+    // so an INITIAL_SESSION(null) on boot or a customer logout won't wall them off.
+    if(_authInitialized && _loginRequiredPath() && !isGuest && document.getElementById('login-screen')){
       isGuest = false;
       showLoginScreen();
     }
@@ -5413,6 +5415,16 @@ function _isPublicDeepLink(){
     if(/^\/watch\/.+/.test(p))  return true;   // shared watch spot
     if(typeof getPendingPublicPage==='function' && getPendingPublicPage()) return true; // /terms etc.
     return false;
+  }catch(e){ return false; }
+}
+
+// Login-required portals: the merchant (/merchant) and admin (/fireclay) areas must
+// sign in. The customer site (/) is guest-first (Groupon-style) — browse freely, log
+// in only when you tap Sign in or a gated action (buy/save) asks for it.
+function _loginRequiredPath(){
+  try{
+    var p = (location.pathname||'').replace(/\/+$/,'').toLowerCase();
+    return p==='/merchant' || p.indexOf('/merchant/')===0 || p==='/fireclay' || p.indexOf('/fireclay/')===0;
   }catch(e){ return false; }
 }
 
@@ -5440,11 +5452,22 @@ async function initializeAuth(){
     var _spp=document.getElementById('role-splash');  if(_spp) _spp.style.display='none';
     updateGuestVisibility();
     updateLogoutBtnLabel();
-  } else {
-    console.log('[initializeAuth] No session, showing login');
+  } else if(_loginRequiredPath()){
+    console.log('[initializeAuth] No session on a login-required portal, showing login');
     _authInitialized = true;
     isGuest = false;
     showLoginScreen();
+  } else {
+    // Customer site (/): no session → browse as a GUEST on the home page (Groupon-
+    // style), not the login wall. Login appears only when the user taps Sign in or a
+    // gated action (buy/save) prompts it via requireLogin().
+    console.log('[initializeAuth] No session on customer site → guest home');
+    _authInitialized = true;
+    isGuest = true;
+    var _lsg=document.getElementById('login-screen'); if(_lsg) _lsg.style.display='none';
+    var _spg=document.getElementById('role-splash');  if(_spg) _spg.style.display='none';
+    updateGuestVisibility();
+    updateLogoutBtnLabel();
   }
 }
 
@@ -6897,12 +6920,12 @@ document.addEventListener('DOMContentLoaded', async function(){
   // exists — initializeAuth may have run showLoginScreen before parsing finished.
   try { if(typeof _applyLoginPrefill === 'function') _applyLoginPrefill(); } catch(e){}
 
-  // Public deep link (shared deal / watch spot / legal page) with NO session →
-  // browse as a GUEST instead of the login wall (Groupon-style). initializeAuth
-  // may have tried to hide login before #login-screen was parsed, so we re-assert
-  // it here now that the DOM exists.
+  // Customer site & public deep links with NO session → browse as a GUEST instead
+  // of the login wall (Groupon-style). Only /merchant and /fireclay require login.
+  // initializeAuth may have tried to hide login before #login-screen was parsed, so
+  // we re-assert it here now that the DOM exists.
   try {
-    if(_isPublicDeepLink()){
+    if(!_loginRequiredPath()){
       var _sess0 = await db.auth.getSession();
       if(!(_sess0 && _sess0.data && _sess0.data.session)){
         isGuest = true;
