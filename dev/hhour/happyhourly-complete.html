@@ -14967,6 +14967,12 @@ async function adminSaveNewMerchant() {
 function adminEditMerchant(idx) {
   var m = adminMerchants[idx];
   if (!m) return;
+  // Pending applications aren't venues yet (no _venueId) — open Review/Approve instead
+  // of the venue-edit form, which can't save without a venue id.
+  if (!m._venueId) {
+    if (m._appId != null && typeof adminOpenBizApplication === 'function') { adminOpenBizApplication(idx); return; }
+    showToast('❌ No venue yet — approve the application first'); return;
+  }
   var html = '<div id="admin-edit-merchant-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;overflow-y:auto;" onclick="if(event.target===this)this.remove()">'
     +'<div style="background:white;border-radius:20px;width:90%;max-width:500px;margin:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">'
       +'<div style="background:#1A1A1A;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">'
