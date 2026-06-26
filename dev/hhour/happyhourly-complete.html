@@ -7190,6 +7190,19 @@ function _normalizeCategories(){
   appCategories.length = 0; out.forEach(function(c){ appCategories.push(c); });
 }
 
+// Build the <option> list for the merchant "Venue Type" pickers from the
+// admin-managed Content categories (appCategories), so venue types follow Content.
+// Preserves an existing/legacy value that isn't in the Content list so it still shows.
+function _venueTypeOptionsHtml(selected){
+  var ids = {}, html = '<option value="">Select type…</option>';
+  (appCategories||[]).forEach(function(c){
+    if(!c || !c.id) return; ids[c.id] = true;
+    html += '<option value="'+esc(c.id)+'"'+((selected && selected===c.id)?' selected':'')+'>'+(c.emoji?esc(c.emoji)+' ':'')+esc(c.label||c.id)+'</option>';
+  });
+  if(selected && !ids[selected]){ html += '<option value="'+esc(selected)+'" selected>'+esc(selected)+'</option>'; }
+  return html;
+}
+
 function applyAppCategories(){
   // Consumer filter chips
   var chips = document.getElementById('cat-chips');
@@ -14852,15 +14865,7 @@ function adminAddMerchantModal() {
           +'<input id="add-m-address" autocomplete="off" placeholder="e.g. Carrer de Montcada 1" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" oninput="addrInput(\'add-m-address\')" onfocus="this.style.borderColor=\'#E8192C\'" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Venue Type</label>'
           +'<select id="add-m-type" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
-            +'<option value="">Select type...</option>'
-            +'<option value="bar">🍺 Bar / Pub</option>'
-            +'<option value="restaurant">🍽️ Restaurant</option>'
-            +'<option value="cafe">☕ Café</option>'
-            +'<option value="cocktail">🍸 Cocktail Bar</option>'
-            +'<option value="wine">🍷 Wine Bar</option>'
-            +'<option value="club">🎶 Club</option>'
-            +'<option value="hotel">🏨 Hotel</option>'
-            +'<option value="other">🏪 Other</option>'
+            +_venueTypeOptionsHtml('')
           +'</select></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Website / Socials</label>'
           +'<input id="add-m-web" placeholder="www.venue.com or @handle" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'"></div>'
@@ -14975,15 +14980,7 @@ function adminEditMerchant(idx) {
           +'<input id="edit-m-address" autocomplete="off" value="'+esc(m.address||'')+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" oninput="addrInput(\'edit-m-address\')" onfocus="this.style.borderColor=\'#E8192C\';addrInput(\'edit-m-address\')" onblur="addrValidate(\'edit-m-address\');setTimeout(_addrHideDrop,150);this.style.borderColor=\'#E8E8EC\'"></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Venue Type</label>'
           +'<select id="edit-m-type" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
-            +'<option value="">Select type...</option>'
-            +'<option value="bar"'+(m.type==='bar'?' selected':'')+'>🍺 Bar / Pub</option>'
-            +'<option value="restaurant"'+(m.type==='restaurant'?' selected':'')+'>🍽️ Restaurant</option>'
-            +'<option value="cafe"'+(m.type==='cafe'?' selected':'')+'>☕ Café</option>'
-            +'<option value="cocktail"'+(m.type==='cocktail'?' selected':'')+'>🍸 Cocktail Bar</option>'
-            +'<option value="wine"'+(m.type==='wine'?' selected':'')+'>🍷 Wine Bar</option>'
-            +'<option value="club"'+(m.type==='club'?' selected':'')+'>🎶 Club</option>'
-            +'<option value="hotel"'+(m.type==='hotel'?' selected':'')+'>🏨 Hotel</option>'
-            +'<option value="other"'+(m.type==='other'?' selected':'')+'>🏪 Other</option>'
+            +_venueTypeOptionsHtml(m.type)
           +'</select></div>'
         +'<div style="background:#F5F5F7;border-radius:10px;padding:12px;">'
           +'<label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:10px;">📄 Documents</label>'
