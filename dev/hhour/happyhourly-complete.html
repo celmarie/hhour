@@ -17555,6 +17555,7 @@ function adminPage(page,btn){
         +'<span id="adm-pending-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
       +'</button>'
       +'<div id="adm-pending-community">'
+      +(pending.length>1 ? '<div style="padding:10px 16px;border-bottom:1px solid #F0F0F4;"><button onclick="adminApproveAllPending()" style="width:100%;background:rgba(18,161,80,.1);color:#12A150;border:1.5px solid rgba(18,161,80,.25);border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✅ Approve all '+pending.length+' pending</button></div>' : '')
       +(pending.length===0
         ? '<div style="padding:28px 16px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">✅</div><div style="font-size:14px;font-weight:700;color:#9A9AB0;">No pending submissions</div></div>'
         : pending.map(function(deal){
@@ -18555,6 +18556,48 @@ async function adminResumeDeal(id){
   if(typeof renderAllDeals === 'function') renderAllDeals(typeof _adCurTab !== 'undefined' ? _adCurTab : 'all');
   showToast('▶ Deal resumed — live again');
   setTimeout(function(){ adminPage('deals', null); }, 50);
+}
+
+// Approve ALL pending community submissions at once — gated behind a password
+// re-confirmation (with CAPTCHA, like the change-password flow) to prevent slips.
+function adminApproveAllPending(){
+  var pend = pendingCommunityDeals.filter(function(d){ return d.status==='pending'; });
+  if(!pend.length){ showToast('No pending submissions'); return; }
+  var ex=document.getElementById('adm-approveall-ov'); if(ex) ex.remove();
+  var ov=document.createElement('div');
+  ov.id='adm-approveall-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(20,12,8,.7);z-index:1000000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:22px;max-width:380px;width:100%;padding:24px 22px;font-family:Inter,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.35);">'
+    +'<div style="font-size:34px;text-align:center;margin-bottom:8px;">✅</div>'
+    +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;text-align:center;margin-bottom:6px;">Approve all '+pend.length+' submissions?</div>'
+    +'<div style="font-size:13px;color:#8A7B72;text-align:center;margin-bottom:16px;line-height:1.5;">This publishes every pending community deal at once. Enter your password to confirm.</div>'
+    +'<input id="adm-approveall-pw" type="password" placeholder="Your password" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:12px;padding:13px 15px;font-family:Inter,sans-serif;font-size:15px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;margin-bottom:12px;">'
+    +'<div id="captcha-box-approveall" style="display:none;justify-content:center;margin-bottom:12px;"></div>'
+    +'<div id="adm-approveall-err" style="color:#E8192C;font-size:12.5px;font-weight:700;min-height:16px;margin:0 2px 8px;text-align:center;"></div>'
+    +'<button id="adm-approveall-confirm" onclick="_adminDoApproveAll()" style="width:100%;background:linear-gradient(135deg,#12A150,#0E8C45);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Approve all</button>'
+    +'<button onclick="var o=document.getElementById(\'adm-approveall-ov\');if(o)o.remove();" style="width:100%;background:none;border:none;color:#9b8b86;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;padding:10px;margin-top:4px;">Cancel</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+  try { _captchaInit('captcha-box-approveall'); } catch(e){}
+  setTimeout(function(){ var p=document.getElementById('adm-approveall-pw'); if(p) p.focus(); }, 100);
+}
+async function _adminDoApproveAll(){
+  var pw=(document.getElementById('adm-approveall-pw')||{}).value||'';
+  var err=document.getElementById('adm-approveall-err');
+  var btn=document.getElementById('adm-approveall-confirm');
+  if(!pw){ if(err) err.textContent='Enter your password.'; return; }
+  if(btn){ btn.disabled=true; btn.textContent='Verifying…'; }
+  try {
+    var r = await db.auth.signInWithPassword({ email: currentUser.email, password: pw, options: _captchaOpts({}, 'captcha-box-approveall') });
+    _captchaReset('captcha-box-approveall');
+    if(r && r.error){ if(err) err.textContent='Incorrect password.'; if(btn){ btn.disabled=false; btn.textContent='Approve all'; } return; }
+  } catch(e){ _captchaReset('captcha-box-approveall'); if(err) err.textContent='Could not verify — try again.'; if(btn){ btn.disabled=false; btn.textContent='Approve all'; } return; }
+  var pend = pendingCommunityDeals.filter(function(d){ return d.status==='pending'; });
+  var ov=document.getElementById('adm-approveall-ov'); if(ov) ov.remove();
+  showToast('⏳ Approving '+pend.length+'…');
+  for(var i=0;i<pend.length;i++){ try { await adminApproveDeal(pend[i].id); } catch(e){} }
+  showToast('✅ Approved '+pend.length+' submission'+(pend.length>1?'s':''));
 }
 
 async function adminApproveDeal(id){
