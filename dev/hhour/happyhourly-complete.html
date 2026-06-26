@@ -14064,12 +14064,17 @@ async function loadAdminData(){
       } catch(e){ return []; }
     })();
 
-    var _pVenues = withTimeout(
-      db.from('venues')
-        .select('*,profiles(id,name,email)')
-        .order('created_at', {ascending:false}),
-      8000
-    ).catch(function(){ return { data: [] }; });
+    // Prefer the SECURITY DEFINER RPC (bypasses RLS so admins reliably see ALL
+    // venues); fall back to a direct query if the function isn't installed yet.
+    var _pVenues = (async function(){
+      try {
+        var r = await withTimeout(db.rpc('admin_list_venues'), 8000);
+        if(!r.error && Array.isArray(r.data)) return { data: r.data };
+      } catch(e){}
+      try {
+        return await withTimeout(db.from('venues').select('*,profiles(id,name,email)').order('created_at', {ascending:false}), 8000);
+      } catch(e){ return { data: [] }; }
+    })();
 
     var _pApps = withTimeout(
       db.from('merchant_applications').select('*').eq('status','pending').order('created_at',{ascending:false}),
@@ -14255,9 +14260,10 @@ async function loadAdminData(){
         city: v.city,
         status: v.status || (v.active ? 'active' : 'pending'),
         address: v.address || '',
-        type: v.category || '',
-        owner_name: v.profiles&&v.profiles.name||'—',
-        owner_email: v.profiles&&v.profiles.email||'',
+        type: v.venue_type || v.category || '',
+        // RPC returns owner_name/owner_email flat; direct query nests them under profiles.
+        owner_name: v.owner_name || (v.profiles&&v.profiles.name) || '—',
+        owner_email: v.owner_email || (v.profiles&&v.profiles.email) || '',
         deleted_at: v.deleted_at,
         created_at: v.created_at
       };
