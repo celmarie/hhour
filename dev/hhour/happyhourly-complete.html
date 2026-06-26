@@ -14057,7 +14057,7 @@ async function loadAdminData(){
       } catch(e){}
       try {
         var d = await withTimeout(
-          db.from('venues').select('id,name,city,status,owner_id,created_at,profiles(name,email)').order('created_at',{ascending:false}),
+          db.from('venues').select('*, profiles(name,email)').order('created_at',{ascending:false}),
           6000
         );
         return (d.data||[]).map(function(v){ return { id:v.id,name:v.name,city:v.city,status:v.status,owner_id:v.owner_id,owner_name:v.profiles&&v.profiles.name||'',owner_email:v.profiles&&v.profiles.email||'',created_at:v.created_at }; });
@@ -14278,7 +14278,7 @@ async function loadAdminData(){
           city: v.city || '—',
           post: v.postcode || '',
           web: v.website || '',
-          type: v.type || '',
+          type: v.venue_type || v.type || '',
           status: v.status || 'pending',
           rev: v.revenue || '—',
           rating: v.rating || '—',
@@ -14943,9 +14943,13 @@ async function adminSaveNewMerchant() {
       ownerId = newProfile?.id;
     }
 
-    // Create venue
-    var { error: venueErr } = await db.from('venues')
-      .insert({ name: venueName, owner_id: ownerId, address: address, venue_type: venueType, website: web, status: status });
+    // Create venue (resilient: drop venue_type if that column isn't present)
+    var _mvp = { name: venueName, owner_id: ownerId, address: address, venue_type: venueType, website: web, status: status };
+    var venueErr = (await db.from('venues').insert(_mvp)).error;
+    if (venueErr && /venue_type/i.test(venueErr.message||'')){
+      delete _mvp.venue_type;
+      venueErr = (await db.from('venues').insert(_mvp)).error;
+    }
     if (venueErr) throw venueErr;
 
     adminMerchants.unshift({
@@ -15467,12 +15471,18 @@ async function adminBizAppApprove(idx){
 
     // 4. Create venue in DB
     if(btn) btn.textContent = 'Creating venue…';
-    var { data: venueRow, error: vErr } = await db.from('venues').insert({
+    var _vp = {
       name: app.name, owner_id: ownerId,
       address: app.address||'', city: app.city||'',
       venue_type: app.type||'bar', website: app.web||'',
       status: 'active', active: true
-    }).select('id').single();
+    };
+    var _vIns = await db.from('venues').insert(_vp).select('id').single();
+    if(_vIns.error && /venue_type/i.test(_vIns.error.message||'')){
+      delete _vp.venue_type;                       // column not present in this DB — create without it
+      _vIns = await db.from('venues').insert(_vp).select('id').single();
+    }
+    var venueRow = _vIns.data, vErr = _vIns.error;
     if(vErr) throw vErr;
 
     // 5. Store Stripe account ID on venue/profile
