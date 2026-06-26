@@ -10122,6 +10122,9 @@ async function adminSaveDealEdits(dealId){
       var dbId=isCommunity._dbId||isCommunity.id;
       var {error:err}=await db.from('community_deals').update(update).eq('id',dbId);
       if(err){showToast('❌ Failed to update: '+err.message);return;}
+      // Bump recency so the edited deal jumps to the top of the admin Live list.
+      var _pcd = pendingCommunityDeals.find(function(d){ return (d._dbId||d.id)===dbId || d.id===dealId; });
+      if(_pcd) _pcd._updatedAt = new Date().toISOString();
 
       // Update local ucDeals object
       var deal=ucDeals.find(function(d){return d.id===dealId||d._dbId===dealId;});
@@ -16773,7 +16776,8 @@ function adminPage(page,btn){
   var body=document.getElementById('admin-body');if(!body)return;
   var sym=finSym();
   if(page==='dashboard'){
-    var pendingDeals  = pendingCommunityDeals.filter(function(d){return d.status==='pending';});
+    var pendingDeals  = pendingCommunityDeals.filter(function(d){return d.status==='pending';})
+      .sort(function(a,b){ var da=a._createdAt||a._updatedAt||'', db=b._createdAt||b._updatedAt||''; return da>db?-1:da<db?1:0; });   // newest submissions first
     var pendingEvents = (typeof comAdminPendingMeetups!=='undefined') ? comAdminPendingMeetups.filter(function(e){return e.status==='pending';}) : [];
     var pendingPay    = adminPayoutQueue.filter(function(p){return p.status==='pending';});
     var pendingApps    = adminMerchants.filter(function(m){ return m._source==='application'; });
@@ -18523,6 +18527,7 @@ async function adminPauseDeal(id){
   var { error } = await db.from('community_deals').update({status:'paused'}).eq('id', dbId);
   if(error){ console.error('[adminPauseDeal]', error.message); showToast('⚠️ Could not pause — '+error.message); return; }
   deal.status = 'paused';
+  deal._updatedAt = new Date().toISOString();   // bump so it sorts to the top by recent activity
   // Hide from the live customer feed in this session (next load also excludes non-approved).
   ucDeals = ucDeals.filter(function(d){ var did = d._dbId || (d.id>9999 ? d.id-10000 : d.id); return did !== dbId; });
   if(typeof renderUC === 'function') renderUC('all');
@@ -18539,6 +18544,7 @@ async function adminResumeDeal(id){
   var { error } = await db.from('community_deals').update({status:'approved'}).eq('id', dbId);
   if(error){ console.error('[adminResumeDeal]', error.message); showToast('⚠️ Could not resume — '+error.message); return; }
   deal.status = 'approved';
+  deal._updatedAt = new Date().toISOString();   // bump so it sorts to the top by recent activity
   var ucDealId = deal._dbId ? (deal._dbId + 10000) : deal.id;
   if(!ucDeals.some(function(d){ var did = d._dbId || (d.id>9999 ? d.id-10000 : d.id); return did === dbId; })){
     ucDeals.unshift({
@@ -18604,6 +18610,7 @@ async function adminApproveDeal(id){
   var deal = pendingCommunityDeals.find(function(d){ return d.id===id; });
   if(!deal) return;
   deal.status = 'approved';
+  deal._updatedAt = new Date().toISOString();   // bump so it sorts to the top by recent activity
   deal.ago = 'Just now';
   deal.timeLeft = '3h 00m';
   deal.rating = 4.2;
