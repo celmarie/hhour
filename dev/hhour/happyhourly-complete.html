@@ -16781,7 +16781,7 @@ function adminPage(page,btn){
   var sym=finSym();
   if(page==='dashboard'){
     var pendingDeals  = pendingCommunityDeals.filter(function(d){return d.status==='pending';})
-      .sort(function(a,b){ var da=a._createdAt||a._updatedAt||'', db=b._createdAt||b._updatedAt||''; return da>db?-1:da<db?1:0; });   // newest submissions first
+      .sort(function(a,b){ var da=a._createdAt||a._updatedAt||'', db=b._createdAt||b._updatedAt||''; return da<db?-1:da>db?1:0; });   // oldest first (newest submissions at the bottom)
     var pendingEvents = (typeof comAdminPendingMeetups!=='undefined') ? comAdminPendingMeetups.filter(function(e){return e.status==='pending';}) : [];
     var pendingPay    = adminPayoutQueue.filter(function(p){return p.status==='pending';});
     var pendingApps    = adminMerchants.filter(function(m){ return m._source==='application'; });
@@ -17486,7 +17486,7 @@ function adminPage(page,btn){
       var db2 = b._updatedAt || b._createdAt || tb;
       return da > db2 ? -1 : da < db2 ? 1 : 0;
     }
-    var pending  = pendingCommunityDeals.filter(function(d){ return d.status==='pending';  }).sort(byRecent);
+    var pending  = pendingCommunityDeals.filter(function(d){ return d.status==='pending';  }).sort(function(a,b){ var da=a._createdAt||a._updatedAt||'', db=b._createdAt||b._updatedAt||''; return da<db?-1:da>db?1:0; });   // oldest first (newest at the bottom)
     var approved = pendingCommunityDeals.filter(function(d){ return d.status==='approved'; }).sort(byRecent);
     var paused   = pendingCommunityDeals.filter(function(d){ return d.status==='paused';   }).sort(byRecent);
     var rejected = pendingCommunityDeals.filter(function(d){ return d.status==='rejected'; }).sort(byRecent);
