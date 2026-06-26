@@ -14053,7 +14053,7 @@ async function loadAdminData(){
     var _pVenueOwners = (async function(){
       try {
         var r = await withTimeout(db.rpc('admin_get_all_venues'), 6000);
-        if(!r.error && r.data) return r.data;
+        if(!r.error && r.data && r.data.length) return r.data;   // empty → fall through to the direct query
       } catch(e){}
       try {
         var d = await withTimeout(
@@ -15501,6 +15501,10 @@ async function adminBizAppApprove(idx){
     adminMerchants.splice(idx, 1);
     document.getElementById('adm-bizapp-modal').remove();
     await loadAdminData();
+    // Optimistic: ensure the just-created venue shows even if the reload missed it.
+    if(venueRow && venueRow.id && !adminMerchants.some(function(m){ return m._venueId===venueRow.id; })){
+      adminMerchants.unshift({ _venueId: venueRow.id, name: app.name, owner: app.owner, ownerEmail: app.ownerEmail, address: app.address||'', city: app.city||'', type: app.type||'', status:'active', rev:'—', rating:'—', created_at: new Date().toISOString() });
+    }
     adminPage('merchants', null);
 
     // Show onboarding link to copy/share with merchant
