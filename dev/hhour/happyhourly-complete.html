@@ -14943,16 +14943,18 @@ async function adminSaveNewMerchant() {
       ownerId = newProfile?.id;
     }
 
-    // Create venue (resilient: drop venue_type if that column isn't present)
+    // Create venue (resilient: drop venue_type if that column isn't present); capture its id.
     var _mvp = { name: venueName, owner_id: ownerId, address: address, venue_type: venueType, website: web, status: status };
-    var venueErr = (await db.from('venues').insert(_mvp)).error;
-    if (venueErr && /venue_type/i.test(venueErr.message||'')){
+    var _mvIns = await db.from('venues').insert(_mvp).select('id').single();
+    if (_mvIns.error && /venue_type/i.test(_mvIns.error.message||'')){
       delete _mvp.venue_type;
-      venueErr = (await db.from('venues').insert(_mvp)).error;
+      _mvIns = await db.from('venues').insert(_mvp).select('id').single();
     }
-    if (venueErr) throw venueErr;
+    if (_mvIns.error) throw _mvIns.error;
+    var _newVenueId = _mvIns.data && _mvIns.data.id;
 
     adminMerchants.unshift({
+      _venueId: _newVenueId,
       name: venueName, owner: ownerName, ownerEmail: ownerEmail,
       address: address, city: '', status: status, rev: '—', rating: '—', type: venueType
     });
@@ -15569,10 +15571,32 @@ async function adminApproveMerchant(idx) {
     return;
   }
   if (!m._venueId) {
-    // Pending application (no venue yet) → run the app-approve flow, which CREATES
-    // the venue + login + Stripe account. (The plain venue-activate below needs a venue.)
+    // No local venue id. Resolve the real record from the DB and act on it.
+    // (a) It's a pending application in the list → app-approve flow creates the venue.
     if (m._appId != null && typeof adminBizAppApprove === 'function') { adminBizAppApprove(idx); return; }
-    showToast('❌ Venue ID missing - cannot save');
+    var _email = (m.ownerEmail || '').trim().toLowerCase();
+    try {
+      if (_email) {
+        // (b) A venue may already exist for this owner → just activate it.
+        var _pr = await db.from('profiles').select('id').eq('email', _email).maybeSingle();
+        var _oid = _pr && _pr.data && _pr.data.id;
+        if (_oid) {
+          var _vr = await db.from('venues').select('id').eq('owner_id', _oid).limit(1).maybeSingle();
+          if (_vr && _vr.data && _vr.data.id) {
+            await db.from('venues').update({active:true, status:'active'}).eq('id', _vr.data.id);
+            showToast('✅ '+m.name+' approved!');
+            var _mm0=document.getElementById('admin-merchant-modal'); if(_mm0) _mm0.remove();
+            await loadAdminData(); adminPage('merchants', null); return;
+          }
+        }
+      }
+      // (c) Or a pending application with a matching email is in the list.
+      if (typeof adminBizAppApprove === 'function') {
+        var _ai = adminMerchants.findIndex(function(x){ return x._appId != null && (x.ownerEmail||'').trim().toLowerCase() === _email; });
+        if (_ai >= 0) { adminBizAppApprove(_ai); return; }
+      }
+    } catch(e){ console.warn('[adminApproveMerchant] resolve failed', e); }
+    showToast('❌ Could not find a venue or application to approve');
     return;
   }
   m.status = 'active';
