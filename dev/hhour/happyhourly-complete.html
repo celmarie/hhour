@@ -3478,6 +3478,8 @@ function _loadGT(){
               <button class="qty-btn" onclick="chQty(1)">+</button>
             </div>
           </div>
+          <!-- Hotel date-range picker (shown only for Hotel-category deals) -->
+          <div id="vd-hotel-section" style="display:none;"></div>
           <!-- Arrival booking picker (shown only when the deal requires booking) -->
           <div id="vd-booking-section" style="display:none;"></div>
           <div class="total-row">
@@ -7154,6 +7156,8 @@ document.addEventListener('DOMContentLoaded', async function(){
 // deals still resolve correctly until the DB migration runs.
 var CAT_MERGE_MAP = { bars:'gastronomy', cocktails:'gastronomy', wine:'gastronomy', restaurants:'gastronomy', clubs:'gastronomy', food:'gastronomy' };
 function _canonCat(c){ c=(c||'').toString().trim(); return CAT_MERGE_MAP[c] || c || 'gastronomy'; }
+// Hotel deals use date-range (check-in/check-out) booking instead of a quantity.
+function _isHotelDeal(d){ try { return _canonCat((d && (d.cat||d.category)) || '') === 'hotel'; } catch(e){ return false; } }
 
 var appCategories = [
   {id:'gastronomy', emoji:'🍽️', label:'Gastronomy'},
@@ -7180,6 +7184,7 @@ function _normalizeCategories(){
     }
     if(!seen[id]){ seen[id]=true; out.push(c); }
   });
+  if(!seen.hotel){ out.push({id:'hotel', emoji:'🏨', label:'Hotel'}); }   // always offer Hotel (date booking)
   appCategories.length = 0; out.forEach(function(c){ appCategories.push(c); });
 }
 
@@ -9344,6 +9349,8 @@ function openDeal(deal){
   document.getElementById('vd-merchant-section').style.display=isMerchant?'block':'none';
   document.getElementById('vd-community-section').style.display=isMerchant?'none':'block';
 
+  // Hotel deals: date-range (check-in/check-out) booking instead of quantity
+  if(typeof vdRenderHotelSection==='function') vdRenderHotelSection(deal);
   // Arrival booking picker (booking-required merchant deals)
   if(typeof vdRenderBookingSection==='function') vdRenderBookingSection(deal);
 
@@ -9398,6 +9405,54 @@ function chQty(d){
   document.getElementById('vd-total').textContent=base>0?(sym+(base*qty).toFixed(2)):deal.price;
   // Higher qty can exceed remaining capacity — re-evaluate the time pills
   if(typeof vdRenderBookingPills==='function') vdRenderBookingPills();
+}
+
+// ── HOTEL DATE BOOKING — consumer picker ──────────────────────────────────────
+// Hotel deals are priced per night; the customer picks check-in/check-out and we
+// reuse the voucher quantity = number of nights (so total = rate × nights and the
+// existing Stripe checkout "just works").
+var _hotelSel = { checkIn:'', checkOut:'', nights:0 };
+function vdRenderHotelSection(deal){
+  var box = document.getElementById('vd-hotel-section');
+  var qtyRow = document.querySelector('#vd-merchant-section .qty-row');
+  if(!box) return;
+  _hotelSel = { checkIn:'', checkOut:'', nights:0 };
+  if(!_isHotelDeal(deal)){ box.style.display='none'; box.innerHTML=''; if(qtyRow) qtyRow.style.display=''; return; }
+  if(qtyRow) qtyRow.style.display='none';              // nights replace quantity
+  qty = 0;                                             // no total until dates chosen
+  var sym  = getCurrencySymbol(deal.currency||'EUR');
+  var rate = parseFloat((deal.price||'0').toString().replace(/[^0-9.]/g,'')) || 0;
+  var today = new Date().toISOString().split('T')[0];
+  box.style.display='block';
+  box.innerHTML =
+    '<div style="background:#F8F8FA;border-radius:14px;padding:14px;margin-bottom:14px;">'
+    +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;margin-bottom:10px;">🏨 Choose your stay</div>'
+    +'<div style="display:flex;gap:10px;">'
+      +'<div style="flex:1;"><label style="font-size:11px;font-weight:700;color:#9A9AB0;display:block;margin-bottom:4px;">Check-in</label>'
+        +'<input id="vd-hotel-in" type="date" min="'+today+'" onchange="vdHotelDatesChanged()" style="width:100%;background:#fff;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px;font-family:Inter,sans-serif;font-size:14px;color:#1A1A1A;box-sizing:border-box;"></div>'
+      +'<div style="flex:1;"><label style="font-size:11px;font-weight:700;color:#9A9AB0;display:block;margin-bottom:4px;">Check-out</label>'
+        +'<input id="vd-hotel-out" type="date" min="'+today+'" onchange="vdHotelDatesChanged()" style="width:100%;background:#fff;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px;font-family:Inter,sans-serif;font-size:14px;color:#1A1A1A;box-sizing:border-box;"></div>'
+    +'</div>'
+    +'<div id="vd-hotel-calc" style="font-size:12px;color:#6B6B76;font-weight:700;margin-top:10px;">'+sym+rate.toFixed(2)+' / night · pick your dates</div>'
+    +'</div>';
+  var tot=document.getElementById('vd-total'); if(tot) tot.textContent = sym+'0.00';
+}
+function vdHotelDatesChanged(){
+  var all=[...vouchers,...ucDeals]; var deal=all.find(function(x){return x.id===curV;}); if(!deal) return;
+  var ci=(document.getElementById('vd-hotel-in')||{}).value||'';
+  var co=(document.getElementById('vd-hotel-out')||{}).value||'';
+  var sym=getCurrencySymbol(deal.currency||'EUR');
+  var rate=parseFloat((deal.price||'0').toString().replace(/[^0-9.]/g,''))||0;
+  var calc=document.getElementById('vd-hotel-calc'); var tot=document.getElementById('vd-total');
+  var outEl=document.getElementById('vd-hotel-out');
+  if(ci && outEl){ var minOut=new Date(ci); minOut.setDate(minOut.getDate()+1); outEl.min=minOut.toISOString().split('T')[0]; }
+  if(!ci||!co){ _hotelSel={checkIn:ci,checkOut:co,nights:0}; qty=0; if(calc) calc.textContent=sym+rate.toFixed(2)+' / night · pick your dates'; if(tot) tot.textContent=sym+'0.00'; return; }
+  var nights=Math.round((new Date(co)-new Date(ci))/86400000);
+  if(nights<1){ _hotelSel={checkIn:ci,checkOut:co,nights:0}; qty=0; if(calc) calc.textContent='⚠️ Check-out must be after check-in'; if(tot) tot.textContent=sym+'0.00'; return; }
+  _hotelSel={checkIn:ci,checkOut:co,nights:nights}; qty=nights;
+  var total=rate*nights;
+  if(calc) calc.textContent=nights+' night'+(nights>1?'s':'')+' × '+sym+rate.toFixed(2)+' = '+sym+total.toFixed(2);
+  if(tot) tot.textContent=sym+total.toFixed(2);
 }
 
 // ── ARRIVAL BOOKING — consumer picker ─────────────────────────────────────────
@@ -10157,6 +10212,12 @@ async function buyVoucher(){
   var deal = allDeals.find(function(d){ return d.id === curV; });
   if(!deal) return;
 
+  // Hotel deals: require check-in/check-out; nights = quantity (so total = rate × nights).
+  if(_isHotelDeal(deal)){
+    if(!_hotelSel.checkIn || !_hotelSel.checkOut || _hotelSel.nights < 1){ showToast('📅 Pick your check-in & check-out dates first'); return; }
+    qty = _hotelSel.nights;
+  }
+
   // Arrival-booking gate: must have a date + time, with live capacity preflight
   if(deal.bookingRequired){
     var bkBox = document.getElementById('vd-booking-section');
@@ -10314,18 +10375,22 @@ async function _finishVoucherPurchase(paymentIntentId){
       // Booking deals stay valid until the deal's end date (booking RPC tightens
       // this to end of the booked day); others keep the original 2h expiry.
       var expires;
-      if(theDeal && theDeal.bookingRequired){
+      if(_isHotelDeal(theDeal) && _hotelSel.checkOut){
+        expires = new Date(_hotelSel.checkOut + 'T23:59:00').toISOString();   // valid through check-out
+      } else if(theDeal && theDeal.bookingRequired){
         expires = theDeal.endDate
           ? new Date(theDeal.endDate + 'T23:59:00').toISOString()
           : new Date(Date.now() + 30*86400000).toISOString();
       } else {
         expires = new Date(Date.now() + 7200000).toISOString();
       }
-      var insRes = await db.from('voucher_purchases').insert({
+      var _hotelFields = (_isHotelDeal(theDeal) && _hotelSel.checkIn && _hotelSel.checkOut)
+        ? { check_in: _hotelSel.checkIn, check_out: _hotelSel.checkOut } : {};
+      var insRes = await db.from('voucher_purchases').insert(Object.assign({
         user_id: currentUser.id, deal_id: curV, code: code,
         qty: qty, status: 'active', expires_at: expires,
         stripe_payment_intent_id: paymentIntentId || null
-      }).select('id').single();
+      }, _hotelFields)).select('id').single();
       if(insRes && insRes.data) purchaseId = insRes.data.id;
       if(insRes && insRes.error) console.warn('[buyVoucher] insert returned error:', insRes.error.message);
       try { phCapture('voucher_purchased', { deal_id: curV, qty: qty }); } catch(e){}
@@ -28408,6 +28473,7 @@ function _setupDealMap() {
               <option value="restaurants">🍽️ Restaurant</option>
               <option value="clubs">🎶 Club / Nightlife</option>
               <option value="food">🍕 Food</option>
+              <option value="hotel">🏨 Hotel (date booking)</option>
             </select>
           </div>
           <div>
