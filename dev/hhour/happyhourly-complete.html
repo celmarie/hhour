@@ -4809,11 +4809,13 @@ function _loadGT(){
         <input id="b2-addr" type="text" readonly tabindex="-1" placeholder="Auto-filled from the venue you select" class="biz-inp" style="margin-bottom:14px;background:#EFEFF2;color:#6B6B76;cursor:not-allowed;">
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Venue type</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;" id="venue-type-grid">
-          <div class="vtype-opt sel" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🍸</div><div style="font-size:11px;font-weight:800;color:var(--text);">Bar / Pub</div></div>
+          <div class="vtype-opt sel" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🍺</div><div style="font-size:11px;font-weight:800;color:var(--text);">Bar / Pub</div></div>
           <div class="vtype-opt" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🍽️</div><div style="font-size:11px;font-weight:800;color:var(--text);">Restaurant</div></div>
-          <div class="vtype-opt" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🍷</div><div style="font-size:11px;font-weight:800;color:var(--text);">Wine Bar</div></div>
-          <div class="vtype-opt" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🎶</div><div style="font-size:11px;font-weight:800;color:var(--text);">Club / Lounge</div></div>
           <div class="vtype-opt" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">☕</div><div style="font-size:11px;font-weight:800;color:var(--text);">Café</div></div>
+          <div class="vtype-opt" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🍸</div><div style="font-size:11px;font-weight:800;color:var(--text);">Cocktail Bar</div></div>
+          <div class="vtype-opt" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🍷</div><div style="font-size:11px;font-weight:800;color:var(--text);">Wine Bar</div></div>
+          <div class="vtype-opt" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🎶</div><div style="font-size:11px;font-weight:800;color:var(--text);">Club</div></div>
+          <div class="vtype-opt" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🏨</div><div style="font-size:11px;font-weight:800;color:var(--text);">Hotel</div></div>
           <div class="vtype-opt" onclick="selVenueType(this)"><div style="font-size:22px;margin-bottom:4px;">🏪</div><div style="font-size:11px;font-weight:800;color:var(--text);">Other</div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
@@ -14857,6 +14859,7 @@ function adminAddMerchantModal() {
             +'<option value="cocktail">🍸 Cocktail Bar</option>'
             +'<option value="wine">🍷 Wine Bar</option>'
             +'<option value="club">🎶 Club</option>'
+            +'<option value="hotel">🏨 Hotel</option>'
             +'<option value="other">🏪 Other</option>'
           +'</select></div>'
         +'<div><label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Website / Socials</label>'
@@ -14978,6 +14981,7 @@ function adminEditMerchant(idx) {
             +'<option value="cocktail"'+(m.type==='cocktail'?' selected':'')+'>🍸 Cocktail Bar</option>'
             +'<option value="wine"'+(m.type==='wine'?' selected':'')+'>🍷 Wine Bar</option>'
             +'<option value="club"'+(m.type==='club'?' selected':'')+'>🎶 Club</option>'
+            +'<option value="hotel"'+(m.type==='hotel'?' selected':'')+'>🏨 Hotel</option>'
             +'<option value="other"'+(m.type==='other'?' selected':'')+'>🏪 Other</option>'
           +'</select></div>'
         +'<div style="background:#F5F5F7;border-radius:10px;padding:12px;">'
