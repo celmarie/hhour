@@ -5346,7 +5346,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260627230522';
+var BUILD_VERSION = '20260627234637';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -11658,79 +11658,65 @@ function afterRedeem(){
 
 // Calculate merchant dashboard metrics
 function calculateMerchantMetrics(){
+  // All values are computed from the merchant's REAL data — no demo/seed numbers.
+  // Trends are 0 (we don't keep period-over-period history), so the UI hides the
+  // "↑ %" pill rather than inventing one.
   var metrics = {
-    revenue: { value: 0, trend: 18, prevValue: 0 },
-    dealViews: { value: 0, trend: 41 },
+    revenue: { value: 0, trend: 0 },
+    dealViews: { value: 0, trend: 0 },
     avgRating: { value: 0, reviewCount: 0 },
     activeDeals: { count: 0, scheduled: 0 },
     recentRedemptions: [],
     chartData: []
   };
 
-  // Calculate revenue, active/scheduled counts and views from real deals
-  var totalRevenue = 0;
-  if(dealsData && dealsData.length > 0){
-    dealsData.forEach(function(d){
-      var sold = parseInt(d.sold) || 0;
-      var price = parseFloat(d.price) || 0;
-      totalRevenue += (sold * price);
-      if(d.status === 'active') metrics.activeDeals.count++;
-      if(d.status === 'scheduled') metrics.activeDeals.scheduled++;
-      metrics.dealViews.value += parseInt(d.views) || 0;
-    });
-    metrics.revenue.value = totalRevenue;
-  } else {
-    // Demo fallbacks only when there is no real data
-    metrics.dealViews.value = 142;
-    metrics.avgRating = { value: 4.7, reviewCount: 9 };
-    metrics.activeDeals = { count: 3, scheduled: 1 };
-  }
+  // Active / scheduled counts + views from the merchant's real deals.
+  (dealsData || []).forEach(function(d){
+    if(d.status === 'active') metrics.activeDeals.count++;
+    else if(d.status === 'scheduled') metrics.activeDeals.scheduled++;
+    metrics.dealViews.value += parseInt(d.views) || 0;
+  });
 
-  // Calculate average rating
+  // Revenue + redemptions from REAL purchases (vouchersData[].purchases).
+  var purchases = [];
+  (vouchersData || []).forEach(function(v){
+    (v.purchases || []).forEach(function(p){
+      var price = parseFloat(p.price) || (v.priceNum || 0);
+      purchases.push({ code:p.code, buyer:p.buyer, status:p.status, date:p.date, price:price, deal:v.name });
+      metrics.revenue.value += price;
+    });
+  });
+
+  // Average rating from real reviews.
   if(dealReviews && Object.keys(dealReviews).length > 0){
-    var totalRating = 0;
-    var reviewCount = 0;
-    Object.keys(dealReviews).forEach(function(dealId){
-      if(dealReviews[dealId] && Array.isArray(dealReviews[dealId])){
-        dealReviews[dealId].forEach(function(r){
-          totalRating += parseInt(r.rating) || 0;
-          reviewCount++;
-        });
-      }
+    var totalRating = 0, reviewCount = 0;
+    Object.keys(dealReviews).forEach(function(id){
+      if(Array.isArray(dealReviews[id])) dealReviews[id].forEach(function(r){ totalRating += parseInt(r.rating) || 0; reviewCount++; });
     });
-    if(reviewCount > 0){
-      metrics.avgRating.value = (totalRating / reviewCount).toFixed(1);
-      metrics.avgRating.reviewCount = reviewCount;
-    }
+    if(reviewCount > 0){ metrics.avgRating.value = (totalRating / reviewCount).toFixed(1); metrics.avgRating.reviewCount = reviewCount; }
   }
 
-  // Calculate recent redemptions (from myVouchers where used=true)
-  if(myVouchers && myVouchers.length > 0){
-    metrics.recentRedemptions = myVouchers
-      .filter(function(v){ return v.used === true || v.status === 'used'; })
-      .sort(function(a, b){
-        var aTime = new Date(a.redeemed_at || a.created_at || 0).getTime();
-        var bTime = new Date(b.redeemed_at || b.created_at || 0).getTime();
-        return bTime - aTime;
-      })
-      .slice(0, 10)
-      .map(function(v){
-        var deal = (dealsData||[]).find(function(d){ return d.id === v.vid; }) || {};
-        var timeDiff = new Date() - new Date(v.redeemed_at || v.created_at || 0);
-        var timeStr = formatRelativeTime(timeDiff);
-        return {
-          code: v.code,
-          deal: v._dealName || deal.name || 'Deal',
-          user: v._customerName || 'Customer',
-          time: timeStr,
-          timestamp: v.redeemed_at || v.created_at
-        };
-      });
-  }
+  // Recent redemptions — real used vouchers, newest first.
+  metrics.recentRedemptions = purchases
+    .filter(function(p){ return p.status === 'used'; })
+    .sort(function(a, b){ return new Date(b.date || 0) - new Date(a.date || 0); })
+    .slice(0, 10)
+    .map(function(p){
+      return { code:p.code, deal:p.deal || 'Deal', user:p.buyer || 'Customer', time: formatRelativeTime(new Date() - new Date(p.date || 0)) };
+    });
 
-  // Trend calculation (simulate 18% up for now - would be real comparison with previous period)
-  metrics.revenue.trend = 18;
-  metrics.dealViews.trend = 41;
+  // Last-7-days revenue chart from real purchases (today is the last bar).
+  var today = new Date(); today.setHours(0,0,0,0);
+  var wk = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  for(var i=6; i>=0; i--){
+    var dt = new Date(today); dt.setDate(today.getDate() - i);
+    metrics.chartData.push({ ts: dt.getTime(), label: wk[dt.getDay()], value: 0 });
+  }
+  purchases.forEach(function(p){
+    var when = new Date(p.date || 0); if(isNaN(when.getTime())) return; when.setHours(0,0,0,0);
+    var t = when.getTime();
+    for(var k=0; k<metrics.chartData.length; k++){ if(metrics.chartData[k].ts === t){ metrics.chartData[k].value += p.price; break; } }
+  });
 
   return metrics;
 }
@@ -22446,10 +22432,11 @@ function meRenderDashNew(){
   var totalDealsActive = metrics.activeDeals.count;
   var totalDealsScheduled = metrics.activeDeals.scheduled;
 
-  // ── Chart data for performance overview ──
-  var barData=[42,68,55,71,94,110,78];
-  var dayLabels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  var maxBar=Math.max.apply(null,barData);
+  // ── Chart data for performance overview (real last-7-days revenue) ──
+  var _cd = (metrics.chartData && metrics.chartData.length) ? metrics.chartData : [];
+  var barData  = _cd.length ? _cd.map(function(d){ return d.value; }) : [0,0,0,0,0,0,0];
+  var dayLabels= _cd.length ? _cd.map(function(d){ return d.label; }) : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var maxBar=Math.max.apply(null,barData) || 1;   // avoid divide-by-zero on a flat/empty week
   var barH=90; var barW=36; var gap=60; var padL=8;
   var svg='<svg viewBox="0 0 '+(barData.length*gap+padL)+' 120" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100px;display:block;">';
   svg+='<defs>';
@@ -22511,8 +22498,8 @@ function meRenderDashNew(){
 
       // ══ 2. PERFORMANCE METRICS (always 4-up on desktop, 2x2 below) ═══════
       + '<div class="me-dashv2-stats">'
-        + statCard('📊','rgba(232,25,44,.1)', trendPill(metrics.revenue.trend),
-            revDisplay, 'Revenue', 'from '+totalDeals+' deal'+(totalDeals!==1?'s':'')+' this week')
+        + statCard('📊','rgba(232,25,44,.1)', (metrics.revenue.trend>0 ? trendPill(metrics.revenue.trend) : ''),
+            revDisplay, 'Revenue', 'from '+totalDeals+' deal'+(totalDeals!==1?'s':''))
         + statCard('⭐','rgba(255,179,0,.12)', notePill(metrics.avgRating.reviewCount+' review'+(metrics.avgRating.reviewCount!==1?'s':'')),
             (avgRatingDisplay>0?avgRatingDisplay:'—'), 'Avg Rating',
             (avgRatingDisplay>0?'Customer satisfaction':'No reviews yet'))
