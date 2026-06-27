@@ -5337,7 +5337,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260627212052';
+var BUILD_VERSION = '20260627213009';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -11857,6 +11857,7 @@ function mePageNew(page, btn){
       setTimeout(function(){
         if(typeof meLoadBankDetails==='function') meLoadBankDetails();
         if(typeof meLoadAcceptedPayment==='function') meLoadAcceptedPayment();
+        if(typeof _captchaInit==='function') _captchaInit('captcha-box-mepw');   // for change-password re-auth
       }, 0);
       break;
     default:
@@ -16482,7 +16483,7 @@ function adminRenderSettings() {
       + '<div style="padding:16px;">'
         + '<div style="margin-bottom:12px;">'
           + '<label style="font-size:12px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">Current Password</label>'
-          + '<input id="adm-setting-current-pwd" type="password" value="' + currentPasscode + '" readonly style="width:100%;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:13px;color:#1A1A1A;box-sizing:border-box;">'
+          + '<input id="adm-setting-current-pwd" type="password" placeholder="Enter current password" style="width:100%;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:13px;color:#1A1A1A;box-sizing:border-box;">'
         + '</div>'
         + '<div style="margin-bottom:12px;">'
           + '<label style="font-size:12px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;">New Password</label>'
@@ -16531,8 +16532,13 @@ function _admToggleRAC(){
 }
 
 function adminSavePasscode() {
+  var curPwd = (document.getElementById('adm-setting-current-pwd')||{}).value || '';
   var newPwd = document.getElementById('adm-setting-new-pwd').value;
 
+  if (curPwd !== getAdminPasscode()) {
+    showToast('❌ Current password is incorrect');
+    return;
+  }
   if (!newPwd || newPwd.trim() === '') {
     showToast('❌ Password cannot be empty');
     return;
@@ -16544,7 +16550,7 @@ function adminSavePasscode() {
   }
 
   setAdminPasscode(newPwd);
-  document.getElementById('adm-setting-current-pwd').value = newPwd;
+  document.getElementById('adm-setting-current-pwd').value = '';
   document.getElementById('adm-setting-new-pwd').value = '';
   showToast('✅ Password updated');
   // SECURITY: never persist the passcode to app_config — that table is readable
@@ -23933,11 +23939,13 @@ function meRenderSettings(){
     + '<div class="me-card-header"><span class="me-card-title">🔑 Change Password</span></div>'
     + '<div style="padding:18px;">'
       + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">'
+        + '<div><label style="'+lbl+'display:block;">Current password</label><input id="me-set-pw-current" type="password" placeholder="Enter current password" style="'+inp+'"></div>'
         + '<div><label style="'+lbl+'display:block;">New password</label><input id="me-set-pw1" type="password" placeholder="At least 6 characters" style="'+inp+'"></div>'
         + '<div><label style="'+lbl+'display:block;">Confirm new password</label><input id="me-set-pw2" type="password" placeholder="Re-enter new password" style="'+inp+'"></div>'
         + '<label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#555;cursor:pointer;font-family:Inter,sans-serif;"><input type="checkbox" onclick="meToggleSettingsPw(this.checked)" style="width:15px;height:15px;cursor:pointer;"> Show passwords</label>'
       + '</div>'
       + '<div id="me-set-pw-err" style="color:#dc2626;font-size:12px;font-weight:700;margin-bottom:10px;display:none;"></div>'
+      + '<div id="captcha-box-mepw" style="display:none;justify-content:center;margin-bottom:12px;"></div>'
       + '<button id="me-set-pw-btn" onclick="meUpdateMerchantPassword()" style="width:100%;background:#1A1A1A;color:white;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Update Password</button>'
       + '<div style="font-size:11px;color:#9A9AB0;text-align:center;margin-top:8px;font-family:Inter,sans-serif;">Takes effect immediately — you\'ll use the new password next time you sign in.</div>'
     + '</div>'
@@ -24007,27 +24015,39 @@ async function meSetAcceptedPayment(val){
 
 function meToggleSettingsPw(show){
   var t = show ? 'text' : 'password';
+  var c = document.getElementById('me-set-pw-current'); if(c) c.type = t;
   var a = document.getElementById('me-set-pw1'); if(a) a.type = t;
   var b = document.getElementById('me-set-pw2'); if(b) b.type = t;
 }
 
 async function meUpdateMerchantPassword(){
+  var cur = (document.getElementById('me-set-pw-current')||{value:''}).value;
   var n1 = (document.getElementById('me-set-pw1')||{value:''}).value;
   var n2 = (document.getElementById('me-set-pw2')||{value:''}).value;
   var err = document.getElementById('me-set-pw-err');
   function fail(msg){ if(err){ err.textContent = msg; err.style.display='block'; } }
   if(err){ err.style.display='none'; err.textContent=''; }
+  if(!cur){ fail('Enter your current password.'); return; }
   var _pwErr = passwordStrengthError(n1); if(_pwErr){ fail(_pwErr); return; }
   if(n1 !== n2){ fail('Passwords do not match.'); return; }
+  if(n1 === cur){ fail('Pick a password different from your current one.'); return; }
+  if(!currentUser || !currentUser.email){ fail('Please sign in again to change your password.'); return; }
   var btn = document.getElementById('me-set-pw-btn');
   if(btn){ btn.disabled = true; btn.textContent = 'Updating…'; }
   try{
+    // 1) Verify the current password by re-authenticating.
+    var v = await db.auth.signInWithPassword({ email: currentUser.email, password: cur, options: _captchaOpts({}, 'captcha-box-mepw') });
+    _captchaReset('captcha-box-mepw');
+    if(v.error){ fail('Current password is incorrect.'); if(btn){ btn.disabled=false; btn.textContent='Update Password'; } return; }
+    // 2) Set the new password.
     var r = await db.auth.updateUser({ password: n1 });
     if(r && r.error) throw r.error;
+    var c = document.getElementById('me-set-pw-current'); if(c) c.value='';
     var a = document.getElementById('me-set-pw1'); if(a) a.value='';
     var b = document.getElementById('me-set-pw2'); if(b) b.value='';
     showToast('✅ Password updated');
   }catch(e){
+    _captchaReset('captcha-box-mepw');
     fail((e && e.message) || 'Could not update password — please sign in again and retry.');
   }
   if(btn){ btn.disabled = false; btn.textContent = 'Update Password'; }
