@@ -2896,7 +2896,10 @@ function _loadGT(){
 <div id="web-login-pop" style="display:none;position:fixed;top:62px;right:24px;width:360px;max-width:calc(100vw - 32px);background:#fff;border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.28);z-index:1000001;font-family:'Inter',sans-serif;padding:22px 22px 18px;border:1px solid #ECECEC;">
   <button onclick="closeWebLoginPopup()" aria-label="Close" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:20px;line-height:1;cursor:pointer;color:#9A9AB0;">✕</button>
   <div style="font-size:21px;font-weight:900;color:#1A1A1A;margin-bottom:16px;line-height:1.2;">Sign in or register</div>
-  <button type="button" onclick="loginWithGoogleRedirect()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1.5px solid #E2E2E8;border-radius:14px;padding:12px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;">
+  <!-- Desktop: Google popup (GIS) — shows the app name, never routes through supabase.co.
+       Falls back to the redirect button below only if GIS fails to load. -->
+  <div id="gsi-button-web" style="display:none;justify-content:center;margin-bottom:14px;"></div>
+  <button type="button" id="web-google-fallback" onclick="loginWithGoogleRedirect()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1.5px solid #E2E2E8;border-radius:14px;padding:12px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;">
     <svg width="18" height="18" viewBox="0 0 18 18" style="flex-shrink:0;"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.41 5.41 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
     Continue with Google
   </button>
@@ -5343,7 +5346,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260627215844';
+var BUILD_VERSION = '20260627222903';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5536,6 +5539,13 @@ function openWebLoginPopup(){
   var er = document.getElementById('wl-error'); if(er) er.textContent='';
   p.style.display = 'block';
   try { _captchaInit('captcha-box-weblogin'); } catch(e){}
+  // Render Google's popup button (no supabase.co); reveal the redirect button only
+  // if GIS can't load. This popup is desktop-only, so the popup flow always applies.
+  (function _wg(n){
+    if(typeof initGsiButton==='function' && initGsiButton('gsi-button-web','web-google-fallback',312)) return;
+    if(n > 16){ var fb=document.getElementById('web-google-fallback'); if(fb) fb.style.display='flex'; return; }
+    setTimeout(function(){ _wg(n+1); }, 200);
+  })(0);
   setTimeout(function(){ var e=document.getElementById('wl-email'); if(e) e.focus(); }, 60);
   setTimeout(function(){ document.addEventListener('mousedown', _webLoginOutside, true); }, 0);
 }
@@ -13771,18 +13781,19 @@ async function handleGoogleCredential(resp){
 }
 
 // Render Google's official button into #gsi-button. Returns true on success.
-function initGsiButton(){
+function initGsiButton(gsiId, fbId, width){
+  gsiId = gsiId || 'gsi-button'; fbId = fbId || 'google-btn';
   // On mobile (esp. iOS Safari) Google's GIS popup (ux_mode:'popup') flow hangs,
   // so use the full-page redirect (signInWithOAuth) instead — reliable on mobile.
   var isMobile = (window.matchMedia && window.matchMedia('(max-width:899px)').matches)
               || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
   if(isMobile){
-    var rb = document.getElementById('google-btn'); if(rb) rb.style.display = 'flex';
-    var gb = document.getElementById('gsi-button');  if(gb) gb.style.display = 'none';
+    var rb = document.getElementById(fbId); if(rb) rb.style.display = 'flex';
+    var gb = document.getElementById(gsiId);  if(gb) gb.style.display = 'none';
     return true;   // stop polling — the redirect button is the mobile path
   }
   if(!(window.google && google.accounts && google.accounts.id)) return false;
-  var c = document.getElementById('gsi-button');
+  var c = document.getElementById(gsiId);
   if(!c) return false;
   try{
     if(!_gsiReady){
@@ -13790,9 +13801,9 @@ function initGsiButton(){
       _gsiReady = true;
     }
     c.innerHTML = '';
-    google.accounts.id.renderButton(c, { theme:'outline', size:'large', shape:'pill', text:'continue_with', width:336, logo_alignment:'center' });
+    google.accounts.id.renderButton(c, { theme:'outline', size:'large', shape:'pill', text:'continue_with', width: width || 336, logo_alignment:'center' });
     c.style.display = 'flex';
-    var fb = document.getElementById('google-btn'); if(fb) fb.style.display = 'none'; // hide redirect fallback
+    var fb = document.getElementById(fbId); if(fb) fb.style.display = 'none'; // hide redirect fallback
     return true;
   }catch(e){ console.warn('[gsi] init failed', e); return false; }
 }
