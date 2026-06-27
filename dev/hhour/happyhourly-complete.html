@@ -5346,7 +5346,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260627222903';
+var BUILD_VERSION = '20260627230522';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6361,6 +6361,20 @@ function subscribeToMyNotifications(){
 async function handleAuthSession(user) {
   currentUser = user;
   try { _lockLoginInputs(true); } catch(e){}   // signed in → stop iOS "Fill Password" prompts
+  // If we just came from a login screen (e.g. after Google sign-in), hide it and
+  // show the neutral loading splash NOW — otherwise the login page flashes during
+  // the async profile fetch below before we route to the app. (Skipped on token
+  // refresh / tab refocus, where no login screen is showing.)
+  try {
+    var _ls0  = document.getElementById('login-screen');
+    var _mls0 = document.getElementById('merchant-login-screen');
+    var _fromLogin = (_ls0 && _ls0.style.display !== 'none') || (_mls0 && _mls0.style.display !== 'none');
+    if(_fromLogin){
+      if(_ls0)  _ls0.style.display  = 'none';
+      if(_mls0) _mls0.style.display = 'none';
+      var _rs0 = document.getElementById('role-splash'); if(_rs0) _rs0.style.display = 'flex';
+    }
+  } catch(e){}
   // Robustly fetch the profile (which carries the authoritative role). Right
   // after sign-in the auth token can lag attaching to PostgREST, which makes
   // the first query run as anon → 0 rows → null profile → everyone defaulted
