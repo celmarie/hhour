@@ -5337,7 +5337,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260627034543';
+var BUILD_VERSION = '20260627131811';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5635,12 +5635,14 @@ function togglePw(id){
 // layout-preserving, and skips fields that already ship their own toggle.
 function _attachPwToggle(inp){
   if(!inp || inp.getAttribute('data-pwt')) return;
-  inp.setAttribute('data-pwt','1');
-  // Skip individually display-toggled fields (e.g. signup confirm) — wrapping
-  // them would fight the code that shows/hides them.
+  // Skip individually display-toggled fields (wrapping fights their show/hide code).
+  if(inp.id === 'signup-confirm') return;
   if(inp.style && inp.style.display === 'none') return;
-  // Skip fields that already have their own toggle button next to them.
-  if(inp.parentNode && inp.parentNode.querySelector && inp.parentNode.querySelector('button')) return;
+  // Skip ONLY fields that already have their OWN show/hide button (login /
+  // merchant login) — not just any button that happens to share the container.
+  if(inp.parentNode && inp.parentNode.querySelector &&
+     inp.parentNode.querySelector('button[onclick*="ogglePw"], button[title="Show / hide password"]')) return;
+  inp.setAttribute('data-pwt','1');
   var m = '';
   try { m = getComputedStyle(inp).margin; } catch(e){}
   var wrap = document.createElement('span');
