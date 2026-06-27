@@ -54,6 +54,12 @@ html.portal-boot #portal-boot-splash{
 /* Belt-and-suspenders: also keep the consumer screens from painting during a
    portal boot, so the customer dashboard can't show even if z-index is beaten. */
 html.portal-boot .screen{ display:none !important; }
+/* …and the login / role splash, so a logged-in /merchant refresh shows only the
+   boot splash (not a flash of the login page) until auth resolves. showLoginScreen()
+   clears portal-boot when there's genuinely no session, so login can still appear. */
+html.portal-boot #login-screen,
+html.portal-boot #merchant-login-screen,
+html.portal-boot #role-splash{ display:none !important; }
 #portal-boot-splash .pbs-spin{
   width:42px; height:42px; border-radius:50%;
   border:4px solid rgba(232,25,44,.18); border-top-color:#E8192C;
@@ -5337,7 +5343,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260627213009';
+var BUILD_VERSION = '20260627215844';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5502,6 +5508,9 @@ function _lockLoginInputs(lock){
   });
 }
 function showLoginScreen(){
+  // End the portal-boot state so the login isn't suppressed by the boot CSS
+  // (the boot splash hides the login until auth resolves; here we genuinely want it).
+  if(typeof _endPortalBoot === 'function') _endPortalBoot();
   // Hide the role-detection splash — otherwise it lingers behind the login screen
   // (same z-index) and reappears on top of the app after a guest signs in.
   var splash = document.getElementById('role-splash');
