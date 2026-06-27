@@ -5337,7 +5337,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260627131811';
+var BUILD_VERSION = '20260627212052';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14326,11 +14326,7 @@ function finInitSettings(){}
 // ADMIN ENGINE
 // ══════════════════════════════════════════════════
 var adminCurrentPage='dashboard';
-var _defaultPayoutQueue=[
-  {id:'PR-001',merchant:'The Golden Tap',amount:1173,method:'Bank Transfer',status:'pending',date:'Today'},
-  {id:'PR-002',merchant:'Sushi Zen',amount:486,method:'PayPal',status:'pending',date:'Today'},
-  {id:'PR-003',merchant:'Cocktail Cloud',amount:832,method:'Wise',status:'processing',date:'Yesterday'},
-];
+var _defaultPayoutQueue=[];   // real payout requests only — no dummy/seed queue
 function _loadPayoutQueue(){
   try {
     var s = localStorage.getItem('hh_payout_queue');
@@ -22185,16 +22181,13 @@ function aRenderFinance(){
 // ══════════════════════════════════════════════════
 // MERCHANT ENGINE
 // ══════════════════════════════════════════════════
-var meCurrentBalance=1173;
+var meCurrentBalance=0;
 var meVenueId=null;
 var meVenueName='';
 var dealsData=[];
 var vouchersData=[];
 var meVoucherPurchaseMap={};  // dealId -> voucher summary incl. purchases list
-var mePayoutHistory=[
-  {id:'PR-001',amount:1173,status:'completed',method:'Bank Transfer',date:'28 Apr'},
-  {id:'PR-002',amount:1066,status:'completed',method:'Bank Transfer',date:'21 Apr'},
-];
+var mePayoutHistory=[];   // real payouts only — no dummy/seed history
 
 async function loadMerchantData(){
   if(!currentUser) return;
@@ -22546,7 +22539,7 @@ function meRenderDash(){
   var sym = (typeof finSym==='function') ? finSym() : '€';
   var comm = (typeof finConfig!=='undefined') ? finConfig.commission : 15;
   var minLocal = (typeof finMinPayoutLocal==='function') ? finMinPayoutLocal() : 9.20;
-  var bal = (typeof meCurrentBalance!=='undefined') ? meCurrentBalance : 1173;
+  var bal = (typeof meCurrentBalance!=='undefined') ? meCurrentBalance : 0;
   var canPay = bal >= minLocal;
 
   // ── Bar chart ──
