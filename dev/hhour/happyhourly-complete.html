@@ -3739,7 +3739,7 @@ function _loadGT(){
             </div>
           </div>
           <div style="border-top:1px solid rgba(255,255,255,.1);padding-top:12px;">
-            <div style="font-size:10px;color:rgba(255,255,255,.35);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">Price paid</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.35);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;" id="qr-detail-price-label">Price paid</div>
             <div style="font-size:16px;font-weight:800;color:#4CAF50;" id="qr-detail-price">€10.00</div>
           </div>
         </div>
@@ -5336,7 +5336,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260626144504';
+var BUILD_VERSION = '20260627021243';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5823,6 +5823,7 @@ function dbDealToLocal(row) {
     bookingChangeable: row.booking_changeable !== false,
     graceMin: parseInt(row.grace_period_min, 10) || 0,
     allowUnbooked: !!row.allow_unbooked,
+    acceptedPayment: v.accepted_payment || '',   // 'cash' | 'card' | 'either' | '' (certified venues only)
   };
 }
 
@@ -5955,9 +5956,20 @@ async function loadDealsFromSupabase() {
     // Fetch deals + community deals together — render as soon as both arrive.
     // Reviews are fetched separately in the background so they never block rendering.
     var [dr, ur] = await Promise.all([
-      db.from('deals').select('*, venues(name,category,dist_km)')
+      db.from('deals').select('*, venues(name,category,dist_km,accepted_payment)')
         .eq('status', 'active')
-        .order('claimed', { ascending: false }),
+        .order('claimed', { ascending: false })
+        .then(function(r){ return r; }, function(e){ return {data:null, error:e}; })
+        .then(function(r){
+          // venues.accepted_payment may not exist until pay_onsite.sql is run —
+          // fall back to the original query so the feed always loads.
+          if(r && r.error){
+            return db.from('deals').select('*, venues(name,category,dist_km)')
+              .eq('status', 'active')
+              .order('claimed', { ascending: false });
+          }
+          return r;
+        }),
       fetchCommunityFeed()
     ]);
 
@@ -6184,6 +6196,7 @@ async function loadUserData() {
         return {
           vid: row.deal_id, code: row.code, qty: row.qty || 1,
           used: row.status !== 'active', _dbId: row.id,
+          _payOnsite: row.payment_method === 'onsite', _paid: !!row.paid_at,
           _dealName: d.title || 'Deal',
           _venueName: (d.venues && d.venues.name) || '',
           _imgClass: d.img_class || 'ci1', _emoji: d.emoji || '🎟️',
@@ -10294,6 +10307,18 @@ function getStripe(){
 }
 
 var _walletApplied = 0, _payTotal = 0, _paySym = '€';
+// Pay-at-venue (onsite) checkout state — set by buyVoucher(), read by payMethodSelect()/walletPayClick()
+var _payMethod = 'online', _payAccepted = '';
+// When true, "Buy Voucher" reserves an onsite (pay-at-venue) voucher with NO card
+// input. Flip to false to re-enable the card / "Pay now" option in the checkout sheet.
+var PAY_ONSITE_ONLY = true;
+// Human label for a venue's accepted onsite payment methods (certified venues only)
+function _acceptedPaymentLabel(code){
+  if(code === 'cash')   return '💵 Cash only';
+  if(code === 'card')   return '💳 Card only';
+  if(code === 'either') return '💵 Cash or 💳 card';
+  return '';
+}
 function walletRecalc(){
   var total=_payTotal, sym=_paySym, wallet=_walletBalance();
   var apply=(document.getElementById('wallet-apply')||{}).checked;
@@ -10305,7 +10330,33 @@ function walletRecalc(){
   var btn=document.getElementById('stripe-pay-btn');
   if(btn) btn.textContent = net<=0 ? ('🔒 Pay '+sym+'0.00 with HappyCash') : ('🔒 Pay '+sym+net.toFixed(2));
 }
+// Toggle the checkout sheet between "pay now" (card) and "pay at venue" (onsite)
+function payMethodSelect(method){
+  _payMethod = (method === 'onsite') ? 'onsite' : 'online';
+  var onsite = _payMethod === 'onsite';
+  var tabOn = document.getElementById('pm-tab-online'), tabAt = document.getElementById('pm-tab-onsite');
+  if(tabOn){ tabOn.style.background = onsite ? 'transparent' : 'white'; tabOn.style.color = onsite ? '#9A9AB0' : '#E8192C'; tabOn.style.boxShadow = onsite ? 'none' : '0 1px 3px rgba(0,0,0,.08)'; }
+  if(tabAt){ tabAt.style.background = onsite ? 'white' : 'transparent'; tabAt.style.color = onsite ? '#C2410C' : '#9A9AB0'; tabAt.style.boxShadow = onsite ? '0 1px 3px rgba(0,0,0,.08)' : 'none'; }
+  var cardSec = document.getElementById('pay-card-section');   if(cardSec) cardSec.style.display = onsite ? 'none' : '';
+  var onsiteSec = document.getElementById('pay-onsite-section'); if(onsiteSec) onsiteSec.style.display = onsite ? 'block' : 'none';
+  var walletSec = document.getElementById('pay-wallet-section'); if(walletSec) walletSec.style.display = onsite ? 'none' : '';   // HappyCash applies to card payments only
+  var btn = document.getElementById('stripe-pay-btn');
+  if(btn){
+    btn.disabled = false;
+    if(onsite){ btn.textContent = '🏪 Reserve · pay '+_paySym+_payTotal.toFixed(2)+' at venue'; }
+    else { walletRecalc(); }   // restores "🔒 Pay …" with any wallet applied
+  }
+}
+
 async function walletPayClick(priceNum,currCode,dealName,venueName){
+  // Pay-at-venue: reserve an unpaid voucher, no card, no HappyCash.
+  if(_payMethod === 'onsite'){
+    var btnO=document.getElementById('stripe-pay-btn'); if(btnO){ btnO.textContent='⏳ Reserving…'; btnO.disabled=true; }
+    var modalO=document.getElementById('stripe-pay-modal'); if(modalO) modalO.remove();
+    _walletApplied = 0;
+    await _finishVoucherPurchase(null, { onsite:true });
+    return;
+  }
   var total=priceNum*qty, applied=_walletApplied||0;
   if(applied >= total-0.0001){
     var btn=document.getElementById('stripe-pay-btn'); if(btn){ btn.textContent='⏳ Processing…'; btn.disabled=true; }
@@ -10364,6 +10415,11 @@ async function buyVoucher(){
   _payTotal = priceNum*qty; _paySym = sym; _walletApplied = 0;
   var wallet = _walletBalance();
 
+  // Pay-at-venue (onsite) — every paid deal can be reserved and paid in person.
+  _payMethod = PAY_ONSITE_ONLY ? 'onsite' : 'online';
+  _payAccepted = deal.acceptedPayment || '';   // certified venues only; '' = unknown
+  var acceptedLbl = _acceptedPaymentLabel(_payAccepted);
+
   // Show Stripe payment modal
   var existing = document.getElementById('stripe-pay-modal');
   if(existing) existing.remove();
@@ -10390,31 +10446,54 @@ async function buyVoucher(){
           +'<div style="font-size:10px;color:#9A9AB0;font-weight:600;">'+qty+' × '+sym+priceNum.toFixed(2)+'</div>'
         +'</div>'
       +'</div>'
-      // Card input
-      +'<div style="font-size:12px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Card details</div>'
-      +'<div id="stripe-card-el" style="background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:12px;padding:14px 13px;margin-bottom:8px;transition:border-color .2s;"></div>'
-      +'<div id="stripe-card-err" style="color:#dc2626;font-size:12px;font-weight:600;margin-bottom:12px;min-height:18px;"></div>'
-      // Test card hint
-      +'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:11px;color:#1D4ED8;font-weight:600;display:flex;align-items:center;gap:8px;">'
-        +'<span style="font-size:16px;">🧪</span>'
-        +'<div><div style="font-weight:800;margin-bottom:2px;">Test mode — use test card</div>'
-          +'<div style="font-family:monospace;font-size:12px;">4242 4242 4242 4242 · Any future date · Any CVC</div>'
+      // Pay-method toggle — only when card payments are enabled
+      +(PAY_ONSITE_ONLY ? '' :
+        '<div style="display:flex;gap:8px;background:#F5F5F7;border-radius:12px;padding:4px;margin-bottom:18px;">'
+        +'<button type="button" id="pm-tab-online" onclick="payMethodSelect(\'online\')" style="flex:1;border:none;border-radius:9px;padding:11px 6px;font-family:Inter,sans-serif;font-size:13px;font-weight:800;cursor:pointer;background:white;color:#E8192C;box-shadow:0 1px 3px rgba(0,0,0,.08);">💳 Pay now</button>'
+        +'<button type="button" id="pm-tab-onsite" onclick="payMethodSelect(\'onsite\')" style="flex:1;border:none;border-radius:9px;padding:11px 6px;font-family:Inter,sans-serif;font-size:13px;font-weight:800;cursor:pointer;background:transparent;color:#9A9AB0;">🏪 Pay at venue</button>'
+      +'</div>')
+      // Card input — only when card payments are enabled
+      +(PAY_ONSITE_ONLY ? '' :
+        '<div id="pay-card-section">'
+        +'<div style="font-size:12px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;">Card details</div>'
+        +'<div id="stripe-card-el" style="background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:12px;padding:14px 13px;margin-bottom:8px;transition:border-color .2s;"></div>'
+        +'<div id="stripe-card-err" style="color:#dc2626;font-size:12px;font-weight:600;margin-bottom:12px;min-height:18px;"></div>'
+        // Test card hint
+        +'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:11px;color:#1D4ED8;font-weight:600;display:flex;align-items:center;gap:8px;">'
+          +'<span style="font-size:16px;">🧪</span>'
+          +'<div><div style="font-weight:800;margin-bottom:2px;">Test mode — use test card</div>'
+            +'<div style="font-family:monospace;font-size:12px;">4242 4242 4242 4242 · Any future date · Any CVC</div>'
+          +'</div>'
         +'</div>'
+      +'</div>')
+      // Pay-at-venue info (always shown when onsite-only; toggle-revealed otherwise)
+      +'<div id="pay-onsite-section" style="display:'+(PAY_ONSITE_ONLY?'block':'none')+';background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px;margin-bottom:16px;">'
+        +'<div style="font-size:13px;font-weight:800;color:#C2410C;margin-bottom:6px;">🏪 Reserve now, pay at the venue</div>'
+        +'<div style="font-size:12px;color:#92400E;font-weight:500;line-height:1.6;">Your voucher is held for you — just show it to staff and pay '+sym+(priceNum*qty).toFixed(2)+' when you arrive.</div>'
+        +(acceptedLbl
+          ? '<div style="margin-top:10px;background:white;border:1px solid #FED7AA;border-radius:9px;padding:8px 11px;font-size:12px;font-weight:800;color:#C2410C;">This venue accepts: '+acceptedLbl+'</div>'
+          : '')
       +'</div>'
-      // HappyCash wallet (if any) — apply toggle
-      +(wallet>0
-        ? '<label style="display:flex;align-items:center;justify-content:space-between;background:#F0FBF4;border:1.5px solid #B9E8CC;border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;">'
-            +'<div><div style="font-size:13px;font-weight:800;color:#0B7A3C;">💶 Use HappyCash</div>'
-            +'<div style="font-size:11px;color:#12A150;font-weight:600;">'+sym+wallet.toFixed(2)+' available</div></div>'
-            +'<input type="checkbox" id="wallet-apply" checked onchange="walletRecalc()" style="width:20px;height:20px;accent-color:#12A150;cursor:pointer;">'
-          +'</label>'
-          +'<div id="wallet-applied-line" style="font-size:11px;font-weight:700;color:#12A150;text-align:right;margin-bottom:10px;min-height:14px;"></div>'
-        : '')
+      // HappyCash wallet (card payments only)
+      +(PAY_ONSITE_ONLY ? '' :
+        '<div id="pay-wallet-section">'
+        +(wallet>0
+          ? '<label style="display:flex;align-items:center;justify-content:space-between;background:#F0FBF4;border:1.5px solid #B9E8CC;border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;">'
+              +'<div><div style="font-size:13px;font-weight:800;color:#0B7A3C;">💶 Use HappyCash</div>'
+              +'<div style="font-size:11px;color:#12A150;font-weight:600;">'+sym+wallet.toFixed(2)+' available</div></div>'
+              +'<input type="checkbox" id="wallet-apply" checked onchange="walletRecalc()" style="width:20px;height:20px;accent-color:#12A150;cursor:pointer;">'
+            +'</label>'
+            +'<div id="wallet-applied-line" style="font-size:11px;font-weight:700;color:#12A150;text-align:right;margin-bottom:10px;min-height:14px;"></div>'
+          : '')
+      +'</div>')
       // Buttons
-      +'<button id="stripe-pay-btn" onclick="walletPayClick('+priceNum+',\''+currCode+'\',\''+esc(deal.name).replace(/'/g,'').replace(/"/g,'')+'\',\''+esc(deal.name).replace(/'/g,'').replace(/"/g,'')+'\')" style="width:100%;background:#E8192C;color:white;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:10px;">🔒 Pay '+sym+(priceNum*qty).toFixed(2)+'</button>'
+      +'<button id="stripe-pay-btn" onclick="walletPayClick('+priceNum+',\''+currCode+'\',\''+esc(deal.name).replace(/'/g,'').replace(/"/g,'')+'\',\''+esc(deal.name).replace(/'/g,'').replace(/"/g,'')+'\')" style="width:100%;background:#E8192C;color:white;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:10px;">'+(PAY_ONSITE_ONLY ? ('🏪 Reserve · pay '+sym+(priceNum*qty).toFixed(2)+' at venue') : ('🔒 Pay '+sym+(priceNum*qty).toFixed(2)))+'</button>'
       +'<button onclick="document.getElementById(\'stripe-pay-modal\').remove()" style="width:100%;background:none;border:none;color:#9A9AB0;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;padding:8px;">Cancel</button>'
     +'</div>';
   document.body.appendChild(modal);
+
+  // Onsite-only: no card form to mount — the reserve button is ready as-is.
+  if(PAY_ONSITE_ONLY) return;
 
   // Mount Stripe Card Element
   var stripe = getStripe();
@@ -10476,7 +10555,9 @@ async function _completeFreeVoucherPurchase(deal){
   await _finishVoucherPurchase(null);
 }
 
-async function _finishVoucherPurchase(paymentIntentId){
+async function _finishVoucherPurchase(paymentIntentId, opts){
+  opts = opts || {};
+  var isOnsite = !!opts.onsite;   // reserved, customer pays the venue on arrival
   var code = 'HH-' + Math.random().toString(36).substring(2, 6).toUpperCase();
   var allDeals0 = [...vouchers, ...ucDeals];
   var theDeal = allDeals0.find(function(d){ return d.id === curV; });
@@ -10498,11 +10579,15 @@ async function _finishVoucherPurchase(paymentIntentId){
       }
       var _hotelFields = (_isHotelDeal(theDeal) && _hotelSel.checkIn && _hotelSel.checkOut)
         ? { check_in: _hotelSel.checkIn, check_out: _hotelSel.checkOut } : {};
+      // Only stamp payment_method for onsite reservations — online purchases rely
+      // on the column default ('online'), so the prepaid flow never references the
+      // new column and keeps working even before pay_onsite.sql is applied.
+      var _payFields = isOnsite ? { payment_method: 'onsite' } : {};
       var insRes = await db.from('voucher_purchases').insert(Object.assign({
         user_id: currentUser.id, deal_id: curV, code: code,
         qty: qty, status: 'active', expires_at: expires,
         stripe_payment_intent_id: paymentIntentId || null
-      }, _hotelFields)).select('id').single();
+      }, _payFields, _hotelFields)).select('id').single();
       if(insRes && insRes.data) purchaseId = insRes.data.id;
       if(insRes && insRes.error) console.warn('[buyVoucher] insert returned error:', insRes.error.message);
       try { phCapture('voucher_purchased', { deal_id: curV, qty: qty }); } catch(e){}
@@ -10519,7 +10604,9 @@ async function _finishVoucherPurchase(paymentIntentId){
         } catch(e){ console.warn('[book_arrival] exception:', e); }
       }
 
-      if(currentProfile){
+      // Onsite reservations aren't paid yet — purchase credits are awarded at
+      // redemption instead (avoids farming credits on no-show reservations).
+      if(currentProfile && !isOnsite){
         var _crAmt = _ccGet('earnBuyVoucher', 88);
         var newCr = (currentProfile.credits || 0) + _crAmt;
         // Server-side: ledger + balance via SECURITY DEFINER RPC (clients can't
@@ -10542,6 +10629,12 @@ async function _finishVoucherPurchase(paymentIntentId){
       _walletApplied = 0;
     } catch(e){ console.warn('[Supabase] buyVoucher failed', e); }
   }
+  // Onsite reservations: if the insert didn't land (e.g. the payment_method column
+  // isn't there yet, or RLS/network), don't fake a "Voucher Secured!" — fail loudly.
+  if(isOnsite && currentUser && !purchaseId){
+    showToast('⚠️ Could not reserve your voucher — please try again');
+    return;
+  }
   try { await db.rpc('increment_deal_slots_sold', { p_deal_id: curV, p_amount: qty }); } catch(e){}
   var allDeals = [...vouchers, ...ucDeals];
   var purchasedDeal = allDeals.find(function(d){ return d.id === curV; });
@@ -10557,17 +10650,25 @@ async function _finishVoucherPurchase(paymentIntentId){
   // Show the ACTUAL credits awarded (was hardcoded +100; real value is the
   // configured earnBuyVoucher amount, the same one credited above).
   var vcCr = document.getElementById('vc-credits-earned');
-  if(vcCr){ var _earned = (typeof _ccGet==='function') ? _ccGet('earnBuyVoucher', 88) : 10; vcCr.textContent = '+'+_earned+' Credits earned!'; }
-  // Surface the booking on the success overlay
+  // Onsite reservations earn their credits at redemption, so don't promise them here.
+  if(vcCr){
+    if(isOnsite){ vcCr.style.display='none'; }
+    else { vcCr.style.display=''; var _earned = (typeof _ccGet==='function') ? _ccGet('earnBuyVoucher', 88) : 10; vcCr.textContent = '+'+_earned+' Credits earned!'; }
+  }
+  // Surface the booking (or the pay-at-venue reminder) on the success overlay
   var vcBk = document.getElementById('vc-booking-line');
   if(vcBk){
     if(isBooking && bookingOk){
       vcBk.style.display='block';
       vcBk.innerHTML = '📅 Arrival booked: <strong>'+new Date(_bkSel.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' · '+_bkSel.time+'</strong>';
+    } else if(isOnsite){
+      vcBk.style.display='block';
+      vcBk.innerHTML = '🏪 <strong>Pay at the venue</strong> — show this voucher when you arrive';
     } else { vcBk.style.display='none'; }
   }
   myVouchers.unshift({
     vid: curV, code: code, qty: qty, used: false, _dbId: purchaseId,
+    _payOnsite: isOnsite, _paid: false,
     _bkDate: bookingOk ? _bkSel.date : '', _bkTime: bookingOk ? _bkSel.time : '',
     _bkGuests: bookingOk ? qty : 0,
     _bookingRequired: !!(theDeal && theDeal.bookingRequired),
@@ -10743,11 +10844,26 @@ function openQRScreen(code, voucherIdx){
   var qtyVal = mv ? mv.qty : qty;
   document.getElementById('qr-detail-deal').textContent = deal.deal || '—';
   document.getElementById('qr-detail-qty').textContent = '×' + qtyVal;
-  document.getElementById('qr-detail-price').textContent = deal.price || '—';
+  // Pay-at-venue vouchers show what's owed, not "price paid", until collected.
+  var priceEl = document.getElementById('qr-detail-price');
+  var priceLbl = document.getElementById('qr-detail-price-label');
+  var _unpaidOnsite = mv && mv._payOnsite && !mv._paid;
+  priceEl.textContent = deal.price || '—';
+  if(_unpaidOnsite){
+    if(priceLbl) priceLbl.textContent = 'Pay at venue';
+    priceEl.style.color = '#FF6B35';
+  } else {
+    if(priceLbl) priceLbl.textContent = 'Price paid';
+    priceEl.style.color = '#4CAF50';
+  }
 
   // Status pill
   const pill=document.getElementById('qr-status-pill');
-  pill.textContent='● Active';pill.style.background='rgba(18,161,80,.2)';pill.style.color='#4CAF50';pill.style.borderColor='rgba(18,161,80,.4)';
+  if(_unpaidOnsite){
+    pill.textContent='● Pay at venue';pill.style.background='rgba(255,107,53,.18)';pill.style.color='#FF6B35';pill.style.borderColor='rgba(255,107,53,.4)';
+  } else {
+    pill.textContent='● Active';pill.style.background='rgba(18,161,80,.2)';pill.style.color='#4CAF50';pill.style.borderColor='rgba(18,161,80,.4)';
+  }
 
   // Perks and deal info
   const perksEl=document.getElementById('qr-perks-list');
@@ -11630,8 +11746,11 @@ function mePageNew(page, btn){
       break;
     case 'settings':
       content = meRenderSettings();
-      // Bank section loads async into #me-bank-display after innerHTML is set.
-      setTimeout(function(){ if(typeof meLoadBankDetails==='function') meLoadBankDetails(); }, 0);
+      // Bank + accepted-payment sections load async after innerHTML is set.
+      setTimeout(function(){
+        if(typeof meLoadBankDetails==='function') meLoadBankDetails();
+        if(typeof meLoadAcceptedPayment==='function') meLoadAcceptedPayment();
+      }, 0);
       break;
     default:
       content = meRenderDashNew();
@@ -11965,7 +12084,7 @@ function renderMyVouchers(){
         ${!isUsed?`<div style="background:linear-gradient(135deg,#E8192C,#FF5533);color:white;font-size:11px;font-weight:800;padding:8px 13px;border-radius:20px;flex-shrink:0;box-shadow:0 3px 10px rgba(232,25,44,.25);letter-spacing:.2px;">Show QR</div>`:''}
       </div>
       <div class="mv-bottom">
-        <div class="mvs ${isUsed?'mvs-u':'mvs-a'}">${isUsed?'Used':'✓ Active'}</div>
+        <div class="mvs ${isUsed?'mvs-u':'mvs-a'}">${isUsed?'Used':((mv._payOnsite&&!mv._paid)?'🏪 Pay at venue':'✓ Active')}</div>
         <div class="mv-code" style="cursor:pointer;" onclick="event.stopPropagation();copyCode('${mv.code}')">${mv.code}</div>
       </div>
     </div>`;}).join(''):'<div style="padding:20px 16px;font-size:13px;color:var(--t3);text-align:center;">None yet</div>';
@@ -12917,6 +13036,8 @@ function redeemScreenCode(){
   const inp=document.getElementById('invite-screen-inp');
   const code=(inp?inp.value:'').trim().toUpperCase();
   if(!code){showToast('Please enter a code 🔑');return;}
+  // Unlocking an invite-only deal requires an account — on web this opens the popup.
+  if(!requireLogin('unlock invite-only deals')) return;
   const valid={
     'SUNSET2025':{name:'Sunset Rooftop Special',venue:'Sky Lounge',deal:'60% off all cocktails',emoji:'🍸',time:'8PM–11PM'},
     'HAPPYHOUR':{name:'Secret Happy Hour',venue:'The Copper Bar',deal:'3-for-2 on everything',emoji:'🍹',time:'5PM–7PM'},
@@ -13658,6 +13779,12 @@ function doGuestLogin(){
 function requireLogin(action){
   if(!isGuest) return true;
   showToast('🔒 Sign in to '+action);
+  // On web (desktop) the full-screen login is retired — the compact popup
+  // (Google + email/password + "create an account") handles login instead.
+  if(_isWebWidth()){
+    setTimeout(function(){ try{ openWebLoginPopup(); }catch(e){} }, 350);
+    return false;
+  }
   setTimeout(function(){
     var ls=document.getElementById('login-screen');
     if(ls){ls.style.display='flex';ls.style.opacity='0';ls.style.transition='opacity .3s';
@@ -23394,7 +23521,7 @@ async function meCheckRedeem(scannedCode){
     // 1. Look up voucher in DB with customer + deal info
     var { data: purchase, error } = await db
       .from('voucher_purchases')
-      .select('id, code, status, expires_at, qty, created_at, user_id, deal_id, stripe_payment_intent_id, profiles(name), deals(id, title, price, currency, hours, venue_id, booking_required, allow_unbooked, grace_period_min, time_from, time_to, days, venues(id, name, owner_id)), voucher_bookings(booking_date, arrival_time, guests, status)')
+      .select('id, code, status, expires_at, qty, created_at, user_id, deal_id, stripe_payment_intent_id, payment_method, paid_at, profiles(name), deals(id, title, price, currency, hours, venue_id, booking_required, allow_unbooked, grace_period_min, time_from, time_to, days, venues(id, name, owner_id)), voucher_bookings(booking_date, arrival_time, guests, status)')
       .eq('code', code)
       .maybeSingle();
 
@@ -23517,6 +23644,22 @@ async function meCheckRedeem(scannedCode){
       }
     })();
 
+    // Pay-at-venue: this voucher was reserved, not prepaid — staff collects on redemption.
+    var isOnsite    = purchase.payment_method === 'onsite';
+    var alreadyPaid = !!purchase.paid_at;
+    var needsCollect = isOnsite && !alreadyPaid;
+    var collectAmt  = (parseFloat(deal.price) || 0) * qty;
+    var collectStr  = sym + collectAmt.toFixed(2);
+    var collectBanner = needsCollect
+      ? '<div style="background:linear-gradient(135deg,#C2410C,#EA580C);border-radius:16px;padding:18px 20px;text-align:center;margin-bottom:16px;">'
+          +'<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.6px;font-family:Inter,sans-serif;">💵 Collect payment at venue</div>'
+          +'<div style="font-size:34px;font-weight:900;color:white;font-family:Inter,sans-serif;letter-spacing:-1px;margin-top:4px;">'+collectStr+'</div>'
+          +'<div style="font-size:12px;color:rgba(255,255,255,.85);font-weight:600;font-family:Inter,sans-serif;margin-top:2px;">Not prepaid — take payment before confirming</div>'
+        +'</div>'
+      : (isOnsite && alreadyPaid
+        ? '<div style="background:rgba(18,161,80,.08);border:1.5px solid rgba(18,161,80,.3);border-radius:12px;padding:12px;text-align:center;margin-bottom:16px;font-size:13px;font-weight:800;color:#12A150;font-family:Inter,sans-serif;">✅ Paid at venue · '+collectStr+'</div>'
+        : '');
+
     // 6. Valid — show confirmation as modal popup
     el.innerHTML = '';
 
@@ -23534,6 +23677,7 @@ async function meCheckRedeem(scannedCode){
           +'<code style="font-size:16px;font-weight:800;color:white;font-family:monospace;letter-spacing:2px;">'+code+'</code>'
         +'</div>'
       +'</div>'
+      + collectBanner
       // Customer row
       +'<div style="display:flex;align-items:center;gap:12px;background:#F5F5F7;border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
         +'<div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--red),#FF6B35);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:white;flex-shrink:0;">'+initials+'</div>'
@@ -23560,8 +23704,8 @@ async function meCheckRedeem(scannedCode){
         +(deal.hours?'<div style="background:#F5F5F7;border-radius:12px;padding:12px;border:1.5px solid #E8E8EC;"><div style="font-size:10px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;font-family:Inter,sans-serif;">Hours</div><div style="font-size:12px;font-weight:700;color:#1A1A1A;font-family:Inter,sans-serif;">'+deal.hours+'</div></div>':'')
         +bkTile
       +'</div>'
-      // Confirm button
-      +'<button onclick="meConfirmRedeem(\''+purchase.id+'\',\''+code+'\',\''+customerName.replace(/'/g,'')+'\',\''+dealName.replace(/'/g,'')+'\',\''+price+'\','+qty+',\''+purchase.user_id+'\');this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:linear-gradient(135deg,#12A150,#0f8f45);color:white;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 14px rgba(18,161,80,.35);margin-bottom:8px;">✅ Confirm Redemption</button>'
+      // Confirm button — onsite vouchers collect payment + redeem in one step
+      +'<button onclick="meConfirmRedeem(\''+purchase.id+'\',\''+code+'\',\''+customerName.replace(/'/g,'')+'\',\''+dealName.replace(/'/g,'')+'\',\''+price+'\','+qty+',\''+purchase.user_id+'\','+(needsCollect?'true':'false')+');this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:'+(needsCollect?'linear-gradient(135deg,#C2410C,#EA580C)':'linear-gradient(135deg,#12A150,#0f8f45)')+';color:white;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 14px '+(needsCollect?'rgba(194,65,12,.35)':'rgba(18,161,80,.35)')+';margin-bottom:8px;">'+(needsCollect?('💰 Collect '+collectStr+' &amp; Redeem'):'✅ Confirm Redemption')+'</button>'
       +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:none;border:1.5px solid #E8E8EC;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Cancel</button>';
 
     modal.appendChild(card);
@@ -23573,16 +23717,19 @@ async function meCheckRedeem(scannedCode){
   }
 }
 
-async function meConfirmRedeem(purchaseId, code, customerName, dealName, price, qty, customerId){
+async function meConfirmRedeem(purchaseId, code, customerName, dealName, price, qty, customerId, collectOnsite){
   var btn = document.querySelector('#me-redeem-result button');
   if(btn){ btn.textContent='⏳ Processing…'; btn.disabled=true; }
 
   try {
     var now = new Date().toISOString();
 
-    // 1. Mark voucher as used in DB
+    // 1. Mark voucher as used in DB. For pay-at-venue vouchers, redemption is
+    //    also the moment payment is collected, so stamp paid_at too.
+    var _upd = { status: 'used', redeemed_at: now };
+    if(collectOnsite) _upd.paid_at = now;
     var { error } = await db.from('voucher_purchases')
-      .update({ status: 'used', redeemed_at: now })
+      .update(_upd)
       .eq('id', purchaseId)
       .eq('status', 'active'); // safety: only update if still active
 
@@ -23650,7 +23797,9 @@ async function meConfirmRedeem(purchaseId, code, customerName, dealName, price, 
     var flash = document.getElementById('me-scan-success-flash');
     if(flash){ flash.style.display='block'; setTimeout(function(){ flash.style.display='none'; }, 600); }
 
-    showToast('✅ '+customerName+' — voucher redeemed! Updated globally.');
+    showToast(collectOnsite
+      ? ('💰 '+price+' collected · '+customerName+' — voucher redeemed!')
+      : ('✅ '+customerName+' — voucher redeemed! Updated globally.'));
 
   } catch(e){
     console.error('[meConfirmRedeem]', e);
@@ -23700,7 +23849,57 @@ function meRenderSettings(){
     + '<div id="me-bank-display" style="padding:18px;"><div style="font-size:13px;color:#9A9AB0;font-weight:600;text-align:center;padding:20px 0;">Loading bank details…</div></div>'
   + '</div>';
 
-  return '<div style="display:flex;flex-direction:column;gap:20px;">'+account + pw + bank+'</div>';
+  // Accepted onsite payment — shown to customers who choose "Pay at venue".
+  var accpay = '<div class="me-card">'
+    + '<div class="me-card-header"><span class="me-card-title">💳 Onsite Payment</span></div>'
+    + '<div style="padding:18px;">'
+      + '<div style="font-size:12px;color:#9A9AB0;font-weight:600;margin-bottom:12px;font-family:Inter,sans-serif;line-height:1.5;">What can customers pay with when they settle a voucher in person? Shown to anyone who picks “Pay at venue” at checkout.</div>'
+      + '<div id="me-accpay-opts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">'
+        + _meAccpayChip('cash','💵','Cash')
+        + _meAccpayChip('card','💳','Card')
+        + _meAccpayChip('either','💵 💳','Either')
+      + '</div>'
+      + '<div id="me-accpay-status" style="font-size:11px;color:#9A9AB0;text-align:center;margin-top:10px;font-family:Inter,sans-serif;min-height:14px;"></div>'
+    + '</div>'
+  + '</div>';
+
+  return '<div style="display:flex;flex-direction:column;gap:20px;">'+account + accpay + pw + bank+'</div>';
+}
+
+function _meAccpayChip(val,icon,label){
+  return '<button type="button" id="me-accpay-'+val+'" onclick="meSetAcceptedPayment(\''+val+'\')" '
+    + 'style="border:2px solid #E8E8EC;background:#F5F5F7;border-radius:12px;padding:14px 6px;text-align:center;cursor:pointer;font-family:Inter,sans-serif;transition:all .15s;">'
+    + '<div style="font-size:20px;margin-bottom:4px;">'+icon+'</div>'
+    + '<div style="font-size:12px;font-weight:800;color:#1A1A1A;">'+label+'</div>'
+  + '</button>';
+}
+function _meAccpayHighlight(val){
+  ['cash','card','either'].forEach(function(v){
+    var el=document.getElementById('me-accpay-'+v); if(!el) return;
+    var on = (v===val);
+    el.style.borderColor = on ? '#12A150' : '#E8E8EC';
+    el.style.background  = on ? '#F0FBF4' : '#F5F5F7';
+  });
+}
+async function meLoadAcceptedPayment(){
+  if(!meVenueId) return;
+  try{
+    var {data:v} = await db.from('venues').select('accepted_payment').eq('id', meVenueId).maybeSingle();
+    if(v) _meAccpayHighlight(v.accepted_payment || '');
+  }catch(e){ /* column may not exist until pay_onsite.sql is run */ }
+}
+async function meSetAcceptedPayment(val){
+  if(!meVenueId){ showToast('⚠️ No venue linked to your account'); return; }
+  _meAccpayHighlight(val);
+  var st=document.getElementById('me-accpay-status'); if(st){ st.textContent='Saving…'; st.style.color='#9A9AB0'; }
+  try{
+    var { error } = await db.from('venues').update({ accepted_payment: val }).eq('id', meVenueId);
+    if(error) throw error;
+    if(st){ st.textContent='✓ Saved'; st.style.color='#12A150'; }
+    showToast('✅ Onsite payment updated');
+  }catch(e){
+    if(st){ st.textContent='⚠️ '+((e&&e.message)||'Could not save'); st.style.color='#dc2626'; }
+  }
 }
 
 function meToggleSettingsPw(show){
