@@ -5346,7 +5346,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260627234637';
+var BUILD_VERSION = '20260628011940';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -11682,7 +11682,7 @@ function calculateMerchantMetrics(){
   (vouchersData || []).forEach(function(v){
     (v.purchases || []).forEach(function(p){
       var price = parseFloat(p.price) || (v.priceNum || 0);
-      purchases.push({ code:p.code, buyer:p.buyer, status:p.status, date:p.date, price:price, deal:v.name });
+      purchases.push({ code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, price:price, deal:v.name });
       metrics.revenue.value += price;
     });
   });
@@ -11696,13 +11696,14 @@ function calculateMerchantMetrics(){
     if(reviewCount > 0){ metrics.avgRating.value = (totalRating / reviewCount).toFixed(1); metrics.avgRating.reviewCount = reviewCount; }
   }
 
-  // Recent redemptions — real used vouchers, newest first.
+  // Recent redemptions — real used vouchers, newest first, keyed to the actual
+  // redeemed_at time (falls back to purchase date for older rows without it).
   metrics.recentRedemptions = purchases
     .filter(function(p){ return p.status === 'used'; })
-    .sort(function(a, b){ return new Date(b.date || 0) - new Date(a.date || 0); })
+    .sort(function(a, b){ return new Date(b.redeemedAt || b.date || 0) - new Date(a.redeemedAt || a.date || 0); })
     .slice(0, 10)
     .map(function(p){
-      return { code:p.code, deal:p.deal || 'Deal', user:p.buyer || 'Customer', time: formatRelativeTime(new Date() - new Date(p.date || 0)) };
+      return { code:p.code, deal:p.deal || 'Deal', user:p.buyer || 'Customer', time: formatRelativeTime(new Date() - new Date(p.redeemedAt || p.date || 0)) };
     });
 
   // Last-7-days revenue chart from real purchases (today is the last bar).
@@ -22281,7 +22282,7 @@ async function loadMerchantData(){
     // 5. Kick off purchases query in parallel with deals processing
     var dealIds = (dbDeals||[]).map(function(d){return d.id;});
     var _pPurch = dealIds.length ? db.from('voucher_purchases')
-      .select('id,code,status,created_at,deal_id,profiles(name),deals(title,price,slots_total,emoji)')
+      .select('id,code,status,created_at,redeemed_at,deal_id,profiles(name),deals(title,price,slots_total,emoji)')
       .in('deal_id', dealIds)
       .order('created_at', {ascending:false})
       .limit(500)
@@ -22375,6 +22376,7 @@ async function loadMerchantData(){
             email: (p.profiles && p.profiles.email) || '',
             status: p.status || 'active',
             date: p.created_at,
+            redeemedAt: p.redeemed_at || null,
             price: priceNum
           });
         });
@@ -22405,7 +22407,7 @@ async function loadMerchantData(){
         try {
           var _vslim = vouchersData.map(function(v){
             return { id:v.id, name:v.name, emoji:v.emoji, sold:v.sold, redeemed:v.redeemed, total:v.total, priceNum:v.priceNum, price:v.price, rev:v.rev,
-              purchases: (v.purchases||[]).map(function(p){ return { code:p.code, buyer:p.buyer, status:p.status, date:p.date, price:p.price }; }) };
+              purchases: (v.purchases||[]).map(function(p){ return { code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, price:p.price }; }) };
           });
           localStorage.setItem('hh_merch_vouchers_' + currentUser.id, JSON.stringify({v:_vslim, bal:meCurrentBalance, time:Date.now()}));
         } catch(e){}
@@ -24414,27 +24416,24 @@ function analyzeCustomerSegments(){
     inactive: { count: 0, spent: 0, lastPurchase: null }
   };
 
-  if(!myVouchers || myVouchers.length === 0) return segments;
-
+  // Group the VENUE's real buyers (from vouchersData purchases), keyed by email
+  // when available (PII-stripped offline cache falls back to buyer name).
   var customerMap = {};
-  myVouchers.forEach(function(v){
-    var customerId = v._customerId || v.user_id || 'unknown';
-    if(!customerMap[customerId]){
-      customerMap[customerId] = {
-        name: v._customerName || 'Customer',
-        purchaseCount: 0,
-        totalSpent: 0,
-        lastPurchase: v.created_at,
-        email: v._customerEmail
-      };
-    }
-    customerMap[customerId].purchaseCount++;
-    customerMap[customerId].totalSpent += parseFloat(v.price) || 0;
-    var purchaseTime = new Date(v.created_at);
-    if(!customerMap[customerId].lastPurchase || purchaseTime > new Date(customerMap[customerId].lastPurchase)){
-      customerMap[customerId].lastPurchase = v.created_at;
-    }
+  (vouchersData || []).forEach(function(v){
+    (v.purchases || []).forEach(function(p){
+      var customerId = p.email || p.buyer || ('anon-' + (p.code || ''));
+      if(!customerMap[customerId]){
+        customerMap[customerId] = { name: p.buyer || 'Customer', purchaseCount: 0, totalSpent: 0, lastPurchase: p.date, email: p.email };
+      }
+      customerMap[customerId].purchaseCount++;
+      customerMap[customerId].totalSpent += parseFloat(p.price) || (v.priceNum || 0);
+      var purchaseTime = p.date ? new Date(p.date) : null;
+      if(purchaseTime && (!customerMap[customerId].lastPurchase || purchaseTime > new Date(customerMap[customerId].lastPurchase))){
+        customerMap[customerId].lastPurchase = p.date;
+      }
+    });
   });
+  if(Object.keys(customerMap).length === 0) return segments;
 
   // Categorize customers
   var today = new Date();
@@ -24467,6 +24466,13 @@ function analyzeCustomerSegments(){
 function meRenderAnalyticsAdvanced(){
   var segments = analyzeCustomerSegments();
   var sym = finSym();
+  // Real last-7-days revenue for the trend chart (no hardcoded bars/totals).
+  var _m = calculateMerchantMetrics();
+  var _cd = (_m.chartData && _m.chartData.length) ? _m.chartData : [];
+  var _vals = _cd.length ? _cd.map(function(d){ return d.value; }) : [0,0,0,0,0,0,0];
+  var _labels = _cd.length ? _cd.map(function(d){ return d.label; }) : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var _maxV = Math.max.apply(null, _vals) || 1;
+  var _total7 = _vals.reduce(function(s,x){ return s + x; }, 0);
 
   return (
     '<div style="display:flex;flex-direction:column;gap:20px;">'
@@ -24485,16 +24491,16 @@ function meRenderAnalyticsAdvanced(){
       +'</div>'
       +'<div class="me-card-body">'
         +'<div style="display:flex;align-items:flex-end;gap:8px;height:100px;margin-bottom:12px;padding:0 8px;">'
-          +[60,80,55,90,100,70,85].map(function(h,i){
+          +_vals.map(function(v,i){
+            var h = Math.max(4, Math.round(v/_maxV*100));
             return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">'
-              +'<div style="width:100%;background:linear-gradient(180deg,var(--red),#FF6B35);border-radius:6px 6px 0 0;height:'+h+'%;transition:all .2s;" onmouseenter="this.style.opacity=\'0.8\'" onmouseleave="this.style.opacity=\'1\'"></div>'
-              +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]+'</div>'
+              +'<div title="'+sym+v.toFixed(2)+'" style="width:100%;background:linear-gradient(180deg,var(--red),#FF6B35);border-radius:6px 6px 0 0;height:'+h+'%;transition:all .2s;" onmouseenter="this.style.opacity=\'0.8\'" onmouseleave="this.style.opacity=\'1\'"></div>'
+              +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;">'+_labels[i]+'</div>'
               +'</div>';
           }).join('')
         +'</div>'
         +'<div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1.5px solid #E8E8EC;">'
-          +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;">Total: <span style="color:#1A1A1A;font-weight:800;">'+sym+'847.50</span></div>'
-          +'<div style="font-size:11px;color:#12A150;font-weight:700;">↑ 23% vs last week</div>'
+          +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;">Total (7 days): <span style="color:#1A1A1A;font-weight:800;">'+sym+_total7.toFixed(2)+'</span></div>'
         +'</div>'
       +'</div>'
     +'</div>'
