@@ -5337,7 +5337,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260627031029';
+var BUILD_VERSION = '20260627034543';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5628,6 +5628,62 @@ function togglePw(id){
   var p = document.getElementById(id);
   if(p) p.type = (p.type === 'password') ? 'text' : 'password';
 }
+
+// ── Universal show/hide toggle for EVERY password field ───────────────────────
+// Adds an eye button to every <input type="password"> — including fields in
+// modals/screens rendered after load (a MutationObserver re-scans). Idempotent,
+// layout-preserving, and skips fields that already ship their own toggle.
+function _attachPwToggle(inp){
+  if(!inp || inp.getAttribute('data-pwt')) return;
+  inp.setAttribute('data-pwt','1');
+  // Skip individually display-toggled fields (e.g. signup confirm) — wrapping
+  // them would fight the code that shows/hides them.
+  if(inp.style && inp.style.display === 'none') return;
+  // Skip fields that already have their own toggle button next to them.
+  if(inp.parentNode && inp.parentNode.querySelector && inp.parentNode.querySelector('button')) return;
+  var m = '';
+  try { m = getComputedStyle(inp).margin; } catch(e){}
+  var wrap = document.createElement('span');
+  wrap.style.cssText = 'position:relative;display:block;' + (m ? ('margin:' + m + ';') : '');
+  inp.parentNode.insertBefore(wrap, inp);
+  wrap.appendChild(inp);
+  inp.style.margin = '0';
+  inp.style.boxSizing = 'border-box';
+  inp.style.paddingRight = '42px';
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.title = 'Show / hide password';
+  btn.setAttribute('aria-label','Show or hide password');
+  btn.textContent = '👁';
+  btn.style.cssText = 'position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.05);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;padding:0;opacity:.55;z-index:2;';
+  btn.addEventListener('mousedown', function(e){ e.preventDefault(); });   // keep input focus
+  btn.addEventListener('click', function(){
+    inp.type = (inp.type === 'password') ? 'text' : 'password';
+    btn.style.opacity = (inp.type === 'text') ? '1' : '.55';
+  });
+  wrap.appendChild(btn);
+}
+var _pwScanQueued = false;
+function _scanPwToggles(){
+  _pwScanQueued = false;
+  try {
+    var els = document.querySelectorAll('input[type="password"]:not([data-pwt])');
+    for(var i=0;i<els.length;i++) _attachPwToggle(els[i]);
+  } catch(e){}
+}
+function _queuePwScan(){
+  if(_pwScanQueued) return;
+  _pwScanQueued = true;
+  (window.requestAnimationFrame || function(f){ setTimeout(f, 60); })(_scanPwToggles);
+}
+document.addEventListener('DOMContentLoaded', function(){
+  _scanPwToggles();
+  try {
+    new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){ if(muts[i].addedNodes && muts[i].addedNodes.length){ _queuePwScan(); break; } }
+    }).observe(document.body, { childList:true, subtree:true });
+  } catch(e){}
+}, { once:true });
 async function doMerchantLogin(){
   var em = (document.getElementById('m-login-email')||{}).value || '';
   var pw = (document.getElementById('m-login-pass')||{}).value || '';
