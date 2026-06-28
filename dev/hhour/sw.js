@@ -3,7 +3,7 @@
    cache the app already maintains (last-loaded deals), so users can browse what
    they last saw while offline. Private/dynamic data (Supabase REST/auth, our API)
    is NEVER cached — only the shell, libraries, fonts and public deal photos. */
-var CACHE = 'hh-offline-v1';
+var CACHE = 'hh-offline-v2';
 var SHELL = ['/', '/happyhourly-complete.html', '/version.json'];
 
 self.addEventListener('install', function(e){
@@ -49,7 +49,18 @@ self.addEventListener('fetch', function(e){
      (url.origin === self.location.origin && (url.pathname === '/' || url.pathname.indexOf('happyhourly-complete.html') !== -1))){
     e.respondWith(
       fetch(req).then(function(res){
-        var cp = res.clone(); caches.open(CACHE).then(function(c){ c.put('/happyhourly-complete.html', cp); });
+        // iOS/WebKit throws a network error if a service worker returns a REDIRECTED
+        // response to a navigation (our domain 308-redirects non-www→www). Repeated
+        // navigation errors show "A problem repeatedly occurred". Rebuild a clean,
+        // non-redirected response and cache THAT (never cache a redirect/non-OK).
+        if(res && res.redirected){
+          return res.blob().then(function(b){
+            var clean = new Response(b, { status: res.status, statusText: res.statusText, headers: res.headers });
+            if(res.ok){ var cc = clean.clone(); caches.open(CACHE).then(function(c){ c.put('/happyhourly-complete.html', cc); }); }
+            return clean;
+          });
+        }
+        if(res && res.ok){ var cp = res.clone(); caches.open(CACHE).then(function(c){ c.put('/happyhourly-complete.html', cp); }); }
         return res;
       }).catch(function(){
         return caches.match('/happyhourly-complete.html').then(function(m){ return m || caches.match('/'); });
