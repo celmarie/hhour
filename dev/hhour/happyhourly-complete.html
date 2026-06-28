@@ -2909,7 +2909,7 @@ function _loadGT(){
   </button>
   <div style="text-align:center;font-size:12px;color:#9A9AB0;font-weight:600;margin:6px 0 12px;">or sign in with email</div>
   <input id="wl-email" type="email" placeholder="Email address" autocomplete="email" style="width:100%;box-sizing:border-box;background:#F7F7F9;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px 14px;font-family:'Inter',sans-serif;font-size:14.5px;color:#1A1A1A;outline:none;margin-bottom:10px;" onkeydown="if(event.key==='Enter')webLoginSubmit()">
-  <input id="wl-pass" type="password" placeholder="Password" style="width:100%;box-sizing:border-box;background:#F7F7F9;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px 14px;font-family:'Inter',sans-serif;font-size:14.5px;color:#1A1A1A;outline:none;" onkeydown="if(event.key==='Enter')webLoginSubmit()">
+  <input id="wl-pass" type="password" disabled placeholder="Password" style="width:100%;box-sizing:border-box;background:#F7F7F9;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px 14px;font-family:'Inter',sans-serif;font-size:14.5px;color:#1A1A1A;outline:none;" onkeydown="if(event.key==='Enter')webLoginSubmit()">
   <div id="captcha-box-weblogin" style="display:none;justify-content:center;margin:12px 0 0;"></div>
   <div id="wl-error" style="color:#E8192C;font-size:12.5px;font-weight:700;min-height:16px;margin:6px 2px;"></div>
   <button type="button" onclick="webLoginSubmit()" style="width:100%;background:linear-gradient(135deg,#FF5A5F,#FF7A33 60%,#FF9E3D);color:#fff;border:none;border-radius:14px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">Continue</button>
@@ -4600,15 +4600,15 @@ function _loadGT(){
           <div style="font-size:13px;color:var(--t3);margin-bottom:20px;">Update your account password</div>
           <div style="margin-bottom:12px;">
             <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Current Password</label>
-            <input id="st-pw-current" type="password" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="Enter current password" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+            <input id="st-pw-current" type="password" disabled style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="Enter current password" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
           </div>
           <div style="margin-bottom:12px;">
             <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">New Password</label>
-            <input id="st-pw-new" type="password" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="Choose a new password" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+            <input id="st-pw-new" type="password" disabled style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="Choose a new password" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
           </div>
           <div style="margin-bottom:8px;">
             <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Confirm New Password</label>
-            <input id="st-pw-confirm" type="password" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="Repeat new password" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+            <input id="st-pw-confirm" type="password" disabled style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="Repeat new password" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
           </div>
           <div id="st-pw-error" style="color:#dc2626;font-size:12px;font-weight:700;margin-bottom:14px;min-height:18px;"></div>
           <div id="captcha-box-pw" style="display:none;justify-content:center;margin-bottom:14px;"></div>
@@ -4825,7 +4825,7 @@ function _loadGT(){
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Phone number</div>
         <input id="b1-phone" type="tel" placeholder="+34 600 000 000" class="biz-inp" style="margin-bottom:14px;">
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Password</div>
-        <input id="b1-pass" type="password" placeholder="Min. 8 characters" class="biz-inp" style="margin-bottom:6px;">
+        <input id="b1-pass" type="password" disabled placeholder="Min. 8 characters" class="biz-inp" style="margin-bottom:6px;">
         <div style="font-size:11px;color:var(--t3);font-weight:500;margin-bottom:20px;">Use letters, numbers, and symbols for a strong password</div>
         <button onclick="bizStep1Next()" style="width:100%;background:var(--red);color:white;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">Continue →</button>
         <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--t3);font-weight:500;">By continuing you agree to our <span onclick="goScreen('terms')" style="color:var(--red);cursor:pointer;font-weight:700;">Terms</span> &amp; <span onclick="goScreen('privacy')" style="color:var(--red);cursor:pointer;font-weight:700;">Privacy Policy</span></div>
@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628230234';
+var BUILD_VERSION = '20260628231607';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5534,6 +5534,21 @@ function _lockLoginInputs(lock){
     if(el) el.disabled = !!lock;
   });
 }
+// iOS scans EVERY password field in the DOM — even ones in hidden screens/sheets —
+// and pops a "Sign in / Fill Password" AutoFill prompt over the home on every load.
+// Keep every password field `disabled` (inert, so iOS ignores it) UNLESS it's
+// actually on screen. Call this after any screen/sheet/modal change; it enables
+// only the currently-visible password inputs and re-disables the rest.
+function _guardPasswordFields(){
+  try {
+    var nodes = document.querySelectorAll('input[type="password"]');
+    for(var i=0;i<nodes.length;i++){
+      var inp = nodes[i];
+      if(inp === document.activeElement){ inp.disabled = false; continue; } // never disable what's being typed in
+      inp.disabled = (inp.getClientRects().length === 0);                   // hidden (no layout box) → disable
+    }
+  } catch(e){}
+}
 function showLoginScreen(){
   // End the portal-boot state so the login isn't suppressed by the boot CSS
   // (the boot splash hides the login until auth resolves; here we genuinely want it).
@@ -5565,6 +5580,7 @@ function openWebLoginPopup(){
   var p = document.getElementById('web-login-pop'); if(!p) return;
   var er = document.getElementById('wl-error'); if(er) er.textContent='';
   p.style.display = 'block';
+  try { _guardPasswordFields(); } catch(e){}   // popup visible → enable its password field
   try { _captchaInit('captcha-box-weblogin'); } catch(e){}
   // Render Google's popup button (no supabase.co); reveal the redirect button only
   // if GIS can't load. This popup is desktop-only, so the popup flow always applies.
@@ -7225,6 +7241,12 @@ document.addEventListener('DOMContentLoaded', async function(){
   if(typeof renderUC==='function') renderUC('all');
   if(typeof renderAllDeals==='function') renderAllDeals('all');
 
+  // Belt-and-suspenders: make sure no off-screen password field is fillable (iOS
+  // AutoFill prompt over the home). Static `disabled` covers parse time; this
+  // re-asserts after the first render and once more after late layout settles.
+  try { _guardPasswordFields(); } catch(e){}
+  setTimeout(function(){ try { _guardPasswordFields(); } catch(e){} }, 1200);
+
   // Shared deal link: now that fresh data is in, open it (or report not found)
   if(_pendingSharedDeal){
     if(!openSharedDeal()){
@@ -8140,6 +8162,7 @@ function openEditProfile(){
 function stChangePassword(){
   var ov = document.getElementById('st-change-pw-ov');
   if(ov) ov.style.display = 'flex';
+  try { _guardPasswordFields(); } catch(e){}   // sheet now visible → enable its password fields
   if(typeof _captchaInit==='function') _captchaInit('captcha-box-pw');   // CAPTCHA for the re-auth
 }
 
@@ -13204,6 +13227,7 @@ function goScreen(name){
     var _np=_screenPath[name];
     if(_np && location.pathname!==_np){ try{ history.pushState({screen:name}, '', _np); }catch(e){} }
   }
+  try { _guardPasswordFields(); } catch(e){}   // keep hidden password fields inert (no iOS AutoFill prompt)
 }
 
 // Keep the desktop sidebar (active item, alerts badge, profile chip) in sync.
@@ -14040,7 +14064,9 @@ async function loginWithGoogleRedirect(){
   if(errEl) errEl.textContent = '';
   try{
     var redirectTo = window.location.origin + window.location.pathname;
-    var { error } = await db.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: redirectTo } });
+    // prompt=select_account → always show Google's account chooser instead of
+    // silently reusing the last-used Google account.
+    var { error } = await db.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: redirectTo, queryParams: { prompt: 'select_account' } } });
     if(error && errEl){ errEl.textContent = error.message; }
   }catch(e){
     if(errEl) errEl.textContent = 'Google sign-in failed: ' + (e.message || e);
