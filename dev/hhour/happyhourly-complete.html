@@ -3257,7 +3257,7 @@ function _loadGT(){
 
           <!-- Name & email centered -->
           <div class="prof-name" style="font-size:18px;font-weight:900;color:white;letter-spacing:-.2px;margin-bottom:2px;text-align:center;">Guest</div>
-          <div class="prof-email" style="font-size:12px;color:rgba(255,255,255,.65);font-weight:500;margin-bottom:12px;text-align:center;">john.doe@email.com</div>
+          <div class="prof-email" style="font-size:12px;color:rgba(255,255,255,.65);font-weight:500;margin-bottom:12px;text-align:center;">Browsing as guest</div>
         </div>
 
         <!-- Stat cards -->
@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629003322';
+var BUILD_VERSION = '20260629004836';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -29842,7 +29842,7 @@ function _setupDealMap() {
      belt-and-suspenders against the iOS crash. Gradient + solid card remain. */
   #login-screen .hh-blob, #login-screen .hh-emoji, #merchant-login-screen .ml-blob{ display:none !important; }
 </style>
-<div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:safe center;padding:26px 20px calc(26px + env(safe-area-inset-bottom, 0px));font-family:'Inter',sans-serif;overflow-y:auto;background:linear-gradient(165deg,#FFF7EF 0%,#FFE9D8 48%,#FFD9C2 100%);">
+<div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:none;flex-direction:column;align-items:center;justify-content:safe center;padding:26px 20px calc(26px + env(safe-area-inset-bottom, 0px));font-family:'Inter',sans-serif;overflow-y:auto;background:linear-gradient(165deg,#FFF7EF 0%,#FFE9D8 48%,#FFD9C2 100%);">
 
   <!-- playful drifting color blobs -->
   <div class="hh-blob" style="top:-60px;left:-50px;width:260px;height:260px;background:radial-gradient(circle,rgba(255,138,61,.45),transparent 70%);"></div>
