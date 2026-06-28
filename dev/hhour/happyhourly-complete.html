@@ -5347,7 +5347,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628023302';
+var BUILD_VERSION = '20260628023916';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6824,6 +6824,8 @@ function ucAddrPick(address, establishmentName) {
   _addrHideDrop();
   // Geocode to detect country and suggest currency
   suggestCurrencyFromAddress(address);
+  // Both name + address are now set — re-run the duplicate check.
+  if(typeof ucCheckVenueDup === 'function') ucCheckVenueDup();
 }
 
 function bizAddrPick(address, establishmentName) {
@@ -12723,7 +12725,20 @@ var removedCommunityDeals = [];  // soft-deleted community deals (for revert)
 
 // Normalize a venue name for duplicate detection (trim, lowercase, collapse spaces).
 function _normVenue(s){ return (s||'').toString().trim().toLowerCase().replace(/\s+/g,' '); }
-// Live duplicate-venue check while typing the venue name (debounced). Mirrors the
+// Normalize an address the same way (commas + whitespace collapsed) so the same
+// Google-picked place compares equal.
+function _normAddr(s){ return (s||'').toString().trim().toLowerCase().replace(/[\s,]+/g,' ').trim(); }
+// A true duplicate is the SAME venue name AND the SAME address — chains share a
+// name across different addresses, so those are NOT duplicates. Needs a real
+// address on both sides to confirm a match.
+function _isDupVenue(name, addr){
+  var vn = _normVenue(name), an = _normAddr(addr);
+  if(!vn || !an) return false;
+  function _a(x){ return _normAddr(x.address || x.location || ''); }
+  return (pendingCommunityDeals||[]).some(function(x){ return _normVenue(x.venue||x.name)===vn && _a(x)===an; })
+      || (ucDeals||[]).some(function(x){ return _normVenue(x.name||x.venue)===vn && _a(x)===an; });
+}
+// Live duplicate check while filling the venue/address (debounced). Mirrors the
 // submit-time block, but shows an inline warning so the merchant knows immediately.
 var _ucDupTimer = null;
 function ucCheckVenueDup(){
@@ -12733,11 +12748,9 @@ function ucCheckVenueDup(){
     var warn = document.getElementById('uc-venue-dup');
     if(!inp || !warn) return;
     var v = (inp.value || '').trim();
-    if(!v){ warn.style.display = 'none'; return; }
-    var vn = _normVenue(v);
-    var dup = (pendingCommunityDeals||[]).some(function(x){ return _normVenue(x.venue||x.name)===vn; })
-           || (ucDeals||[]).some(function(x){ return _normVenue(x.name||x.venue)===vn; });
-    warn.textContent = dup ? ('⚠️ A deal for “'+v+'” already exists — one deal per venue.') : '';
+    var addr = (document.getElementById('uc-addr')||{value:''}).value.trim();
+    var dup = !!v && _isDupVenue(v, addr);
+    warn.textContent = dup ? ('⚠️ A deal for “'+v+'” at this address already exists — one deal per venue.') : '';
     warn.style.display = dup ? 'block' : 'none';
   }, 250);
 }
@@ -12767,13 +12780,11 @@ function _submitDealInner(){
   var d=(document.getElementById('uc-deal-desc')||{value:''}).value.trim();
   var addr=(document.getElementById('uc-addr')||{value:''}).value.trim();
   if(!v){showToast('Please enter a venue name 📍');return;}
-  // Duplicate checker — the VENUE is the key. One community deal per venue.
-  var _vn=_normVenue(v);
-  var _dupDeal = (pendingCommunityDeals||[]).some(function(x){ return _normVenue(x.venue||x.name)===_vn; })
-              || (ucDeals||[]).some(function(x){ return _normVenue(x.name||x.venue)===_vn; });
-  if(_dupDeal){ showVenueDupError(v, 'deal'); return; }
-  if(!title){showToast('Please enter a deal title 📝');return;}
   if(!addr){showToast('Please enter an address 📍');return;}
+  // Duplicate checker — venue NAME + ADDRESS together (chains share names across
+  // addresses, so only the same name AT the same address is a real duplicate).
+  if(_isDupVenue(v, addr)){ showVenueDupError(v, 'deal'); return; }
+  if(!title){showToast('Please enter a deal title 📝');return;}
 
   var catEl=document.getElementById('uc-deal-cat');
   var catVal=catEl?catEl.value:'bars';
