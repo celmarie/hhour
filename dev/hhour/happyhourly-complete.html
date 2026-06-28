@@ -5346,7 +5346,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628011940';
+var BUILD_VERSION = '20260628020037';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -17477,8 +17477,11 @@ function adminPage(page,btn){
     }
     // Admin platform analytics - comprehensive report
     var totalVenues = adminMerchants.length;
-    var totalDeals = ucDeals.length + pendingCommunityDeals.length;
-    var activeDealss = ucDeals.filter(function(d){ return d.status === 'active'; }).length;
+    // "Active" must follow the LIVE deals — community deals go live under status
+    // 'approved' (that's what the "✅ Live Community Deals · N live" badge counts),
+    // not 'active', so filtering for 'active' wrongly read 0.
+    var activeDealss = pendingCommunityDeals.filter(function(d){ return d.status === 'approved'; }).length;
+    var totalDeals = pendingCommunityDeals.length;
     var totalUsers = adminUsers.length;
     var sym = finSym();
 
