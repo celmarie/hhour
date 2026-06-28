@@ -118,6 +118,10 @@ body{font-family:'Inter',sans-serif;background:#111;display:flex;justify-content
 .rh-stat-num{font-size:17px;font-weight:900;color:white;line-height:1;}
 .rh-stat-lbl{font-size:10px;color:rgba(255,255,255,.52);font-weight:600;margin-top:2px;white-space:nowrap;}
 .rh-stat-sep{color:rgba(255,255,255,.28);font-size:18px;font-weight:300;padding-bottom:9px;line-height:1;}
+/* Scoreboard-style flip applied to hero stat numbers while they count up */
+@keyframes hhStatFlip{0%{transform:perspective(420px) rotateX(0)}35%{transform:perspective(420px) rotateX(-34deg);opacity:.5}70%{transform:perspective(420px) rotateX(7deg)}100%{transform:perspective(420px) rotateX(0);opacity:1}}
+.hh-stat-anim{display:inline-block;transform-origin:50% 50%;backface-visibility:hidden;animation:hhStatFlip .5s cubic-bezier(.4,0,.2,1);}
+@media (prefers-reduced-motion: reduce){ .hh-stat-anim{animation:none;} }
 
 /* MAP */
 .map-sec{background:white;height:180px;position:relative;overflow:hidden;}
@@ -5347,7 +5351,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628151737';
+var BUILD_VERSION = '20260628153048';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5536,6 +5540,8 @@ function webProfileClick(){
   goScreen('profile');
 }
 function openWebLoginPopup(){
+  // Already signed in → never show the login popup (guard against stray triggers).
+  if(currentUser && typeof isGuest!=='undefined' && !isGuest) return;
   var p = document.getElementById('web-login-pop'); if(!p) return;
   var er = document.getElementById('wl-error'); if(er) er.textContent='';
   p.style.display = 'block';
@@ -6361,6 +6367,10 @@ function subscribeToMyNotifications(){
 // ── Handle a valid session (login + page restore) ─────────────────────────────
 async function handleAuthSession(user) {
   currentUser = user;
+  // Signed in → the web "Sign in or register" popup must not linger (the Google/GIS
+  // path inside it doesn't close it on its own). Safe everywhere: it's a no-op if
+  // the popup element is absent or already hidden.
+  try { if(typeof closeWebLoginPopup==='function') closeWebLoginPopup(); } catch(e){}
   try { _lockLoginInputs(true); } catch(e){}   // signed in → stop iOS "Fill Password" prompts
   // If we just came from a login screen (e.g. after Google sign-in), hide it and
   // show the neutral loading splash NOW — otherwise the login page flashes during
@@ -8570,6 +8580,46 @@ function dealBadgeLabel(d){
   return d.off || 'DEAL';
 }
 
+// Scoreboard-style hero stat update: rolls the number from whatever's currently
+// shown to the new value (easeOutCubic) with a brief 3D flip. Handles plain
+// numbers ("201"), suffixed ("55%") and decimals ("4.8★"). Each call cancels any
+// in-flight roll and restarts from the current displayed value, so the chained
+// cache→loaded→server updates blend into one continuous climb rather than three
+// visible snaps. Honors prefers-reduced-motion.
+function _animateStat(el, target){
+  if(!el) return;
+  var ts = String(target);
+  var m = ts.match(/-?[\d.]+/);
+  if(!m){ if(el._statRAF){ cancelAnimationFrame(el._statRAF); el._statRAF=null; } el.textContent = ts; return; } // non-numeric (e.g. "—")
+  var prefix = ts.slice(0, m.index);
+  var suffix = ts.slice(m.index + m[0].length);
+  var endVal = parseFloat(m[0]);
+  var decimals = (m[0].indexOf('.') >= 0) ? 1 : 0;
+  function fmt(v){ return prefix + (decimals ? v.toFixed(decimals) : Math.round(v)) + suffix; }
+  var cm = String(el.textContent||'').match(/-?[\d.]+/);
+  var startVal = cm ? parseFloat(cm[0]) : 0;
+  if(!isFinite(startVal)) startVal = 0;
+  var reduce = false;
+  try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+  if(reduce || startVal === endVal){
+    if(el._statRAF){ cancelAnimationFrame(el._statRAF); el._statRAF=null; }
+    el.textContent = fmt(endVal); return;
+  }
+  // retrigger the flip animation
+  try { el.classList.remove('hh-stat-anim'); void el.offsetWidth; el.classList.add('hh-stat-anim'); } catch(e){}
+  if(el._statRAF) cancelAnimationFrame(el._statRAF);
+  var dur = 700, t0 = null;
+  function step(now){
+    if(t0===null) t0 = now;
+    var p = Math.min(1, (now - t0) / dur);
+    var e = 1 - Math.pow(1 - p, 3); // easeOutCubic
+    el.textContent = fmt(startVal + (endVal - startVal) * e);
+    if(p < 1){ el._statRAF = requestAnimationFrame(step); }
+    else { el.textContent = fmt(endVal); el._statRAF = null; }
+  }
+  el._statRAF = requestAnimationFrame(step);
+}
+
 // Fill the web hero stats with live data (web view only; elements absent on mobile flow are ignored)
 function updateWebHeroStats(){
   var all = (Array.isArray(vouchers)?vouchers:[]).concat(Array.isArray(ucDeals)?ucDeals:[]);
@@ -8583,14 +8633,14 @@ function updateWebHeroStats(){
   var saveTxt = maxOff>0 ? (Math.round(maxOff)+'%') : '—';
   var ratingTxt = avgR>0 ? (avgR.toFixed(1)+'★') : '—';
   // Web hero stats
-  var hd = document.getElementById('wh-stat-deals'); if(hd) hd.textContent = all.length;
-  var hv = document.getElementById('wh-stat-venues'); if(hv) hv.textContent = venueCount;
-  var hs = document.getElementById('wh-stat-save'); if(hs) hs.textContent = saveTxt;
-  var hr = document.getElementById('wh-stat-rating'); if(hr) hr.textContent = ratingTxt;
+  _animateStat(document.getElementById('wh-stat-deals'), all.length);
+  _animateStat(document.getElementById('wh-stat-venues'), venueCount);
+  _animateStat(document.getElementById('wh-stat-save'), saveTxt);
+  _animateStat(document.getElementById('wh-stat-rating'), ratingTxt);
   // Mobile hero stats
-  var md = document.getElementById('rh-stat-deals'); if(md) md.textContent = all.length || '—';
-  var mv = document.getElementById('rh-stat-venues'); if(mv) mv.textContent = venueCount || '—';
-  var ms = document.getElementById('rh-stat-save'); if(ms) ms.textContent = saveTxt;
+  _animateStat(document.getElementById('rh-stat-deals'), all.length || '—');
+  _animateStat(document.getElementById('rh-stat-venues'), venueCount || '—');
+  _animateStat(document.getElementById('rh-stat-save'), saveTxt);
   // Cache so next load is instant
   try { localStorage.setItem('hh_hero_stats', JSON.stringify({deals:all.length,venues:venueCount,maxOff:maxOff,avgR:avgR})); } catch(e){}
   // The community feed is capped at 100 for performance, so all.length undercounts
@@ -8608,8 +8658,8 @@ async function _fetchHeroDealCount(){
     var cr = await db.from('community_deals').select('id', { count:'exact', head:true }).eq('status','approved').is('deleted_at', null);
     var total = ((vr && vr.count) || 0) + ((cr && cr.count) || 0);
     if(total > 0){
-      var hd=document.getElementById('wh-stat-deals'); if(hd) hd.textContent = total;
-      var md=document.getElementById('rh-stat-deals'); if(md) md.textContent = total;
+      _animateStat(document.getElementById('wh-stat-deals'), total);
+      _animateStat(document.getElementById('rh-stat-deals'), total);
       try { var c=JSON.parse(localStorage.getItem('hh_hero_stats')||'{}')||{}; c.deals=total; localStorage.setItem('hh_hero_stats', JSON.stringify(c)); } catch(e){}
     }
   } catch(e){}
@@ -8629,8 +8679,8 @@ async function _fetchHeroDealCount(){
     (vn && vn.data || []).forEach(function(r){ if(r&&r.venue_id) set['v:'+r.venue_id] = 1; });
     var venues = Object.keys(set).length;
     if(venues > 0){
-      var hv=document.getElementById('wh-stat-venues'); if(hv) hv.textContent = venues;
-      var mv=document.getElementById('rh-stat-venues'); if(mv) mv.textContent = venues;
+      _animateStat(document.getElementById('wh-stat-venues'), venues);
+      _animateStat(document.getElementById('rh-stat-venues'), venues);
       try { var c2=JSON.parse(localStorage.getItem('hh_hero_stats')||'{}')||{}; c2.venues=venues; localStorage.setItem('hh_hero_stats', JSON.stringify(c2)); } catch(e){}
     }
   } catch(e){}
@@ -8639,15 +8689,12 @@ function _applyHeroStatsCache(){
   try {
     var c = JSON.parse(localStorage.getItem('hh_hero_stats')||'null');
     if(!c) return;
-    var hd=document.getElementById('wh-stat-deals'); if(hd&&c.deals) hd.textContent=c.deals;
-    var hv=document.getElementById('wh-stat-venues'); if(hv&&c.venues) hv.textContent=c.venues;
-    var md=document.getElementById('rh-stat-deals'); if(md&&c.deals) md.textContent=c.deals;
-    var mv=document.getElementById('rh-stat-venues'); if(mv&&c.venues) mv.textContent=c.venues;
+    if(c.deals){ _animateStat(document.getElementById('wh-stat-deals'), c.deals); _animateStat(document.getElementById('rh-stat-deals'), c.deals); }
+    if(c.venues){ _animateStat(document.getElementById('wh-stat-venues'), c.venues); _animateStat(document.getElementById('rh-stat-venues'), c.venues); }
     var _sv = (c.maxOff>0) ? (Math.round(c.maxOff)+'%') : null;
     var _rt = (c.avgR>0) ? (Number(c.avgR).toFixed(1)+'★') : null;
-    var ms=document.getElementById('rh-stat-save'); if(ms&&_sv) ms.textContent=_sv;
-    var hs=document.getElementById('wh-stat-save'); if(hs&&_sv) hs.textContent=_sv;
-    var hr=document.getElementById('wh-stat-rating'); if(hr&&_rt) hr.textContent=_rt;
+    if(_sv){ _animateStat(document.getElementById('rh-stat-save'), _sv); _animateStat(document.getElementById('wh-stat-save'), _sv); }
+    if(_rt){ _animateStat(document.getElementById('wh-stat-rating'), _rt); }
   } catch(e){}
 }
 
