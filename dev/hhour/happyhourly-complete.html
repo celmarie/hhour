@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628162432';
+var BUILD_VERSION = '20260628164816';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5652,6 +5652,10 @@ function _showMerchantLogin(show){
     try { _lockLoginInputs(false); } catch(e){}   // merchant login shown → re-enable its fields
     var lbl = document.getElementById('m-lang-label');
     if(lbl){ var cur=''; try{ cur=localStorage.getItem('hh-language')||'English'; }catch(e){} lbl.textContent = cur || 'English'; }
+    // Render Turnstile on THIS screen — the merchant login needs its own visible
+    // widget (the customer screen's #captcha-box is display:none here, so it can't
+    // produce a token). Without this, Supabase rejects the sign-in as captcha_failed.
+    try { _captchaInit('captcha-box-merchant'); } catch(e){}
   }
 }
 function mTogglePw(){
@@ -5733,7 +5737,7 @@ async function doMerchantLogin(){
   var u = document.getElementById('login-user'); if(u) u.value = em;
   var p = document.getElementById('login-pass'); if(p) p.value = pw;
   var btn = document.getElementById('m-login-btn'); if(btn){ btn.disabled = true; btn.textContent = 'Signing in…'; }
-  try { await doLogin(); } catch(e) {}
+  try { await doLogin('captcha-box-merchant'); } catch(e) {}
   if(btn){ btn.disabled = false; btn.textContent = 'Login'; }
   var ge = document.getElementById('login-error');
   if(merr && ge && ge.textContent) merr.textContent = ge.textContent;   // on success handleAuthSession hides this screen
@@ -5744,10 +5748,10 @@ async function mForgotPassword(){
   if(!em){ if(merr) merr.textContent = 'Enter your email above, then tap “Forgot your password?”'; return; }
   if(merr) merr.textContent = '⏳ Sending reset link…';
   try {
-    var r = await withTimeout(db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/merchant' })), 15000);
-    _captchaReset('captcha-box');
+    var r = await withTimeout(db.auth.resetPasswordForEmail(em, _captchaOpts({ redirectTo: window.location.origin + '/merchant' }, 'captcha-box-merchant')), 15000);
+    _captchaReset('captcha-box-merchant');
     if(merr) merr.textContent = (r && r.error) ? ('⚠️ ' + r.error.message) : ('✅ Password reset link sent to ' + em);
-  } catch(e){ _captchaReset('captcha-box'); if(merr) merr.textContent = (e && /timeout/i.test(e.message||'')) ? '⚠️ Network is slow — please try again.' : ('⚠️ ' + ((e && e.message) || e)); }
+  } catch(e){ _captchaReset('captcha-box-merchant'); if(merr) merr.textContent = (e && /timeout/i.test(e.message||'')) ? '⚠️ Network is slow — please try again.' : ('⚠️ ' + ((e && e.message) || e)); }
 }
 async function custForgotPassword(){
   var em = ((document.getElementById('login-user')||{}).value || '').trim();
@@ -14151,7 +14155,7 @@ function priceRuleError(priceRaw, wasRaw){
   return '';
 }
 
-async function doLogin(){
+async function doLogin(captchaId){
   try {
     console.log('doLogin called');
     var u = (document.getElementById('login-user').value || '').trim();
@@ -14170,8 +14174,8 @@ async function doLogin(){
     errEl.textContent = 'Signing in…';
     console.log('Calling auth...');
 
-    var { data, error } = await db.auth.signInWithPassword({ email: u, password: p, options: _captchaOpts() });
-    _captchaReset();
+    var { data, error } = await db.auth.signInWithPassword({ email: u, password: p, options: _captchaOpts({}, captchaId) });
+    _captchaReset(captchaId);
 
     if (error) {
       console.error('Login error:', error);
@@ -29841,6 +29845,8 @@ function _setupDealMap() {
       </label>
       <a onclick="mForgotPassword()" style="font-size:15px;font-weight:600;color:#2563EB;cursor:pointer;">Forgot your password?</a>
     </div>
+
+    <div id="captcha-box-merchant" style="display:none;justify-content:center;margin-bottom:14px;"></div>
 
     <div id="m-login-error" style="color:#E8192C;font-size:13.5px;font-weight:700;min-height:18px;margin-bottom:6px;text-align:center;"></div>
 
