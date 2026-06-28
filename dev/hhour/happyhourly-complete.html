@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628164816';
+var BUILD_VERSION = '20260628170859';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5407,6 +5407,10 @@ let _authInitialized = false;
 // Prevents background auth events (token refresh, tab refocus) from yanking the
 // user back to home mid-task. Reset on logout.
 let _sessionRouted = false;
+// When a guest taps a gated tab (Saved/Vouchers/Alerts/Credits) we prompt login
+// WITHOUT changing the URL — so remember what they were trying to reach and land
+// them there after sign-in, instead of the stale URL's screen. Cleared on use.
+let _pendingLoginScreen = null;
 
 // Listen for auth state changes to keep user logged in
 var _isPwRecovery = false;
@@ -6616,7 +6620,12 @@ async function handleAuthSession(user) {
     // Customer: show the home IMMEDIATELY (deal data is already cached/loaded),
     // then stream in personal data (vouchers/saved/alerts) in the background so
     // navigation isn't blocked on 4 network round-trips.
-    if (!_sessionRouted && !_pendingSharedDeal && !_pendingSharedWatch && !_pendingPublicPage && curScreen !== 'vdetail') {
+    if (!_sessionRouted && _pendingLoginScreen) {
+      // The user tapped a gated tab as a guest → land them on what they actually
+      // wanted, not the stale URL behind the login overlay.
+      var _want = _pendingLoginScreen; _pendingLoginScreen = null;
+      _suppressPush = true; try { goScreen(_want); } finally { _suppressPush = false; }
+    } else if (!_sessionRouted && !_pendingSharedDeal && !_pendingSharedWatch && !_pendingPublicPage && curScreen !== 'vdetail') {
       // Land on the screen that matches the current URL (so refreshing /profile,
       // /map, /saved … reopens that page), defaulting to the deals home.
       var _bootScreen = _pathScreen[(location.pathname||'/').replace(/\/+$/,'')||'/'] || 'deals';
@@ -13123,10 +13132,10 @@ function updateGuestVisibility(){
 function goScreen(name){
   // Block accidental nav while file picker is open (phantom tap on mobile)
   if(_photoPickerActive && name !== curScreen) return;
-  if(name==='myvouchers' && isGuest){ requireLogin('view vouchers'); return; }
-  if(name==='saved' && isGuest){ requireLogin('view saved deals'); return; }
-  if(name==='alerts' && isGuest){ requireLogin('view alerts'); return; }
-  if(name==='credits' && isGuest){ requireLogin('view credits & rewards'); return; }
+  if(name==='myvouchers' && isGuest){ _pendingLoginScreen='myvouchers'; requireLogin('view vouchers'); return; }
+  if(name==='saved' && isGuest){ _pendingLoginScreen='saved'; requireLogin('view saved deals'); return; }
+  if(name==='alerts' && isGuest){ _pendingLoginScreen='alerts'; requireLogin('view alerts'); return; }
+  if(name==='credits' && isGuest){ _pendingLoginScreen='credits'; requireLogin('view credits & rewards'); return; }
   if(name==='watch' && !_watchFeatureOn){ goScreen('deals'); return; }
   // Leaving a shared deal / public page: clear the one-shot deep-link locks so a
   // later refresh stays wherever the user navigated. The router (below) sets the URL.
@@ -14076,6 +14085,7 @@ function _captchaInit(id){
 
 function doGuestLogin(){
   isGuest=true;
+  _pendingLoginScreen = null;   // dismissing login → drop any gated-tab intent
   updateLogoutBtnLabel();
   updateGuestVisibility();
   // Make sure the loading splash is gone (it would otherwise cover the app)
@@ -14284,7 +14294,7 @@ async function doLogout(){
     localStorage.removeItem('hh_admin_page');
     if(_prevUid) localStorage.removeItem('_cachedVenueId_' + _prevUid);
   }catch(e){}
-  currentUser = null; currentProfile = null; isGuest = false; _sessionRouted = false;
+  currentUser = null; currentProfile = null; isGuest = false; _sessionRouted = false; _pendingLoginScreen = null;
   _lastHandledUserId = null;   // next login is a fresh user → reset will run
   updateGuestVisibility();
   myVouchers = []; savedDeals = [];
