@@ -3938,7 +3938,8 @@ function _loadGT(){
           <div style="padding:16px;display:grid;gap:14px;">
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Venue Name <span style="color:#E8192C;">*</span></label>
-              <input id="uc-venue" type="text" autocomplete="off" placeholder="Search bar / restaurant…" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" oninput="addrInput('uc-venue')" onfocus="this.style.borderColor='#E8192C';addrInput('uc-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
+              <input id="uc-venue" type="text" autocomplete="off" placeholder="Search bar / restaurant…" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" oninput="addrInput('uc-venue');ucCheckVenueDup()" onfocus="this.style.borderColor='#E8192C';addrInput('uc-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
+              <div id="uc-venue-dup" style="display:none;font-size:12px;font-weight:700;color:#E8192C;margin-top:6px;line-height:1.4;"></div>
             </div>
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Address <span style="color:#E8192C;">*</span></label>
@@ -5346,7 +5347,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628022046';
+var BUILD_VERSION = '20260628023302';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -12722,6 +12723,24 @@ var removedCommunityDeals = [];  // soft-deleted community deals (for revert)
 
 // Normalize a venue name for duplicate detection (trim, lowercase, collapse spaces).
 function _normVenue(s){ return (s||'').toString().trim().toLowerCase().replace(/\s+/g,' '); }
+// Live duplicate-venue check while typing the venue name (debounced). Mirrors the
+// submit-time block, but shows an inline warning so the merchant knows immediately.
+var _ucDupTimer = null;
+function ucCheckVenueDup(){
+  if(_ucDupTimer) clearTimeout(_ucDupTimer);
+  _ucDupTimer = setTimeout(function(){
+    var inp = document.getElementById('uc-venue');
+    var warn = document.getElementById('uc-venue-dup');
+    if(!inp || !warn) return;
+    var v = (inp.value || '').trim();
+    if(!v){ warn.style.display = 'none'; return; }
+    var vn = _normVenue(v);
+    var dup = (pendingCommunityDeals||[]).some(function(x){ return _normVenue(x.venue||x.name)===vn; })
+           || (ucDeals||[]).some(function(x){ return _normVenue(x.name||x.venue)===vn; });
+    warn.textContent = dup ? ('⚠️ A deal for “'+v+'” already exists — one deal per venue.') : '';
+    warn.style.display = dup ? 'block' : 'none';
+  }, 250);
+}
 function submitDeal(){
   try { _submitDealInner(); } catch(e){ showToast('⚠️ Error: '+e.message); console.error('[submitDeal]',e); }
 }
