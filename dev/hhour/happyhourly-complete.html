@@ -5347,7 +5347,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628041518';
+var BUILD_VERSION = '20260628043333';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14181,7 +14181,25 @@ async function doLogout(){
     if(typeof _currentAdminRole !== 'undefined') _currentAdminRole = null;
   }catch(e){}
 
-  // Show login screen
+  // Where to land after logout depends on the area:
+  //  • Customer site (/) → browse the home page as a GUEST (no login wall).
+  //  • Merchant / Admin portals (/merchant, /fireclay) → show that portal's login.
+  var _lp = (location.pathname || '').toLowerCase().replace(/\/+$/, '');
+  var _isPortal = (_lp === '/merchant' || _lp.indexOf('/merchant/')===0 || _lp === '/fireclay' || _lp.indexOf('/fireclay/')===0);
+
+  if(!_isPortal){
+    // Customer site → main page as a guest (the same state as a fresh guest boot).
+    isGuest = true;
+    var lsg = document.getElementById('login-screen'); if(lsg){ lsg.style.opacity = '0'; lsg.style.display = 'none'; }
+    var spg = document.getElementById('role-splash'); if(spg) spg.style.display = 'none';
+    try{ if(location.pathname !== '/') history.replaceState({}, '', '/'); }catch(e){}
+    updateGuestVisibility();
+    if(typeof updateLogoutBtnLabel === 'function') updateLogoutBtnLabel();
+    if(typeof goScreen === 'function'){ _suppressPush = true; try { goScreen('deals'); } finally { _suppressPush = false; } }
+    return;
+  }
+
+  // Portal → show the login screen.
   var ls = document.getElementById('login-screen');
   if (ls) { ls.style.display = 'flex'; ls.style.opacity = '0'; setTimeout(function() { ls.style.opacity = '1'; ls.style.transition = 'opacity .3s'; }, 10); }
   var ui = document.getElementById('login-user'); if (ui) ui.value = '';
@@ -14189,14 +14207,10 @@ async function doLogout(){
   var ei = document.getElementById('login-error'); if (ei) ei.textContent = '';
   var gb = document.getElementById('guest-btn');  if (gb) gb.style.display = 'block';
   switchLoginTab('customer');
-  // Reset the URL to the base of whatever area they logged out from, so the
-  // login screen lives at /merchant, /fireclay, or / — not a deep sub-page
-  // like /merchant/vouchers (which would otherwise linger in the address bar).
+  // Reset the URL to the portal base so the login lives at /merchant or /fireclay,
+  // not a deep sub-page like /merchant/vouchers.
   try{
-    var _lp = (location.pathname || '').toLowerCase().replace(/\/+$/, '');
-    var _base = '/';
-    if(_lp === '/merchant' || _lp.indexOf('/merchant/')===0)      _base = '/merchant';
-    else if(_lp === '/fireclay' || _lp.indexOf('/fireclay/')===0) _base = '/fireclay';
+    var _base = (_lp === '/fireclay' || _lp.indexOf('/fireclay/')===0) ? '/fireclay' : '/merchant';
     if(location.pathname !== _base) history.replaceState({}, '', _base);
   }catch(e){}
   // Re-apply URL-based login so /merchant shows the merchant screen after logout.
