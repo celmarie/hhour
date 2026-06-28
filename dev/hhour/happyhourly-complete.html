@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628171346';
+var BUILD_VERSION = '20260628181637';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5495,6 +5495,7 @@ async function initializeAuth(){
     console.log('[initializeAuth] No session, opening public deep link as guest');
     _authInitialized = true;
     isGuest = true;
+    try { _lockLoginInputs(true); } catch(e){}   // guest browse → stop iOS "Fill Password" prompts over the home
     var _lsp=document.getElementById('login-screen'); if(_lsp) _lsp.style.display='none';
     var _spp=document.getElementById('role-splash');  if(_spp) _spp.style.display='none';
     updateGuestVisibility();
@@ -5511,6 +5512,7 @@ async function initializeAuth(){
     console.log('[initializeAuth] No session on customer site → guest home');
     _authInitialized = true;
     isGuest = true;
+    try { _lockLoginInputs(true); } catch(e){}   // guest browse → stop iOS "Fill Password" prompts over the home
     var _lsg=document.getElementById('login-screen'); if(_lsg) _lsg.style.display='none';
     var _spg=document.getElementById('role-splash');  if(_spg) _spg.style.display='none';
     updateGuestVisibility();
@@ -14086,6 +14088,7 @@ function _captchaInit(id){
 function doGuestLogin(){
   isGuest=true;
   _pendingLoginScreen = null;   // dismissing login → drop any gated-tab intent
+  try { _lockLoginInputs(true); } catch(e){}   // browsing as guest → suppress iOS "Fill Password" prompts
   updateLogoutBtnLabel();
   updateGuestVisibility();
   // Make sure the loading splash is gone (it would otherwise cover the app)
@@ -14114,6 +14117,7 @@ function requireLogin(action){
     var ls=document.getElementById('login-screen');
     if(ls){ls.style.display='flex';ls.style.opacity='0';ls.style.transition='opacity .3s';
       setTimeout(function(){ls.style.opacity='1';},10);}
+    try { _lockLoginInputs(false); } catch(e){}   // login is now shown → re-enable its fields (we lock them during guest browse)
     switchLoginTab('customer');
   },800);
   return false;
@@ -14331,6 +14335,7 @@ async function doLogout(){
   if(!_isPortal){
     // Customer site → main page as a guest (the same state as a fresh guest boot).
     isGuest = true;
+    try { _lockLoginInputs(true); } catch(e){}   // guest after logout → suppress iOS "Fill Password" prompts
     var lsg = document.getElementById('login-screen'); if(lsg){ lsg.style.opacity = '0'; lsg.style.display = 'none'; }
     var spg = document.getElementById('role-splash'); if(spg) spg.style.display = 'none';
     try{ if(location.pathname !== '/') history.replaceState({}, '', '/'); }catch(e){}
