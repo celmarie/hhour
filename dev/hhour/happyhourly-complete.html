@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628225215';
+var BUILD_VERSION = '20260628230234';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5545,6 +5545,7 @@ function showLoginScreen(){
   var ls = document.getElementById('login-screen');
   if(ls){ ls.style.display = 'flex'; ls.style.opacity = '1'; }
   _lockLoginInputs(false);   // login is needed now → re-enable the fields
+  try { _captchaInit('captcha-box'); } catch(e){}   // ensure CAPTCHA is ready (boot preload is now deferred)
   updateGuestVisibility();
   updateLogoutBtnLabel();
   _applyLoginPrefill();
@@ -7195,9 +7196,15 @@ document.addEventListener('DOMContentLoaded', async function(){
     openSharedDeal();   // succeeds instantly if the deal is already cached
   }
 
-  // Preload Google Maps API immediately for address autocomplete
+  // Preload Google Maps for address autocomplete — but ONLY once the browser is
+  // idle. Loading the full Maps SDK during boot competes for memory with the home
+  // render and can crash low-memory iPhones (WebKit kills the tab → "A problem
+  // repeatedly occurred"). Address fields + the Map screen also load it on demand,
+  // so this is purely a non-blocking preload.
   if (GMAPS_KEY && GMAPS_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY') {
-    _loadGMapsAPI(_initPlacesAutocomplete);
+    var _gmapsPreload = function(){ try { _loadGMapsAPI(_initPlacesAutocomplete); } catch(e){} };
+    if (window.requestIdleCallback) requestIdleCallback(_gmapsPreload, { timeout: 9000 });
+    else setTimeout(_gmapsPreload, 6000);
   }
 
   // Check session FIRST — hide login screen immediately so refresh doesn't show it
@@ -14021,8 +14028,11 @@ function initGsiButton(gsiId, fbId, width){
   setTimeout(function(){ _waitGsi(n+1); }, 250);
 })(0);
 
-// Render the CAPTCHA widget on the login screen (no-op unless _CAPTCHA_SITE_KEY set).
-setTimeout(function(){ try{ _captchaInit(); }catch(e){} }, 600);
+// Render the login CAPTCHA — deferred until the browser is idle so Cloudflare's
+// script + iframe don't load during boot (memory pressure on low-end iPhones).
+// The login screen also re-inits it on show, so this is just a warm preload.
+// (no-op unless _CAPTCHA_SITE_KEY set.)
+(function(){ var f=function(){ try{ _captchaInit(); }catch(e){} }; if(window.requestIdleCallback) requestIdleCallback(f,{timeout:9000}); else setTimeout(f, 6000); })();
 
 // Fallback only: classic redirect OAuth (used if GIS fails to load).
 async function loginWithGoogleRedirect(){
@@ -14122,6 +14132,7 @@ function requireLogin(action){
     if(ls){ls.style.display='flex';ls.style.opacity='0';ls.style.transition='opacity .3s';
       setTimeout(function(){ls.style.opacity='1';},10);}
     try { _lockLoginInputs(false); } catch(e){}   // login is now shown → re-enable its fields (we lock them during guest browse)
+    try { _captchaInit('captcha-box'); } catch(e){}   // ensure CAPTCHA is ready (boot preload is deferred)
     switchLoginTab('customer');
   },800);
   return false;
