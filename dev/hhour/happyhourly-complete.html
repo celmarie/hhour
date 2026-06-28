@@ -5347,7 +5347,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628032924';
+var BUILD_VERSION = '20260628033234';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -12754,20 +12754,24 @@ function ucCheckVenueDup(){
     if(!inp || !warn) return;
     var v = (inp.value || '').trim();
     var addr = (document.getElementById('uc-addr')||{value:''}).value.trim();
-    if(!v){ warn.style.display = 'none'; return; }
+    function _resetInp(){ inp.style.background='#F5F5F7'; inp.style.borderColor=(document.activeElement===inp?'#E8192C':'#E8E8EC'); }
+    if(!v){ warn.style.display = 'none'; _resetInp(); return; }
     if(addr && _isDupVenue(v, addr)){
       // Confirmed duplicate — same venue name AND same address.
       warn.textContent = '⚠️ A deal for “'+v+'” at this address already exists — one deal per venue.';
       warn.style.color = '#E8192C';
       warn.style.display = 'block';
+      inp.style.background = 'rgba(232,25,44,.07)'; inp.style.borderColor = '#E8192C';
     } else if(!addr && _venueNameExists(v)){
       // Name matches but no address yet — could be the same place or a different
       // branch. Nudge them to pick the address so we can tell.
       warn.textContent = 'ℹ️ “'+v+'” already exists elsewhere — pick the address to confirm it’s not the same place.';
       warn.style.color = '#B45309';
       warn.style.display = 'block';
+      inp.style.background = 'rgba(245,158,11,.1)'; inp.style.borderColor = '#F59E0B';
     } else {
       warn.style.display = 'none';
+      _resetInp();
     }
   }, 250);
 }
