@@ -5347,7 +5347,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628033234';
+var BUILD_VERSION = '20260628041518';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -12728,24 +12728,31 @@ function _normVenue(s){ return (s||'').toString().trim().toLowerCase().replace(/
 // Normalize an address the same way (commas + whitespace collapsed) so the same
 // Google-picked place compares equal.
 function _normAddr(s){ return (s||'').toString().trim().toLowerCase().replace(/[\s,]+/g,' ').trim(); }
-// A true duplicate is the SAME venue name AND the SAME address — chains share a
-// name across different addresses, so those are NOT duplicates. Needs a real
-// address on both sides to confirm a match.
+// Every existing deal we check against — verified (merchant) AND community.
+function _allDealsForDup(){
+  var out = [];
+  try { if(Array.isArray(vouchers)) out = out.concat(vouchers); } catch(e){}
+  try { if(Array.isArray(ucDeals)) out = out.concat(ucDeals); } catch(e){}
+  try { if(Array.isArray(pendingCommunityDeals)) out = out.concat(pendingCommunityDeals); } catch(e){}
+  return out;
+}
+function _dealName(x){ return _normVenue(x.name || x.venue || ''); }
+function _dealAddr(x){ return _normAddr(x.address || x.location || ''); }
+// True duplicate = SAME venue name AND SAME address (chains share a name across
+// different addresses). Needs a real address on both sides to confirm.
 function _isDupVenue(name, addr){
   var vn = _normVenue(name), an = _normAddr(addr);
   if(!vn || !an) return false;
-  function _a(x){ return _normAddr(x.address || x.location || ''); }
-  return (pendingCommunityDeals||[]).some(function(x){ return _normVenue(x.venue||x.name)===vn && _a(x)===an; })
-      || (ucDeals||[]).some(function(x){ return _normVenue(x.name||x.venue)===vn && _a(x)===an; });
+  return _allDealsForDup().some(function(x){ return _dealName(x)===vn && _dealAddr(x)===an; });
+}
+// Does any existing deal share this venue NAME (regardless of address)?
+function _venueNameExists(name){
+  var vn = _normVenue(name); if(!vn) return false;
+  return _allDealsForDup().some(function(x){ return _dealName(x)===vn; });
 }
 // Live duplicate check while filling the venue/address (debounced). Mirrors the
 // submit-time block, but shows an inline warning so the merchant knows immediately.
 var _ucDupTimer = null;
-function _venueNameExists(name){
-  var vn = _normVenue(name); if(!vn) return false;
-  return (pendingCommunityDeals||[]).some(function(x){ return _normVenue(x.venue||x.name)===vn; })
-      || (ucDeals||[]).some(function(x){ return _normVenue(x.name||x.venue)===vn; });
-}
 function ucCheckVenueDup(){
   if(_ucDupTimer) clearTimeout(_ucDupTimer);
   _ucDupTimer = setTimeout(function(){
@@ -12762,10 +12769,13 @@ function ucCheckVenueDup(){
       warn.style.color = '#E8192C';
       warn.style.display = 'block';
       inp.style.background = 'rgba(232,25,44,.07)'; inp.style.borderColor = '#E8192C';
-    } else if(!addr && _venueNameExists(v)){
-      // Name matches but no address yet — could be the same place or a different
-      // branch. Nudge them to pick the address so we can tell.
-      warn.textContent = 'ℹ️ “'+v+'” already exists elsewhere — pick the address to confirm it’s not the same place.';
+    } else if(_venueNameExists(v)){
+      // The NAME already exists. With no/different address we can't confirm it's
+      // the same place (could be another branch) — warn softly either way so a
+      // name match never goes silent.
+      warn.textContent = addr
+        ? 'ℹ️ “'+v+'” already exists — make sure this is a different location.'
+        : 'ℹ️ “'+v+'” already exists — pick the address to confirm it’s the same place.';
       warn.style.color = '#B45309';
       warn.style.display = 'block';
       inp.style.background = 'rgba(245,158,11,.1)'; inp.style.borderColor = '#F59E0B';
