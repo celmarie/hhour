@@ -4593,7 +4593,7 @@ function _loadGT(){
       </div>
 
       <!-- ── CHANGE PASSWORD SHEET ── -->
-      <div id="st-change-pw-ov" style="position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:80;display:none;align-items:flex-end;" onclick="if(event.target===this)this.style.display='none'">
+      <div id="st-change-pw-ov" style="position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:80;display:none;align-items:flex-end;" onclick="if(event.target===this){this.style.display='none';try{_guardPasswordFields()}catch(e){}}">
         <div style="background:white;border-radius:22px 22px 0 0;width:100%;padding:20px 20px 36px;max-height:80%;overflow-y:auto;">
           <div style="width:40px;height:4px;background:#E0E0E0;border-radius:2px;margin:0 auto 18px;"></div>
           <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px;">🔑 Change Password</div>
@@ -4614,7 +4614,7 @@ function _loadGT(){
           <div id="captcha-box-pw" style="display:none;justify-content:center;margin-bottom:14px;"></div>
           <div style="display:flex;gap:10px;">
             <button onclick="stSavePassword()" style="flex:2;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:13px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Update Password</button>
-            <button onclick="document.getElementById('st-change-pw-ov').style.display='none'" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:13px;padding:15px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>
+            <button onclick="document.getElementById('st-change-pw-ov').style.display='none';try{_guardPasswordFields()}catch(e){}" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:13px;padding:15px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>
           </div>
         </div>
       </div>
@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628231607';
+var BUILD_VERSION = '20260629001707';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5531,21 +5531,31 @@ async function initializeAuth(){
 function _lockLoginInputs(lock){
   ['login-user','login-pass','signup-confirm','signup-first','signup-last','m-login-email','m-login-pass'].forEach(function(id){
     var el = document.getElementById(id);
-    if(el) el.disabled = !!lock;
+    if(!el) return;
+    el.disabled = !!lock;
+    // When showing a login field, restore its real password type if we'd stripped it.
+    if(!lock && el.getAttribute('data-pwhide')==='1'){ el.type='password'; el.removeAttribute('data-pwhide'); }
   });
 }
-// iOS scans EVERY password field in the DOM — even ones in hidden screens/sheets —
-// and pops a "Sign in / Fill Password" AutoFill prompt over the home on every load.
-// Keep every password field `disabled` (inert, so iOS ignores it) UNLESS it's
-// actually on screen. Call this after any screen/sheet/modal change; it enables
-// only the currently-visible password inputs and re-disables the rest.
+// iOS scans the DOM for password fields and pops a "Sign in / Fill Password" prompt
+// for the saved credential — even when those fields are hidden or `disabled`. The
+// only reliable way to make iOS ignore them is to remove the `password` TYPE while
+// they're off screen (an empty type="text" field is not a login form). This guard
+// strips the type from every off-screen password field and restores it the moment
+// the field is actually shown. Call after any screen/sheet/modal change.
 function _guardPasswordFields(){
   try {
-    var nodes = document.querySelectorAll('input[type="password"]');
+    var nodes = document.querySelectorAll('input[type="password"], input[data-pwhide="1"]');
     for(var i=0;i<nodes.length;i++){
       var inp = nodes[i];
-      if(inp === document.activeElement){ inp.disabled = false; continue; } // never disable what's being typed in
-      inp.disabled = (inp.getClientRects().length === 0);                   // hidden (no layout box) → disable
+      var shown = (inp === document.activeElement) || inp.getClientRects().length > 0;
+      if(shown){
+        if(inp.getAttribute('data-pwhide')==='1'){ inp.type='password'; inp.removeAttribute('data-pwhide'); }
+        inp.disabled = false;
+      } else {
+        inp.disabled = true;
+        if(inp.type === 'password'){ inp.setAttribute('data-pwhide','1'); inp.type='text'; } // hide from iOS AutoFill
+      }
     }
   } catch(e){}
 }
@@ -5745,6 +5755,7 @@ function _queuePwScan(){
   (window.requestAnimationFrame || function(f){ setTimeout(f, 60); })(_scanPwToggles);
 }
 document.addEventListener('DOMContentLoaded', function(){
+  try { _guardPasswordFields(); } catch(e){}   // strip type=password from off-screen fields ASAP (before iOS scans)
   _scanPwToggles();
   try {
     new MutationObserver(function(muts){
@@ -6412,6 +6423,10 @@ async function handleAuthSession(user) {
   // the popup element is absent or already hidden.
   try { if(typeof closeWebLoginPopup==='function') closeWebLoginPopup(); } catch(e){}
   try { _lockLoginInputs(true); } catch(e){}   // signed in → stop iOS "Fill Password" prompts
+  // Strip type=password from the (now-hidden) login fields so iOS doesn't offer to
+  // fill over the dashboard. Covers merchant/admin too (they don't route via goScreen).
+  try { _guardPasswordFields(); } catch(e){}
+  setTimeout(function(){ try { _guardPasswordFields(); } catch(e){} }, 800);
   // If we just came from a login screen (e.g. after Google sign-in), hide it and
   // show the neutral loading splash NOW — otherwise the login page flashes during
   // the async profile fetch below before we route to the app. (Skipped on token
@@ -7236,10 +7251,12 @@ document.addEventListener('DOMContentLoaded', async function(){
   await Promise.allSettled([loadDealsFromSupabase(), loadEventsFromSupabase(), loadAppConfig()]);
   loadFooterFromDB(); loadWatchSettingFromDB(); loadWcFixturesFromDB();
 
-  // Render deals now that we have fresh data
+  // Render deals now that we have fresh data. Skip renderAllDeals here — it builds
+  // the entire "All Deals" list into a hidden screen (a second full copy of every
+  // deal) and isn't visible on the home; it renders on demand when that screen
+  // opens. Building it on boot needlessly inflates DOM/memory on phones.
   if(typeof renderCoupons==='function') renderCoupons('all');
   if(typeof renderUC==='function') renderUC('all');
-  if(typeof renderAllDeals==='function') renderAllDeals('all');
 
   // Belt-and-suspenders: make sure no off-screen password field is fillable (iOS
   // AutoFill prompt over the home). Static `disabled` covers parse time; this
@@ -7283,8 +7300,9 @@ document.addEventListener('DOMContentLoaded', async function(){
       if(document.hidden) return;            // skip hidden/background tabs
       await loadDealsFromSupabase();
       await loadEventsFromSupabase();
-      if(typeof renderAllDeals==='function') renderAllDeals(typeof _adCurTab!=='undefined'?_adCurTab:'all');
-      if(typeof renderUC==='function') renderUC('all');
+      // Only re-render the heavy "All Deals" list if the user is actually on it.
+      if(typeof renderAllDeals==='function' && typeof curScreen!=='undefined' && curScreen==='alldeals') renderAllDeals(typeof _adCurTab!=='undefined'?_adCurTab:'all');
+      if(typeof curScreen==='undefined' || curScreen==='deals'){ if(typeof renderCoupons==='function') renderCoupons('all'); if(typeof renderUC==='function') renderUC('all'); }
       // Re-render community events tab if it's currently visible
       var comCont=document.getElementById('com-tab-content');
       if(comCont && typeof comCurrentTab!=='undefined' && comCurrentTab==='meetups')
@@ -7427,15 +7445,22 @@ document.addEventListener('DOMContentLoaded', async function(){
     if(postAmt) postAmt.textContent = '+' + _ccGet('earnDealApproved', 15) + ' credits';
     if(typeof crRenderEarnGrid === 'function') crRenderEarnGrid();
   })();
-  // Init home-screen map iframe with user location
+  // Init home-screen map + distance sort — DEFERRED to idle. Geolocation, a Maps
+  // iframe and geocoding every deal are heavy; doing them during boot competes with
+  // the render for memory and can crash low-memory iPhones. (Geo result is cached,
+  // so this still only prompts once in normal browsing.)
   if (GMAPS_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY') {
-    getUserLocation(function(lat, lng) {
-      _userLoc = { lat: lat, lng: lng };
-      initHomeMap(lat, lng);
-      recomputeDealDistances();
-    }, function() {
-      initHomeMap(41.3851, 2.1734); // Barcelona fallback
-    });
+    var _homeGeo = function(){
+      getUserLocation(function(lat, lng) {
+        _userLoc = { lat: lat, lng: lng };
+        initHomeMap(lat, lng);
+        recomputeDealDistances();
+      }, function() {
+        initHomeMap(41.3851, 2.1734); // Barcelona fallback
+      });
+    };
+    if (window.requestIdleCallback) requestIdleCallback(_homeGeo, { timeout: 10000 });
+    else setTimeout(_homeGeo, 7000);
   }
   // Fully restore session (load user data, route to correct screen)
   if (session) await handleAuthSession(session.user);
@@ -8208,6 +8233,7 @@ async function stSavePassword(){
     }
 
     var ov2 = document.getElementById('st-change-pw-ov'); if(ov2) ov2.style.display='none';
+    try { _guardPasswordFields(); } catch(e){}   // sheet closed → re-hide its password fields from iOS
     var ci=document.getElementById('st-pw-current'); if(ci) ci.value='';
     var ni=document.getElementById('st-pw-new'); if(ni) ni.value='';
     var coi=document.getElementById('st-pw-confirm'); if(coi) coi.value='';
@@ -8838,6 +8864,19 @@ function _hasPurchasableVouchers(){
   });
 }
 
+// Serve a downscaled copy of Supabase-hosted images for list/card thumbnails.
+// Full-resolution photos decode to many MB of RAM EACH; rendering a feed of them
+// can blow past the iOS WebKit per-tab memory limit and crash the page. The
+// Supabase render/image transform resizes server-side (much smaller decode).
+// Non-Supabase URLs / data-URIs are returned unchanged.
+function _imgThumb(url, w){
+  try {
+    if(!url || typeof url !== 'string') return url;
+    if(url.indexOf('/storage/v1/object/public/') === -1) return url;
+    var base = url.split('?')[0].replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+    return base + '?width=' + (w||600) + '&quality=70&resize=cover';
+  } catch(e){ return url; }
+}
 function renderCoupons(cat){
   if(!Array.isArray(vouchers)) vouchers = [];
   var src = cat==='all' ? vouchers : vouchers.filter(function(v){return v.cat===cat;});
@@ -8892,7 +8931,7 @@ function renderCoupons(cat){
     +'</div>'
     +'</button>' : '';
   el.innerHTML = shown.map(function(v){
-    var imgTag = v.img ? '<img src="'+esc(v.img)+'" alt="'+esc(v.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
+    var imgTag = v.img ? '<img src="'+esc(_imgThumb(v.img,600))+'" alt="'+esc(v.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
     var badge = v.verified ? '<div class="vbadge">✓ Verified</div>' : '<div class="vbadge" style="background:rgba(60,60,80,.8);">👥 Community</div>';
     var freeTag = (v.isFree||v.off==='FREE') ? '<div style="position:absolute;bottom:44px;left:10px;z-index:3;background:rgba(18,161,80,.9);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:5px;text-transform:uppercase;">FREE</div>' : '';
     var wasTxt = v.wasPrice ? '<div class="cimg-was">'+v.wasPrice+'</div>' : '';
@@ -8931,7 +8970,7 @@ function renderUC(cat){
     +'</div>'
     +'</button>' : '';
   el.innerHTML = shown.map(function(u){
-    var imgTag = u.img ? '<img src="'+esc(u.img)+'" alt="'+esc(u.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
+    var imgTag = u.img ? '<img src="'+esc(_imgThumb(u.img,600))+'" alt="'+esc(u.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
     var freeTag = (u.isFree||u.off==='FREE') ? '<div style="position:absolute;top:8px;left:8px;background:rgba(18,161,80,.9);color:white;font-size:9px;font-weight:900;padding:2px 7px;border-radius:5px;z-index:3;">FREE</div>' : '';
     var uSym = getCurrencySymbol(u.currency||'EUR');
     var wasTxt = u.wasPrice ? '<div class="cimg-was">'+uSym+u.wasPrice+'</div>' : '';
@@ -9036,7 +9075,7 @@ function renderAllDeals(tab){
   grid.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
     + filtered.map(function(d){
       var isV = d._kind==='verified';
-      var imgTag = d.img ? '<img src="'+esc(d.img)+'" alt="'+esc(d.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;">' : '';
+      var imgTag = d.img ? '<img src="'+esc(_imgThumb(d.img,600))+'" alt="'+esc(d.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;">' : '';
       var badgeHtml = isV
         ? '<div style="position:absolute;top:8px;left:8px;background:var(--red);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;z-index:3;">✓ Verified</div>'
         : '<div style="position:absolute;top:8px;left:8px;background:rgba(40,40,60,.8);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;z-index:3;">👥 Community</div>';
@@ -13197,7 +13236,7 @@ function goScreen(name){
   if(name==='deals') {
     if(typeof renderCoupons==='function') renderCoupons('all');
     if(typeof renderUC==='function') renderUC('all');
-    renderAllDeals('all');
+    // (renderAllDeals is NOT needed on the home — the All Deals screen renders it itself)
     applyWatchVisibility(); // ensure banner state is current whenever home is shown
   }
   if(name==='invitedeals') renderUnlockedDeals();
