@@ -3282,6 +3282,15 @@ function _loadGT(){
 
       <div style="background:var(--bg);padding:20px 16px 0;">
 
+        <!-- No-show warning (shown only when count > 0; populated in profile sync) -->
+        <div id="prof-noshow-banner" style="display:none;background:#FFF1F2;border:1.5px solid rgba(232,25,44,.25);border-radius:16px;padding:14px 16px;margin-bottom:20px;align-items:center;gap:12px;">
+          <div style="font-size:22px;flex-shrink:0;">⚠️</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:800;color:#B91C1C;font-family:Inter,sans-serif;">Missed reservations: <span id="prof-noshow-count">0</span></div>
+            <div style="font-size:11.5px;color:#9A3412;font-weight:600;margin-top:2px;line-height:1.45;">Venues flagged you as a no-show. Repeated no-shows may lead to lost credits or a suspended account — please cancel in the app if your plans change.</div>
+          </div>
+        </div>
+
         <!-- ── ACCOUNT ── -->
         <div style="font-size:10px;font-weight:900;color:#B0B0C0;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding:0 4px;">My Account</div>
         <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.05);margin-bottom:20px;">
@@ -5351,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628153048';
+var BUILD_VERSION = '20260628155104';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6580,6 +6589,14 @@ async function handleAuthSession(user) {
   var _cb  = document.getElementById('prof-cr-balance');    if(_cb)  _cb.textContent  = ((profile && profile.credits) || 0).toLocaleString();
   var _cbd = document.getElementById('cr-balance-display'); if(_cbd) _cbd.textContent = ((profile && profile.credits) || 0).toLocaleString();
   crBalance = (profile && profile.credits) || 0;
+  // No-show counter — visible to the customer only when they have any.
+  try {
+    var _ns = (profile && profile.no_show_count) || 0;
+    var _nsB = document.getElementById('prof-noshow-banner');
+    var _nsC = document.getElementById('prof-noshow-count');
+    if(_nsC) _nsC.textContent = _ns;
+    if(_nsB) _nsB.style.display = _ns > 0 ? 'flex' : 'none';
+  } catch(e){}
   isGuest = false;
   updateGuestVisibility();
   var ls = document.getElementById('login-screen');
@@ -14752,15 +14769,23 @@ async function loadAdminData(){
     var _delIds = {};
     var _extra = {};
     try {
-      var _dq = await db.from('profiles').select('id,age,birthdate,deleted_at').limit(2000);
+      var _dq = await db.from('profiles').select('id,age,birthdate,deleted_at,credits').limit(2000);
       (_dq && _dq.data || []).forEach(function(r){ _extra[r.id] = r; if(r.deleted_at) _delIds[r.id] = true; });
     } catch(e) {
       // age/birthdate columns may not exist yet — fall back to a deleted-only probe.
       try { var _dq2 = await db.from('profiles').select('id').not('deleted_at','is',null); (_dq2 && _dq2.data || []).forEach(function(r){ _delIds[r.id] = true; }); } catch(_e) {}
     }
+    // No-show counts (column added by no_show.sql) — fetched separately so a
+    // missing column doesn't break the age/birthdate/credits enrichment above.
+    var _noShow = {};
+    try {
+      var _nq = await db.from('profiles').select('id,no_show_count').limit(2000);
+      (_nq && _nq.data || []).forEach(function(r){ _noShow[r.id] = r.no_show_count || 0; });
+    } catch(e){}
     adminUsers.forEach(function(u){
       var x = u._id && _extra[u._id];
-      if(x){ if(x.age != null) u.age = x.age; if(x.birthdate) u.birthdate = x.birthdate; }
+      if(x){ if(x.age != null) u.age = x.age; if(x.birthdate) u.birthdate = x.birthdate; if(x.credits != null) u.credits = x.credits; }
+      if(u._id && _noShow[u._id] != null) u.noShows = _noShow[u._id];
     });
     var _deletedUsers = [];
     adminUsers = adminUsers.filter(function(u){
@@ -14990,6 +15015,17 @@ function adminOpenUser(idx) {
       +'</div>'
     +'</div>'
 
+    // No-show warning (only when the customer has been flagged by venues)
+    +((u.noShows||0) > 0
+      ? '<div style="margin:0 20px 4px;background:#FFF1F2;border:1.5px solid rgba(232,25,44,.25);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;">'
+          +'<div style="font-size:20px;flex-shrink:0;">⚠️</div>'
+          +'<div style="flex:1;min-width:0;">'
+            +'<div style="font-size:13px;font-weight:800;color:#B91C1C;">'+(u.noShows)+' no-show'+((u.noShows)>1?'s':'')+' reported by venues</div>'
+            +'<div style="font-size:11px;color:#9A3412;font-weight:600;margin-top:1px;">Review and decide: deduct Appie Credits or inactivate the account.</div>'
+          +'</div>'
+        +'</div>'
+      : '')
+
     // Account details
     +_adminSectionTitle('Account Details')
     +'<div style="margin:0 20px;background:white;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);">'
@@ -15015,6 +15051,7 @@ function adminOpenUser(idx) {
       +_adminRow('Approved Deals', approvedDeals.length)
       +_adminRow('Pending Deals', pendingDeals.length)
       +_adminRow('Reports Filed', userReports.length)
+      +_adminRow('No-Shows', (u.noShows||0))
       +_adminRow('Credits Balance', (u.credits||0)+' pts')
     +'</div>'
 
@@ -15055,12 +15092,41 @@ function adminOpenUser(idx) {
         +'<button onclick="admSendNote();document.getElementById(\'admin-user-modal\').remove()" style="background:#1A1A1A;color:white;border:none;border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">📩 Send Message</button>'
         +'<button onclick="var m=document.getElementById(\'admin-user-modal\');if(m)m.remove();adminResetUserPassword('+idx+')" style="background:#F5F5F7;color:#1A1A1A;border:1.5px solid #E8E8EC;border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🔑 Reset Password</button>'
       +'</div>'
+      // Row 3 — credit penalty (e.g. for no-shows)
+      +'<button onclick="adminDeductCredits('+idx+')" style="background:rgba(217,119,6,.08);color:#B45309;border:1.5px solid rgba(217,119,6,.25);border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;width:100%;">🪙 Deduct Appie Credits</button>'
       // Delete
       +'<button onclick="var m=document.getElementById(\'admin-user-modal\');if(m)m.remove();adminDeleteUser('+idx+');" style="background:white;color:#E8192C;border:1.5px solid rgba(232,25,44,.2);border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;width:100%;">🗑️ Delete Account</button>'
     +'</div>'
 
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// Admin penalty: deduct Appie Credits (e.g. for repeated no-shows). Mirrors the
+// Credits panel's admApplyCredits — RPC first, direct-update fallback.
+async function adminDeductCredits(idx){
+  var u = adminUsers[idx];
+  if(!u || !u._id){ showToast('⚠️ No account id for this user'); return; }
+  var cur = u.credits || 0;
+  var amtStr = prompt('Deduct how many Appie Credits from '+(u.name||'this user')+'?\nCurrent balance: '+cur, '25');
+  if(amtStr === null) return;
+  var amt = parseInt(amtStr, 10);
+  if(!amt || amt < 1){ showToast('⚠️ Enter a valid amount'); return; }
+  var reason = (prompt('Reason (logged in the credits ledger):', 'No-show penalty') || 'No-show penalty').trim() || 'No-show penalty';
+  var delta = -Math.abs(amt);
+  var newBal = Math.max(0, cur + delta);
+  try {
+    var { error: e1 } = await db.rpc('admin_adjust_credits', { p_user_id: u._id, p_delta: delta, p_reason: reason });
+    if(e1){
+      var { error: e2 } = await db.from('profiles').update({ credits: newBal }).eq('id', u._id);
+      if(e2){ showToast('⚠️ DB error — run the credits SQL setup'); return; }
+      await Promise.resolve(db.from('credits_ledger').insert({ user_id: u._id, delta: delta, reason: reason, ref: 'no-show' })).catch(function(){});
+    }
+    u.credits = newBal;
+    showToast('✅ Deducted '+amt+' credits from '+(u.name||'user'));
+    var m = document.getElementById('admin-user-modal'); if(m) m.remove();
+    adminOpenUser(idx);   // reopen with the refreshed balance
+  } catch(ex){ showToast('⚠️ '+((ex&&ex.message)||'Failed')); }
 }
 
 function adminAddUserModal() {
@@ -23278,7 +23344,7 @@ function meRenderBookings(){
   setTimeout(meLoadBookings, 30);
   return '<div style="margin-bottom:16px;padding-left:8px;">'
       +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;font-family:Inter,sans-serif;">📅 Arrival Bookings</div>'
-      +'<div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Upcoming booked arrivals across your deals</div>'
+      +'<div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Upcoming &amp; recent arrivals — flag a no-show if a guest didn\'t turn up</div>'
     +'</div>'
     +'<div id="me-bookings-list">'
       +'<div style="padding:40px 16px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;font-family:Inter,sans-serif;">Loading bookings…</div>'
@@ -23295,12 +23361,15 @@ async function meLoadBookings(){
     return;
   }
   var today = new Date().toISOString().slice(0,10);
+  // Include recent past bookings (14-day lookback) so merchants can flag no-shows
+  // after the fact, and keep already-flagged bookings visible (status 'no_show').
+  var lookback = new Date(Date.now() - 14*864e5).toISOString().slice(0,10);
   var rows = [], caps = [];
   try {
     var res = await withTimeout(
       db.from('voucher_bookings')
         .select('*, profiles(name), deals(title,emoji), voucher_purchases(code,status)')
-        .in('deal_id', dealIds).gte('booking_date', today).eq('status','confirmed')
+        .in('deal_id', dealIds).gte('booking_date', lookback).in('status',['confirmed','no_show'])
         .order('booking_date',{ascending:true}).order('arrival_time',{ascending:true}),
       7000);
     if(res.error) throw res.error;
@@ -23350,10 +23419,26 @@ async function meLoadBookings(){
                 var nm = (b.profiles && b.profiles.name) || 'Customer';
                 var code = (b.voucher_purchases && b.voucher_purchases.code) || '';
                 var redeemed = b.voucher_purchases && b.voucher_purchases.status === 'used';
+                var isNoShow = b.status === 'no_show';
+                // Can only flag a no-show once the booked day has arrived (today or past),
+                // for a guest who hasn't redeemed and isn't already flagged.
+                var canFlag = !redeemed && !isNoShow && String(b.booking_date) <= todayStr;
+                var pill = redeemed
+                  ? '<span style="background:rgba(18,161,80,.1);color:#12A150;font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:10px;">✓ Arrived</span>'
+                  : isNoShow
+                    ? '<span style="background:rgba(232,25,44,.1);color:#E8192C;font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:10px;">✕ No-show</span>'
+                    : '<span style="background:#F5F5F7;color:#9A9AB0;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:10px;">Booked</span>';
+                var nmArg = String(nm).replace(/['"\\]/g,'');
+                var action = canFlag
+                  ? '<button onclick="meReportNoShow('+Number(b.id)+',\''+nmArg+'\')" style="background:rgba(232,25,44,.06);color:#E8192C;border:1px solid rgba(232,25,44,.25);border-radius:8px;padding:3px 10px;font-size:10px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">No Show</button>'
+                  : (isNoShow
+                    ? '<button onclick="meUndoNoShow('+Number(b.id)+')" style="background:none;border:none;color:#9A9AB0;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:3px 4px;">Undo</button>'
+                    : '');
                 return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #F5F5F8;">'
-                  +'<div style="flex:1;font-size:12px;font-weight:700;color:#1A1A1A;">'+nm+' <span style="color:#9A9AB0;font-weight:600;">×'+(b.guests||1)+'</span></div>'
+                  +'<div style="flex:1;min-width:0;font-size:12px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(nm)+' <span style="color:#9A9AB0;font-weight:600;">×'+(b.guests||1)+'</span></div>'
                   +(code?'<span style="font-size:11px;font-weight:700;color:#9A9AB0;font-family:monospace;">'+code+'</span>':'')
-                  +(redeemed?'<span style="background:rgba(18,161,80,.1);color:#12A150;font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:10px;">✓ Arrived</span>':'<span style="background:#F5F5F7;color:#9A9AB0;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:10px;">Booked</span>')
+                  +pill
+                  +action
                 +'</div>';
               }).join('')
           +'</div>';
@@ -23361,6 +23446,34 @@ async function meLoadBookings(){
     +'</div>';
   }).join('');
   box.innerHTML = html;
+}
+
+// Merchant flags a reservation the guest never turned up for. The RPC verifies
+// the caller owns the venue, refuses if the voucher was already redeemed, and
+// is idempotent (one count per booking). Increments the customer's no-show
+// counter that admins review.
+async function meReportNoShow(bookingId, name){
+  if(!confirm('Mark '+(name||'this guest')+' as a no-show?\n\nThis adds to their no-show count, which admins can review to take action.')) return;
+  try {
+    var { data, error } = await db.rpc('report_no_show', { p_booking_id: bookingId });
+    if(error) throw error;
+    showToast('✓ No-show recorded'+(typeof data==='number' ? (' · '+data+' total') : ''));
+    meLoadBookings();
+  } catch(e){
+    var m = e && e.message || '';
+    showToast('⚠️ '+(/already redeemed/i.test(m) ? 'Voucher was already redeemed' :
+                      /not authorized/i.test(m) ? 'Not your booking' :
+                      /report_no_show|function|does not exist|schema cache/i.test(m) ? 'Run no_show.sql in Supabase first' :
+                      (m || 'Could not report no-show')));
+  }
+}
+async function meUndoNoShow(bookingId){
+  try {
+    var { error } = await db.rpc('undo_no_show', { p_booking_id: bookingId });
+    if(error) throw error;
+    showToast('Reverted — booking restored');
+    meLoadBookings();
+  } catch(e){ showToast('⚠️ '+((e&&e.message)||'Could not undo')); }
 }
 
 function meRenderVouchers(){
