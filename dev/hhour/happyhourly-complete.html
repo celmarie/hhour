@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628181637';
+var BUILD_VERSION = '20260628184732';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14346,6 +14346,7 @@ async function doLogout(){
   }
 
   // Portal → show the login screen.
+  try { _lockLoginInputs(false); } catch(e){}   // login is shown → re-enable fields (disabled-by-default in HTML)
   var ls = document.getElementById('login-screen');
   if (ls) { ls.style.display = 'flex'; ls.style.opacity = '0'; setTimeout(function() { ls.style.opacity = '1'; ls.style.transition = 'opacity .3s'; }, 10); }
   var ui = document.getElementById('login-user'); if (ui) ui.value = '';
@@ -29765,21 +29766,21 @@ function _setupDealMap() {
     <!-- Input fields -->
     <div class="hh-stagger" style="display:flex;flex-direction:column;gap:11px;margin-bottom:14px;animation-delay:.26s;">
       <div id="signup-name-row" style="display:none;gap:11px;">
-        <input id="signup-first" type="text" placeholder="First name" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="given-name">
-        <input id="signup-last" type="text" placeholder="Last name" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="family-name">
+        <input id="signup-first" type="text" disabled placeholder="First name" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="given-name">
+        <input id="signup-last" type="text" disabled placeholder="Last name" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="family-name">
       </div>
       <div id="signup-dob-wrap" style="display:none;">
         <label style="display:block;font-size:11px;font-weight:700;color:#8A7B72;margin:0 0 5px 4px;">Date of birth (for age verification)</label>
         <input id="signup-dob" type="date" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;">
       </div>
-      <input id="login-user" type="email" placeholder="Email address" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="email">
+      <input id="login-user" type="email" disabled placeholder="Email address" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="email">
       <div style="position:relative;">
-        <input id="login-pass" type="password" placeholder="Password" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 48px 15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
+        <input id="login-pass" type="password" disabled placeholder="Password" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 48px 15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
         <button type="button" onclick="togglePw('login-pass')" title="Show / hide password" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.04);border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7B72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
-      <input id="signup-confirm" type="password" placeholder="Confirm password" style="display:none;width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')doSignUp()">
+      <input id="signup-confirm" type="password" disabled placeholder="Confirm password" style="display:none;width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')doSignUp()">
     </div>
 
     <div id="login-error" style="color:#E8192C;font-size:13px;font-weight:700;margin-bottom:10px;min-height:18px;text-align:center;"></div>
@@ -29846,12 +29847,12 @@ function _setupDealMap() {
 
     <!-- Email -->
     <label style="display:block;font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:8px;">Email address</label>
-    <input id="m-login-email" type="email" autocomplete="email" style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:16px 16px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;margin-bottom:24px;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
+    <input id="m-login-email" type="email" disabled autocomplete="email" style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:16px 16px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;margin-bottom:24px;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
 
     <!-- Password -->
     <label style="display:block;font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:8px;">Password</label>
     <div style="position:relative;margin-bottom:14px;">
-      <input id="m-login-pass" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:16px 48px 16px 16px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
+      <input id="m-login-pass" type="password" disabled autocomplete="current-password" style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:16px 48px 16px 16px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
       <button type="button" onclick="mTogglePw()" title="Show / hide password" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#F0F0F4;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
         <svg id="m-pw-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B76" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
