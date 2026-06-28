@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628155104';
+var BUILD_VERSION = '20260628162432';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14178,11 +14178,19 @@ async function doLogin(){
       // Audit: failed login (no email/password — IP captured server-side). An
       // 'admin' tab failure is the higher-signal case.
       logSecurityEvent('failed_login', loginRole === 'admin' ? 'warn' : 'info', { tab: loginRole || 'customer', status: error.status || null });
+      // CAPTCHA failures ALSO come back as HTTP 400 — distinguish them so we don't
+      // mislabel a captcha problem as a wrong password. (Common on localhost: the
+      // Turnstile key only allows the live domain, so no token is issued.)
+      var _emsg = error.message || '';
+      if(/captcha/i.test(_emsg) || error.code === 'captcha_failed' || error.error_code === 'captcha_failed'){
+        errEl.textContent = 'Security check (captcha) failed — refresh and try again. (Won’t pass on localhost unless CAPTCHA is disabled in Supabase or localhost is added to the Turnstile widget.)';
+        return;
+      }
       // Supabase returns the same "Invalid login credentials" whether the email is
       // unknown or the password is wrong. For customer login (where self-signup is
       // allowed) route them into Create Account — if the email actually does exist,
       // doSignUp() will detect "already registered" and bounce them back to Sign In.
-      var _invalidCreds = /invalid login credentials|invalid email or password/i.test(error.message || '')
+      var _invalidCreds = /invalid login credentials|invalid email or password/i.test(_emsg)
         || error.status === 400;
       // Wrong email/password: keep exactly what they typed so they can review and
       // fix it — don't wipe the form or yank customers over to the signup screen.
