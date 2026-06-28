@@ -5347,7 +5347,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628031500';
+var BUILD_VERSION = '20260628032924';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -12741,6 +12741,11 @@ function _isDupVenue(name, addr){
 // Live duplicate check while filling the venue/address (debounced). Mirrors the
 // submit-time block, but shows an inline warning so the merchant knows immediately.
 var _ucDupTimer = null;
+function _venueNameExists(name){
+  var vn = _normVenue(name); if(!vn) return false;
+  return (pendingCommunityDeals||[]).some(function(x){ return _normVenue(x.venue||x.name)===vn; })
+      || (ucDeals||[]).some(function(x){ return _normVenue(x.name||x.venue)===vn; });
+}
 function ucCheckVenueDup(){
   if(_ucDupTimer) clearTimeout(_ucDupTimer);
   _ucDupTimer = setTimeout(function(){
@@ -12749,9 +12754,21 @@ function ucCheckVenueDup(){
     if(!inp || !warn) return;
     var v = (inp.value || '').trim();
     var addr = (document.getElementById('uc-addr')||{value:''}).value.trim();
-    var dup = !!v && _isDupVenue(v, addr);
-    warn.textContent = dup ? ('⚠️ A deal for “'+v+'” at this address already exists — one deal per venue.') : '';
-    warn.style.display = dup ? 'block' : 'none';
+    if(!v){ warn.style.display = 'none'; return; }
+    if(addr && _isDupVenue(v, addr)){
+      // Confirmed duplicate — same venue name AND same address.
+      warn.textContent = '⚠️ A deal for “'+v+'” at this address already exists — one deal per venue.';
+      warn.style.color = '#E8192C';
+      warn.style.display = 'block';
+    } else if(!addr && _venueNameExists(v)){
+      // Name matches but no address yet — could be the same place or a different
+      // branch. Nudge them to pick the address so we can tell.
+      warn.textContent = 'ℹ️ “'+v+'” already exists elsewhere — pick the address to confirm it’s not the same place.';
+      warn.style.color = '#B45309';
+      warn.style.display = 'block';
+    } else {
+      warn.style.display = 'none';
+    }
   }, 250);
 }
 function submitDeal(){
