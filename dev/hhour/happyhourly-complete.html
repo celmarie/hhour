@@ -5347,7 +5347,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260628144543';
+var BUILD_VERSION = '20260628151737';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -8600,7 +8600,8 @@ function updateWebHeroStats(){
 }
 // Accurate "deals available" = ALL active verified deals + ALL approved community
 // deals, counted server-side (head:true → no rows fetched, so it's cheap and not
-// limited by the feed's display cap).
+// limited by the feed's display cap). Also fixes the "venues" stat, which used to
+// be derived from the capped (≤100) loaded set and so undercounted.
 async function _fetchHeroDealCount(){
   try {
     var vr = await db.from('deals').select('id', { count:'exact', head:true }).eq('status','active');
@@ -8610,6 +8611,27 @@ async function _fetchHeroDealCount(){
       var hd=document.getElementById('wh-stat-deals'); if(hd) hd.textContent = total;
       var md=document.getElementById('rh-stat-deals'); if(md) md.textContent = total;
       try { var c=JSON.parse(localStorage.getItem('hh_hero_stats')||'{}')||{}; c.deals=total; localStorage.setItem('hh_hero_stats', JSON.stringify(c)); } catch(e){}
+    }
+  } catch(e){}
+  // Accurate venue count: distinct venue names across approved community deals +
+  // distinct venue_ids across active verified deals. We fetch only the key columns
+  // (a few hundred short values) and de-dup client-side, since PostgREST has no
+  // COUNT(DISTINCT). Normalize names the same way the dup-check does so accidental
+  // case/whitespace variants don't double-count.
+  try {
+    var cn = await db.from('community_deals').select('venue_name').eq('status','approved').is('deleted_at', null);
+    var vn = await db.from('deals').select('venue_id').eq('status','active');
+    var set = {};
+    (cn && cn.data || []).forEach(function(r){
+      var n = String(r&&r.venue_name||'').trim().toLowerCase().replace(/\s+/g,' ');
+      if(n) set['n:'+n] = 1;
+    });
+    (vn && vn.data || []).forEach(function(r){ if(r&&r.venue_id) set['v:'+r.venue_id] = 1; });
+    var venues = Object.keys(set).length;
+    if(venues > 0){
+      var hv=document.getElementById('wh-stat-venues'); if(hv) hv.textContent = venues;
+      var mv=document.getElementById('rh-stat-venues'); if(mv) mv.textContent = venues;
+      try { var c2=JSON.parse(localStorage.getItem('hh_hero_stats')||'{}')||{}; c2.venues=venues; localStorage.setItem('hh_hero_stats', JSON.stringify(c2)); } catch(e){}
     }
   } catch(e){}
 }
