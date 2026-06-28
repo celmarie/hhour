@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629001707';
+var BUILD_VERSION = '20260629003322';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5529,32 +5529,59 @@ async function initializeAuth(){
 // login/signup inputs while signed in (re-enabled here when login is actually shown)
 // so iOS stops prompting over the app.
 function _lockLoginInputs(lock){
+  // Type/visibility is owned by _guardPasswordFields below; this just disables.
   ['login-user','login-pass','signup-confirm','signup-first','signup-last','m-login-email','m-login-pass'].forEach(function(id){
     var el = document.getElementById(id);
-    if(!el) return;
-    el.disabled = !!lock;
-    // When showing a login field, restore its real password type if we'd stripped it.
-    if(!lock && el.getAttribute('data-pwhide')==='1'){ el.type='password'; el.removeAttribute('data-pwhide'); }
+    if(el) el.disabled = !!lock;
   });
 }
-// iOS scans the DOM for password fields and pops a "Sign in / Fill Password" prompt
-// for the saved credential — even when those fields are hidden or `disabled`. The
-// only reliable way to make iOS ignore them is to remove the `password` TYPE while
-// they're off screen (an empty type="text" field is not a login form). This guard
-// strips the type from every off-screen password field and restores it the moment
-// the field is actually shown. Call after any screen/sheet/modal change.
+// True only if the element and ALL its ancestors are rendered (no display:none /
+// visibility:hidden up the chain). Works even when the element itself is
+// type="hidden" — start from its parent.
+function _ancestorVisible(el){
+  try {
+    while(el && el !== document.body && el.nodeType === 1){
+      var s = getComputedStyle(el);
+      if(s.display === 'none' || s.visibility === 'hidden') return false;
+      el = el.parentElement;
+    }
+    return !!el;
+  } catch(e){ return false; }
+}
+// THE definitive fix for the iOS "Fill Password" prompt + the keyboard popping up
+// on its own. iOS classifies a page as a login form from type=password / autocomplete
+// / id+name keywords, then AUTO-FOCUSES a field (keyboard) and offers to fill the
+// saved credential — even for hidden or `disabled` fields. The only bulletproof
+// answer: while a login/password field is OFF screen, convert it to type="hidden".
+// A hidden input cannot be focused (no keyboard) and is categorically ignored by
+// AutoFill (no prompt). When its screen/sheet is actually shown we restore the real
+// type so the user can sign in normally. Call after any screen/sheet/modal change.
 function _guardPasswordFields(){
   try {
-    var nodes = document.querySelectorAll('input[type="password"], input[data-pwhide="1"]');
+    var nodes = document.querySelectorAll(
+      'input[data-pwfield], input[type="password"], ' +
+      'input[autocomplete="email"], input[autocomplete="username"], ' +
+      'input[autocomplete="current-password"], input[autocomplete="new-password"]'
+    );
     for(var i=0;i<nodes.length;i++){
       var inp = nodes[i];
-      var shown = (inp === document.activeElement) || inp.getClientRects().length > 0;
+      // First time we see a managed field, remember its real type/autocomplete so we
+      // can restore them later (it may become type="hidden", which loses that info).
+      if(!inp.hasAttribute('data-pwfield')){
+        inp.setAttribute('data-pwfield','1');
+        inp.setAttribute('data-ot', inp.getAttribute('type') || 'text');
+        inp.setAttribute('data-oac', inp.getAttribute('autocomplete') || '');
+      }
+      var shown = (inp === document.activeElement) || _ancestorVisible(inp.parentElement || inp);
       if(shown){
-        if(inp.getAttribute('data-pwhide')==='1'){ inp.type='password'; inp.removeAttribute('data-pwhide'); }
+        if(inp.type === 'hidden'){ inp.type = inp.getAttribute('data-ot') || 'text'; }
+        var oac = inp.getAttribute('data-oac'); if(oac) inp.setAttribute('autocomplete', oac);
         inp.disabled = false;
       } else {
+        // Off screen → make it invisible to iOS entirely.
+        inp.setAttribute('autocomplete','off');
+        if(inp.type !== 'hidden') inp.type = 'hidden';
         inp.disabled = true;
-        if(inp.type === 'password'){ inp.setAttribute('data-pwhide','1'); inp.type='text'; } // hide from iOS AutoFill
       }
     }
   } catch(e){}
@@ -5570,6 +5597,7 @@ function showLoginScreen(){
   var ls = document.getElementById('login-screen');
   if(ls){ ls.style.display = 'flex'; ls.style.opacity = '1'; }
   _lockLoginInputs(false);   // login is needed now → re-enable the fields
+  try { _guardPasswordFields(); } catch(e){}        // restore real input types now that login is visible
   try { _captchaInit('captcha-box'); } catch(e){}   // ensure CAPTCHA is ready (boot preload is now deferred)
   updateGuestVisibility();
   updateLogoutBtnLabel();
@@ -5687,6 +5715,7 @@ function _showMerchantLogin(show){
   if(show && ls) ls.style.display = 'none';
   if(show){
     try { _lockLoginInputs(false); } catch(e){}   // merchant login shown → re-enable its fields
+    try { _guardPasswordFields(); } catch(e){}    // restore real types for the merchant login fields
     var lbl = document.getElementById('m-lang-label');
     if(lbl){ var cur=''; try{ cur=localStorage.getItem('hh-language')||'English'; }catch(e){} lbl.textContent = cur || 'English'; }
     // Render Turnstile on THIS screen — the merchant login needs its own visible
@@ -14197,6 +14226,7 @@ function requireLogin(action){
     if(ls){ls.style.display='flex';ls.style.opacity='0';ls.style.transition='opacity .3s';
       setTimeout(function(){ls.style.opacity='1';},10);}
     try { _lockLoginInputs(false); } catch(e){}   // login is now shown → re-enable its fields (we lock them during guest browse)
+    try { _guardPasswordFields(); } catch(e){}    // restore real input types now that login is visible
     try { _captchaInit('captcha-box'); } catch(e){}   // ensure CAPTCHA is ready (boot preload is deferred)
     switchLoginTab('customer');
   },800);
@@ -14429,6 +14459,7 @@ async function doLogout(){
   try { _lockLoginInputs(false); } catch(e){}   // login is shown → re-enable fields (disabled-by-default in HTML)
   var ls = document.getElementById('login-screen');
   if (ls) { ls.style.display = 'flex'; ls.style.opacity = '0'; setTimeout(function() { ls.style.opacity = '1'; ls.style.transition = 'opacity .3s'; }, 10); }
+  try { _guardPasswordFields(); } catch(e){}   // restore real input types now that login is visible
   var ui = document.getElementById('login-user'); if (ui) ui.value = '';
   var pi = document.getElementById('login-pass'); if (pi) pi.value = '';
   var ei = document.getElementById('login-error'); if (ei) ei.textContent = '';
