@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629151226';
+var BUILD_VERSION = '20260629154116';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -28806,7 +28806,7 @@ function refreshDealMapMarkers() {
   var communityDeals = (typeof ucDeals !== 'undefined' ? ucDeals : []).filter(function(d){
     return d.id;
   });
-  var allDeals = [...verifiedDeals, ...communityDeals, ..._watchMapItems()];
+  var allDeals = _mapCapDeals([...verifiedDeals, ...communityDeals, ..._watchMapItems()]);
   var cnt = document.getElementById('map-deal-count');
   if (cnt) cnt.textContent = allDeals.length + ' deals';
 
@@ -28889,6 +28889,23 @@ function _placeWatchMarker(s, lat, lng) {
 // geocode cache (hh_geo_cache) so known addresses are placed instantly; only
 // genuinely-new addresses hit the network, throttled to avoid rate limits.
 // placeFn(deal, lat, lng) does the actual marker creation.
+// Cap how many deal pins the map builds. Hundreds of markers + the Maps SDK can
+// exhaust the WebKit per-tab memory on low-end phones and crash the map. Keep the
+// nearest ~80 deals (by distance) plus all Where-to-Watch pins.
+var MAP_MAX_PINS = 80;
+function _mapCapDeals(deals){
+  try {
+    if(!Array.isArray(deals)) return [];
+    var watch = deals.filter(function(d){ return d && d._isWatch; });
+    var rest  = deals.filter(function(d){ return d && !d._isWatch; });
+    if(rest.length > MAP_MAX_PINS){
+      rest = rest.slice().sort(function(a,b){
+        return (a.distKm!=null?a.distKm:9e9) - (b.distKm!=null?b.distKm:9e9);
+      }).slice(0, MAP_MAX_PINS);
+    }
+    return rest.concat(watch);
+  } catch(e){ return deals; }
+}
 function _geocodePlaceDeals(deals, placeFn) {
   var FALLBACK = { lat: 41.3851, lng: 2.1734 };
   var uncached = [];
@@ -29089,7 +29106,7 @@ function _setupDealMap() {
     var communityDeals = (typeof ucDeals !== 'undefined' ? ucDeals : []).filter(function(d){
       return d.id;  // Just check it has an ID, all approved deals should already be here
     });
-    var allDeals = [...verifiedDeals, ...communityDeals, ..._watchMapItems()];
+    var allDeals = _mapCapDeals([...verifiedDeals, ...communityDeals, ..._watchMapItems()]);
     console.log('[_setupDealMap] after filter - allDeals count:', allDeals.length);
 
     var cnt = document.getElementById('map-deal-count');
