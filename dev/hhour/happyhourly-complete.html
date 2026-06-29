@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629145503';
+var BUILD_VERSION = '20260629145946';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -28503,6 +28503,16 @@ window.addEventListener('resize', function(){
 var _gmapInited = false;
 var _gmapObj = null;
 var _gmapMarkers = [];
+// ONE shared InfoWindow for the whole map. Creating a separate InfoWindow per pin
+// (×200+ deals) was a major memory hog that could crash the map on low-end phones.
+var _gmapInfoWin = null;
+function _gmapOpenInfo(marker, html){
+  try {
+    if(!_gmapInfoWin) _gmapInfoWin = new google.maps.InfoWindow();
+    _gmapInfoWin.setContent(html);
+    _gmapInfoWin.open(_gmapObj, marker);
+  } catch(e){}
+}
 var _gmapMarkersAt = 0;            // when pins were last placed (map cache freshness)
 var MAP_STALE_MS = 5 * 60 * 1000;  // re-fetch/re-place only after 5 min, not every visit
 var _currentVenueName = '';
@@ -28811,8 +28821,7 @@ function refreshDealMapMarkers() {
           '<button onclick="openDealById(\'' + deal.id + '\',\'' + (isVerified?'v':'uc') + '\')" style="flex:1;background:#E8192C;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;">View Deal</button>' +
           '<button onclick="window.open(\'https://maps.google.com/?q=' + encodeURIComponent(addr) + '\',\'_blank\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;">🗺️ Go</button>' +
         '</div></div>';
-      var iw = new google.maps.InfoWindow({ content: infoHtml });
-      marker.addListener('click', function() { iw.open(_gmapObj, marker); });
+      marker.addListener('click', function() { _gmapOpenInfo(marker, infoHtml); });
     } catch(e) { console.error('[refreshDealMapMarkers]', deal.name, e); }
   }
 
@@ -28858,8 +28867,7 @@ function _placeWatchMarker(s, lat, lng) {
           '<button onclick="watchGoDirections(\'' + s.id + '\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
         '</div>' +
       '</div>';
-    var iw = new google.maps.InfoWindow({ content: infoHtml });
-    marker.addListener('click', function() { iw.open(_gmapObj, marker); });
+    marker.addListener('click', function() { _gmapOpenInfo(marker, infoHtml); });
     _gmapMarkers.push(marker);
   } catch(e) { console.error('[_placeWatchMarker]', e); }
 }
@@ -29056,8 +29064,8 @@ function _setupDealMap() {
       disableDefaultUI: true, zoomControl: true,
       styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
     });
-
-    initHomeMap(center.lat, center.lng);
+    // (Don't build the home-screen map iframe here — it's a second Maps instance that
+    //  needlessly doubles memory on the map screen; the home map loads on the home.)
 
     // Use all deals loaded from database (already approved/active from DB query)
     console.log('[_setupDealMap] vouchers count:', (vouchers || []).length, 'ucDeals count:', (ucDeals || []).length);
@@ -29114,8 +29122,7 @@ function _setupDealMap() {
                 'style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
             '</div>' +
           '</div>';
-        var infoWin = new google.maps.InfoWindow({ content: infoHtml });
-        marker.addListener('click', function() { infoWin.open(_gmapObj, marker); });
+        marker.addListener('click', function() { _gmapOpenInfo(marker, infoHtml); });
         _gmapMarkers.push(marker);
       } catch(e) {
         console.error('[_placeDealPin] error for', deal.name, e);
