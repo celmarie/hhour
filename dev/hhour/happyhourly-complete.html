@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629145946';
+var BUILD_VERSION = '20260629151226';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -22717,7 +22717,7 @@ async function loadMerchantData(){
     // 5. Kick off purchases query in parallel with deals processing
     var dealIds = (dbDeals||[]).map(function(d){return d.id;});
     var _pPurch = dealIds.length ? db.from('voucher_purchases')
-      .select('id,code,status,created_at,redeemed_at,deal_id,profiles(name),deals(title,price,slots_total,emoji)')
+      .select('id,code,status,created_at,redeemed_at,deal_id,payment_method,paid_at,profiles(name),deals(title,price,slots_total,emoji)')
       .in('deal_id', dealIds)
       .order('created_at', {ascending:false})
       .limit(500)
@@ -22853,8 +22853,12 @@ async function loadMerchantData(){
         meVoucherPurchaseMap = {};
         vouchersData.forEach(function(v){ meVoucherPurchaseMap[String(v.id)] = v; });
 
-        // Balance: total revenue minus commission
-        var totalRev = purch.reduce(function(s,p){ return s + priceToNum(p.deals && p.deals.price); }, 0);
+        // Payout balance = money the PLATFORM actually collected and owes the merchant.
+        // Pay-at-venue (onsite) vouchers are paid by the customer directly to the venue,
+        // so the platform never holds that cash — those must NOT count toward a payout.
+        // Only ONLINE (Stripe-collected) purchases contribute.
+        var onlinePurch = purch.filter(function(p){ return (p.payment_method || 'online') !== 'onsite'; });
+        var totalRev = onlinePurch.reduce(function(s,p){ return s + priceToNum(p.deals && p.deals.price); }, 0);
         var comm = (finConfig.commission || 15) / 100;
         meCurrentBalance = parseFloat((totalRev * (1 - comm)).toFixed(2));
 
@@ -24711,7 +24715,16 @@ function meRenderPayoutsPage(){
     + '</div>'
   + '</div>';
 
-  return '<div style="display:flex;flex-direction:column;gap:20px;">'+hero + history + bank + terms+'</div>';
+  // Pay-at-venue explainer — under this model the platform never holds the customer's
+  // money (they pay the venue in person), so there is no platform payout.
+  var onsiteNote = (typeof PAY_ONSITE_ONLY !== 'undefined' && PAY_ONSITE_ONLY)
+    ? '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px 16px;font-family:Inter,sans-serif;">'
+        + '<div style="font-size:13px;font-weight:800;color:#C2410C;margin-bottom:3px;">🏪 Pay-at-venue — no platform payout</div>'
+        + '<div style="font-size:12px;color:#9A3412;font-weight:600;line-height:1.5;">Your customers pay you <b>directly at the venue</b> when they redeem, so the platform never holds that money — there\'s nothing to pay out. Commission is settled separately. (Payouts apply only if online card payments are enabled.)</div>'
+      + '</div>'
+    : '';
+
+  return '<div style="display:flex;flex-direction:column;gap:20px;">'+hero + onsiteNote + history + bank + terms+'</div>';
 }
 async function meLoadBankDetails(){
   var el = document.getElementById('me-bank-display');
