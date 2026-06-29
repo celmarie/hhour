@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629013640';
+var BUILD_VERSION = '20260629031758';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5529,10 +5529,11 @@ async function initializeAuth(){
 // login/signup inputs while signed in (re-enabled here when login is actually shown)
 // so iOS stops prompting over the app.
 function _lockLoginInputs(lock){
-  // Type/visibility is owned by _guardPasswordFields below; this just disables.
   ['login-user','login-pass','signup-confirm','signup-first','signup-last','m-login-email','m-login-pass'].forEach(function(id){
     var el = document.getElementById(id);
-    if(el) el.disabled = !!lock;
+    if(!el) return;
+    el.disabled = !!lock;
+    if(!lock){ _revealLoginField(el); }   // showing login → restore the real input type
   });
 }
 // True only if the element and ALL its ancestors are rendered (no display:none /
@@ -5548,14 +5549,19 @@ function _ancestorVisible(el){
     return !!el;
   } catch(e){ return false; }
 }
-// THE definitive fix for the iOS "Fill Password" prompt + the keyboard popping up
-// on its own. iOS classifies a page as a login form from type=password / autocomplete
-// / id+name keywords, then AUTO-FOCUSES a field (keyboard) and offers to fill the
-// saved credential — even for hidden or `disabled` fields. The only bulletproof
-// answer: while a login/password field is OFF screen, convert it to type="hidden".
-// A hidden input cannot be focused (no keyboard) and is categorically ignored by
-// AutoFill (no prompt). When its screen/sheet is actually shown we restore the real
-// type so the user can sign in normally. Call after any screen/sheet/modal change.
+// Restore a single login field's real type so the user can type in it. Called ONLY
+// by the explicit "show login" paths — never by the background guard.
+function _revealLoginField(el){
+  try { if(!el) return; var ot = el.getAttribute('data-ot'); if(ot && el.type !== ot) el.type = ot; el.disabled = false; } catch(e){}
+}
+function _revealLoginFields(ids){ try { (ids||[]).forEach(function(id){ _revealLoginField(document.getElementById(id)); }); } catch(e){} }
+// HIDE-ONLY guard. iOS offers to fill a saved password whenever it sees a login
+// form (type=password / autocomplete) in the DOM — even hidden or disabled. So we
+// keep every off-screen login field as type="hidden" (iOS ignores hidden inputs:
+// no prompt, no keyboard). CRITICAL: this guard NEVER restores a field's type — it
+// can only hide. That way a misjudged "visible" check can never accidentally expose
+// a login form on the home. Fields are revealed only by _revealLoginField() in the
+// explicit login-open paths. Safe to call as often as we like.
 function _guardPasswordFields(){
   try {
     var nodes = document.querySelectorAll(
@@ -5565,24 +5571,16 @@ function _guardPasswordFields(){
     );
     for(var i=0;i<nodes.length;i++){
       var inp = nodes[i];
-      // First time we see a managed field, remember its real type/autocomplete so we
-      // can restore them later (it may become type="hidden", which loses that info).
       if(!inp.hasAttribute('data-pwfield')){
         inp.setAttribute('data-pwfield','1');
-        inp.setAttribute('data-ot', inp.getAttribute('type') || 'text');
-        inp.setAttribute('data-oac', inp.getAttribute('autocomplete') || '');
+        if(!inp.hasAttribute('data-ot')) inp.setAttribute('data-ot', inp.getAttribute('type') || 'text');
       }
-      var shown = (inp === document.activeElement) || _ancestorVisible(inp.parentElement || inp);
-      if(shown){
-        if(inp.type === 'hidden'){ inp.type = inp.getAttribute('data-ot') || 'text'; }
-        var oac = inp.getAttribute('data-oac'); if(oac) inp.setAttribute('autocomplete', oac);
-        inp.disabled = false;
-      } else {
-        // Off screen → make it invisible to iOS entirely.
-        inp.setAttribute('autocomplete','off');
-        if(inp.type !== 'hidden') inp.type = 'hidden';
-        inp.disabled = true;
-      }
+      if(inp === document.activeElement) continue;                 // never touch the field being used
+      if(_ancestorVisible(inp.parentElement || inp)) continue;     // on-screen → leave it (reveal path owns it)
+      // Off screen → make it invisible to iOS. HIDE ONLY.
+      if(inp.type !== 'hidden') inp.type = 'hidden';
+      inp.setAttribute('autocomplete','off');
+      inp.disabled = true;
     }
   } catch(e){}
 }
@@ -5618,7 +5616,7 @@ function openWebLoginPopup(){
   var p = document.getElementById('web-login-pop'); if(!p) return;
   var er = document.getElementById('wl-error'); if(er) er.textContent='';
   p.style.display = 'block';
-  try { _guardPasswordFields(); } catch(e){}   // popup visible → enable its password field
+  try { _revealLoginFields(['wl-email','wl-pass']); } catch(e){}   // popup shown → restore its real input types
   try { _captchaInit('captcha-box-weblogin'); } catch(e){}
   // Render Google's popup button (no supabase.co); reveal the redirect button only
   // if GIS can't load. This popup is desktop-only, so the popup flow always applies.
@@ -8222,7 +8220,7 @@ function openEditProfile(){
 function stChangePassword(){
   var ov = document.getElementById('st-change-pw-ov');
   if(ov) ov.style.display = 'flex';
-  try { _guardPasswordFields(); } catch(e){}   // sheet now visible → enable its password fields
+  try { _revealLoginFields(['st-pw-current','st-pw-new','st-pw-confirm']); } catch(e){}   // sheet shown → restore its password fields
   if(typeof _captchaInit==='function') _captchaInit('captcha-box-pw');   // CAPTCHA for the re-auth
 }
 
@@ -13276,6 +13274,7 @@ function goScreen(name){
   }
   if(name==='invitedeals') renderUnlockedDeals();
   if(name==='alldeals') { _adCurTab='all'; _adCurCats=[]; _adInitCatChips(); renderAllDeals('all'); }
+  if(name==='business') { try { _revealLoginFields(['b1-pass']); } catch(e){} }   // business signup shown → restore its password field
   if(name==='profile') { updateLogoutBtnLabel(); updateGuestVisibility(); }
   if(name==='alerts'){ alerts.forEach(function(a){a.unread=false;}); if(typeof renderAlerts==='function') renderAlerts(); }
   const darkScreens=['qr'];
