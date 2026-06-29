@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629140448';
+var BUILD_VERSION = '20260629145503';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5965,6 +5965,7 @@ function dbDealToLocal(row) {
     name: v.name || row.venue_name || 'Venue',
     address: row.address || v.address || 'Carrer de Sòria 11, Ciutat Vella, 08003 Barcelona',
     website: row.website || '',
+    removedImages: Array.isArray(row.removed_images) ? row.removed_images : [],
     deal: row.title,
     price: fmtPriceDisplay(row.price) || 'Free',
     wasPrice: fmtPriceDisplay(row.was_price) || '',
@@ -6014,6 +6015,7 @@ function dbUCToLocal(row) {
     name: row.venue_name,
     address: row.address || 'Carrer de Sòria 11, Ciutat Vella, 08003 Barcelona',
     website: row.website || '',
+    removedImages: Array.isArray(row.removed_images) ? row.removed_images : [],
     deal: row.title,
     price: row.price || null,
     wasPrice: row.was_price || null,
@@ -14813,6 +14815,7 @@ async function loadAdminData(){
           deal: r.title||'', desc: r.description||'',
           address: r.address||'',
           website: r.website||'',
+          removedImages: Array.isArray(r.removed_images) ? r.removed_images : [],
           cat: _canonCat(r.category),
           user: r.user_name||'Anonymous', emoji: r.emoji||'🍹',
           userAv: (r.user_name||'??').substring(0,2).toUpperCase(), userCol: '#9A9AB0',
@@ -19879,11 +19882,13 @@ var _admReviewSource = 'community'; // 'community' | 'merchant'
 
 function adminOpenDealReview(id, source){
   _admReviewSource = source || 'community';
+  _removedPhotos.adm = [];   // reset this-session removals when opening the editor
   if(source === 'merchant'){
     var deal = vouchers.find(function(d){ return d.id===id; })
       || deletedVouchers.find(function(d){ return d.id===id; });
     if(!deal) return;
     _admReviewDealId = id;
+    _admRemovedImages = (deal && deal.removedImages) || [];
     // Populate preview
     var img = document.getElementById('adm-rev-img');
     var emojiBg = document.getElementById('adm-rev-emoji-bg');
@@ -19979,6 +19984,26 @@ function admRevRenderPhoto(){
   if(nav) nav.style.display = _admRevPhotos.length > 1 ? 'flex' : 'none';
 }
 var _admPhotos = [], _admPhotoIdx = 0;
+// Photo-removal safety net. Removing a photo never deletes the Storage file — we
+// also archive its URL so it can be restored. _removedPhotos = this-session removals
+// per editor; _admRemovedImages = the persisted archive (removed_images) loaded with
+// the deal being edited in the admin Review&Edit screen.
+var _removedPhotos = { me:[], adm:[], uc:[] };
+var _admRemovedImages = [];
+function _archiveRemovedPhoto(target, url){
+  try { if(url && /^https?:/i.test(url)){ _removedPhotos[target] = _removedPhotos[target] || []; if(_removedPhotos[target].indexOf(url) === -1) _removedPhotos[target].push(url); } } catch(e){}
+}
+// The removed-photo archive to persist for the admin editor: previously-archived URLs
+// + this session's removals, minus any restored back into the live set, deduped.
+function _admRemovedForSave(){
+  try {
+    var live = _admPhotos || [];
+    var all = (_admRemovedImages||[]).concat(_removedPhotos.adm||[]);
+    var seen = {}, out = [];
+    all.forEach(function(u){ if(u && /^https?:/i.test(u) && live.indexOf(u) === -1 && !seen[u]){ seen[u]=1; out.push(u); } });
+    return out;
+  } catch(e){ return []; }
+}
 function openAdminPhotoFullscreen(startIdx){
   _admPhotos = _admRevPhotos || [];
   if(!_admPhotos.length) return;
@@ -20029,6 +20054,8 @@ function adminReviewDeal(id){
   if(!deal) return;
   _admReviewSource = 'community';
   _admReviewDealId = id;
+  _admRemovedImages = (deal && deal.removedImages) || [];   // persisted removed-photo archive
+  _removedPhotos.adm = [];                                  // this-session removals
 
   // Populate preview with carousel
   _admRevCurPhoto = 0;
@@ -20675,7 +20702,8 @@ async function adminSaveEditsOnly(){
         emoji: edits.emoji||undefined,
         currency: edits.currency||'EUR',
         discount_pct: edits.discPct||0,
-        website: edits.website||''
+        website: edits.website||'',
+        removed_images: _admRemovedForSave()
       };
       var allPhotosM = [savedImg1, savedImg2, savedImg3].filter(Boolean);
       mUpdate.image_url = allPhotosM.length > 1 ? JSON.stringify(allPhotosM) : (allPhotosM[0] || '');
@@ -20725,7 +20753,8 @@ async function adminSaveEditsOnly(){
         currency: edits.currency||'EUR',
         off_label: edits.off||undefined,
         discount_pct: edits.discPct||0,
-        website: edits.website||''
+        website: edits.website||'',
+        removed_images: _admRemovedForSave()
       };
       // Store all photos as JSON array in image_url — no extra columns needed
       var allPhotos = [savedImg1, savedImg2, savedImg3].filter(Boolean);
@@ -25325,10 +25354,32 @@ function openPhotoSlot(target, slot){
 }
 function removePhotoSlot(target, slot){
   var arr = target === 'me' ? _mePhotos : target === 'adm' ? _admPhotos : _ucPhotos;
+  var url = arr[slot];
+  // Confirm + archive for already-uploaded photos (contributor photos can't be
+  // re-uploaded by the customer). Fresh data: URLs aren't yet saved, so skip both.
+  if(url && /^https?:/i.test(url)){
+    if(!confirm('Remove this photo?\n\nThe original file is never deleted — it goes to the removed-photos archive below and you can restore it with one tap.')) return;
+    _archiveRemovedPhoto(target, url);
+  }
   arr.splice(slot, 1);
   if(target === 'uc') _ucDealPhotoDataUrl = _ucPhotos[0] || '';
   if(target === 'me') _meDealPhotoDataUrl = _mePhotos[0] || '';
   renderPhotoGrid(target);
+}
+// Restore an archived photo back into the editor (one-tap undo).
+function restorePhotoSlot(target, url){
+  try {
+    var arr = target === 'me' ? _mePhotos : target === 'adm' ? _admPhotos : _ucPhotos;
+    if(!url || arr.indexOf(url) !== -1) return;
+    if(arr.length >= 3){ showToast('All 3 photo slots are full — remove one first'); return; }
+    arr.push(url);
+    if(_removedPhotos[target]) _removedPhotos[target] = _removedPhotos[target].filter(function(u){ return u !== url; });
+    if(target === 'adm') _admRemovedImages = _admRemovedImages.filter(function(u){ return u !== url; });
+    if(target === 'uc') _ucDealPhotoDataUrl = _ucPhotos[0] || '';
+    if(target === 'me') _meDealPhotoDataUrl = _mePhotos[0] || '';
+    renderPhotoGrid(target);
+    showToast('✅ Photo restored — Save to keep it');
+  } catch(e){}
 }
 function renderPhotoGrid(target){
   var arr = target === 'me' ? _mePhotos : target === 'adm' ? _admPhotos : _ucPhotos;
@@ -25359,6 +25410,25 @@ function renderPhotoGrid(target){
     }
   }
   el.innerHTML = slots;
+  // Removed-photo archive → one-tap restore (the original file is never deleted).
+  try {
+    var archive = (target === 'adm' ? (_admRemovedImages||[]) : []).concat(_removedPhotos[target]||[]);
+    var seen = {}, arch = [];
+    archive.forEach(function(u){ if(u && /^https?:/i.test(u) && arr.indexOf(u) === -1 && !seen[u]){ seen[u]=1; arch.push(u); } });
+    if(arch.length){
+      var rh = '<div style="grid-column:1 / -1;margin-top:10px;padding-top:10px;border-top:1px dashed #E8E8EC;">'
+        + '<div style="font-size:10px;font-weight:800;color:#12A150;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">↩︎ Removed photos — tap to restore'+(arr.length>=3?' (free a slot first)':'')+'</div>'
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+        + arch.map(function(u){
+            return '<div onclick="restorePhotoSlot(\''+target+'\',\''+u.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" title="Restore this photo" style="width:54px;height:54px;border-radius:8px;overflow:hidden;position:relative;border:2px dashed #12A150;cursor:pointer;flex-shrink:0;">'
+              + '<img src="'+u+'" style="width:100%;height:100%;object-fit:cover;opacity:.75;">'
+              + '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(18,161,80,.22);font-size:17px;">↩︎</div>'
+            + '</div>';
+          }).join('')
+        + '</div></div>';
+      el.innerHTML += rh;
+    }
+  } catch(e){}
   // show/hide count badge
   var badge = document.getElementById(target + '-photo-count');
   if(badge) badge.textContent = arr.length + '/3 photo' + (arr.length !== 1 ? 's' : '');
@@ -25402,7 +25472,10 @@ function handleMultiPhotoSelected(input){
     var reader = new FileReader();
     reader.onload = function(e){
       var slot = startSlot + index;
-      if(slot < 3) arr[slot] = e.target.result;
+      if(slot < 3){
+        if(arr[slot]) _archiveRemovedPhoto(tgt, arr[slot]);   // replacing a photo → archive the old one
+        arr[slot] = e.target.result;
+      }
       filesRead++;
 
       // When all files are read, update the UI once
