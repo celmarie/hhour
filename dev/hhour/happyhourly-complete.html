@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629033122';
+var BUILD_VERSION = '20260629131441';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -22612,6 +22612,7 @@ var meVenueName='';
 var dealsData=[];
 var vouchersData=[];
 var meVoucherPurchaseMap={};  // dealId -> voucher summary incl. purchases list
+var meNoShowStats={ total:0, month:0 };   // no-shows this merchant has reported (all + this calendar month)
 var mePayoutHistory=[];   // real payouts only — no dummy/seed history
 
 async function loadMerchantData(){
@@ -22754,12 +22755,21 @@ async function loadMerchantData(){
         var sym = finSym();
         var priceToNum = function(p){ return parseFloat(String(p == null ? '' : p).replace(/[^0-9.]/g,'')) || 0; };
 
-        // Which purchases has this merchant already flagged as a no-show?
-        // (no_show_purchase.sql adds a merchant read policy on no_shows.)
+        // No-shows this merchant has reported (purchases + bookings) for its deals.
+        // (no_show_purchase.sql adds the merchant read policy on no_shows.) We use it
+        // both to flag rows (_nsSet) and for the dashboard summary (meNoShowStats).
         var _nsSet = {};
         try {
-          var _ns = await db.from('no_shows').select('purchase_id').in('deal_id', dealIds);
-          (_ns && _ns.data || []).forEach(function(r){ if(r.purchase_id != null) _nsSet[r.purchase_id] = 1; });
+          var _ns = await db.from('no_shows').select('purchase_id,created_at').in('deal_id', dealIds);
+          var _nsRows = (_ns && _ns.data) || [];
+          var _mStart = (function(){ var d=new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); })();
+          var _mCount = 0;
+          _nsRows.forEach(function(r){
+            if(r.purchase_id != null) _nsSet[r.purchase_id] = 1;
+            var t = r.created_at ? new Date(r.created_at).getTime() : 0;
+            if(t >= _mStart) _mCount++;
+          });
+          meNoShowStats = { total: _nsRows.length, month: _mCount };
         } catch(e){}
 
         // Build a summary + purchase list per deal
@@ -22916,6 +22926,9 @@ function meRenderDashNew(){
         + statCard('🔥','rgba(18,161,80,.1)', notePill('Active'),
             totalDealsActive+'<span style="font-size:16px;color:#9A9AB0;font-weight:600;">/'+totalDeals+'</span>',
             'Active Deals', totalDealsScheduled+' scheduled')
+        + statCard('🚷','rgba(232,25,44,.1)', notePill('Reported'),
+            String(meNoShowStats.month||0),
+            'No-Shows', 'this month'+((meNoShowStats.total||0) > (meNoShowStats.month||0) ? (' · '+meNoShowStats.total+' all-time') : ''))
       +'</div>'
 
       // ══ 3. CHART + RECENT REDEMPTIONS (equal-height columns) ═════════════
