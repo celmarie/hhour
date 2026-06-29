@@ -41,6 +41,19 @@ create policy no_shows_select_own on public.no_shows
     or coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), '') in ('admin','super_admin')
   );
 
+-- Merchants may read the no-shows for their OWN venues' deals (so the portal can
+-- show which bookings/purchases are flagged + the dashboard count). Also defined in
+-- no_show_purchase.sql; kept here so running this file alone is sufficient for reads.
+drop policy if exists no_shows_select_merchant on public.no_shows;
+create policy no_shows_select_merchant on public.no_shows
+  for select using (
+    exists (
+      select 1 from public.deals d
+      join public.venues v on v.id = d.venue_id
+      where d.id = no_shows.deal_id and v.owner_id = auth.uid()
+    )
+  );
+
 -- 3. Allow the booking status to record a no-show (the original CHECK only
 --    permitted 'confirmed'/'cancelled').
 alter table public.voucher_bookings
@@ -109,6 +122,15 @@ begin
   select exists(select 1 from public.no_shows where booking_id = p_booking_id)
     into v_already;
 
+  -- If a PURCHASE-based no-show already exists for this same voucher, LINK it to
+  -- this booking instead of inserting a second row — otherwise flagging the same
+  -- guest from both the bookings screen and the purchases list would count twice.
+  if not v_already and v_purchase_id is not null then
+    update public.no_shows set booking_id = p_booking_id
+      where purchase_id = v_purchase_id and booking_id is null;
+    if found then v_already := true; end if;   -- linked; do NOT bump the counter again
+  end if;
+
   if not v_already then
     insert into public.no_shows(
       user_id, booking_id, purchase_id, deal_id, venue_id, venue_name, deal_title, reported_by)
@@ -118,9 +140,10 @@ begin
     update public.profiles
        set no_show_count = coalesce(no_show_count,0) + 1
      where id = v_user_id;
-
-    update public.voucher_bookings set status = 'no_show' where id = p_booking_id;
   end if;
+
+  -- Mark the booking regardless (newly flagged OR linked from a purchase row).
+  update public.voucher_bookings set status = 'no_show' where id = p_booking_id;
 
   select coalesce(no_show_count,0) into v_new_count
     from public.profiles where id = v_user_id;
@@ -146,34 +169,31 @@ declare
 begin
   if v_caller is null then raise exception 'Not authenticated'; end if;
 
-  select ns.user_id into v_user_id
-    from public.no_shows ns where ns.booking_id = p_booking_id;
-
-  -- Nothing logged → just report the current counter for that booking's user.
-  if v_user_id is null then
-    select coalesce(p.no_show_count,0) into v_new
-      from public.voucher_bookings b
-      join public.profiles p on p.id = b.user_id
-     where b.id = p_booking_id;
-    return coalesce(v_new,0);
-  end if;
-
-  select v.owner_id into v_owner_id
+  -- Resolve the venue owner + customer from the BOOKING and authorize FIRST — before
+  -- returning any data. (Previously the no-row branch returned the customer's counter
+  -- without an ownership check, leaking it to any authenticated caller.)
+  select v.owner_id, b.user_id
+    into v_owner_id, v_user_id
     from public.voucher_bookings b
-    join public.deals  d on d.id = b.deal_id
-    join public.venues v on v.id = d.venue_id
+    left join public.deals  d on d.id = b.deal_id
+    left join public.venues v on v.id = d.venue_id
    where b.id = p_booking_id;
 
+  if v_user_id is null then raise exception 'Booking not found'; end if;
   if v_role not in ('admin','super_admin')
      and (v_owner_id is null or v_owner_id <> v_caller) then
     raise exception 'Not authorized';
   end if;
 
-  delete from public.no_shows where booking_id = p_booking_id;
-  update public.profiles
-     set no_show_count = greatest(0, coalesce(no_show_count,0) - 1)
-   where id = v_user_id;
-  update public.voucher_bookings set status = 'confirmed' where id = p_booking_id;
+  -- Reverse the no-show if one is logged (idempotent).
+  if exists(select 1 from public.no_shows where booking_id = p_booking_id) then
+    delete from public.no_shows where booking_id = p_booking_id;
+    update public.profiles
+       set no_show_count = greatest(0, coalesce(no_show_count,0) - 1)
+     where id = v_user_id;
+  end if;
+  update public.voucher_bookings set status = 'confirmed'
+   where id = p_booking_id and status = 'no_show';
 
   select coalesce(no_show_count,0) into v_new from public.profiles where id = v_user_id;
   return v_new;

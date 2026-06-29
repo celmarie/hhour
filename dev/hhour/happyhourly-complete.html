@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629131441';
+var BUILD_VERSION = '20260629134033';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -22749,28 +22749,30 @@ async function loadMerchantData(){
       }
     });
 
+    // No-shows this merchant has reported (purchases + bookings) for its deals.
+    // Computed OUTSIDE the purchases block so a purchases-query failure can't zero
+    // the dashboard count. _nsSet flags ONLY purchase-originated no-shows (booking_id
+    // NULL) — booking-originated ones are managed/undone from the Bookings screen, so
+    // they must not render a (non-working) Undo in the purchases list.
+    var _nsSet = {};
+    try {
+      var _ns = await db.from('no_shows').select('purchase_id,booking_id,created_at').in('deal_id', dealIds);
+      var _nsRows = (_ns && _ns.data) || [];
+      var _mStart = (function(){ var d=new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); })();
+      var _mCount = 0;
+      _nsRows.forEach(function(r){
+        if(r.purchase_id != null && r.booking_id == null) _nsSet[r.purchase_id] = 1;
+        var t = r.created_at ? new Date(r.created_at).getTime() : 0;
+        if(t >= _mStart) _mCount++;
+      });
+      meNoShowStats = { total: _nsRows.length, month: _mCount };
+    } catch(e){}
+
     // 7. Await purchases (already running in parallel)
     var { data: purch } = await _pPurch;
     if(purch){
         var sym = finSym();
         var priceToNum = function(p){ return parseFloat(String(p == null ? '' : p).replace(/[^0-9.]/g,'')) || 0; };
-
-        // No-shows this merchant has reported (purchases + bookings) for its deals.
-        // (no_show_purchase.sql adds the merchant read policy on no_shows.) We use it
-        // both to flag rows (_nsSet) and for the dashboard summary (meNoShowStats).
-        var _nsSet = {};
-        try {
-          var _ns = await db.from('no_shows').select('purchase_id,created_at').in('deal_id', dealIds);
-          var _nsRows = (_ns && _ns.data) || [];
-          var _mStart = (function(){ var d=new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); })();
-          var _mCount = 0;
-          _nsRows.forEach(function(r){
-            if(r.purchase_id != null) _nsSet[r.purchase_id] = 1;
-            var t = r.created_at ? new Date(r.created_at).getTime() : 0;
-            if(t >= _mStart) _mCount++;
-          });
-          meNoShowStats = { total: _nsRows.length, month: _mCount };
-        } catch(e){}
 
         // Build a summary + purchase list per deal
         var byDeal = {};

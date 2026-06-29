@@ -106,33 +106,30 @@ declare
 begin
   if v_caller is null then raise exception 'Not authenticated'; end if;
 
-  select ns.user_id into v_user_id
-    from public.no_shows ns
-   where ns.purchase_id = p_purchase_id and ns.booking_id is null;
-
-  if v_user_id is null then
-    select coalesce(p.no_show_count,0) into v_new
-      from public.voucher_purchases vp
-      join public.profiles p on p.id = vp.user_id
-     where vp.id = p_purchase_id;
-    return coalesce(v_new,0);
-  end if;
-
-  select v.owner_id into v_owner_id
+  -- Resolve owner + customer from the PURCHASE and authorize FIRST — before returning
+  -- any data. (Previously the no-row branch returned the customer's counter with no
+  -- ownership check, leaking it to any authenticated caller.)
+  select v.owner_id, vp.user_id
+    into v_owner_id, v_user_id
     from public.voucher_purchases vp
-    join public.deals  d on d.id = vp.deal_id
-    join public.venues v on v.id = d.venue_id
+    left join public.deals  d on d.id = vp.deal_id
+    left join public.venues v on v.id = d.venue_id
    where vp.id = p_purchase_id;
 
+  if v_user_id is null then raise exception 'Purchase not found'; end if;
   if v_role not in ('admin','super_admin')
      and (v_owner_id is null or v_owner_id <> v_caller) then
     raise exception 'Not authorized';
   end if;
 
-  delete from public.no_shows where purchase_id = p_purchase_id and booking_id is null;
-  update public.profiles
-     set no_show_count = greatest(0, coalesce(no_show_count,0) - 1)
-   where id = v_user_id;
+  -- Reverse only a PURCHASE-originated no-show (booking_id null). A no-show created
+  -- from the bookings screen is undone there (undo_no_show), keyed on booking_id.
+  if exists(select 1 from public.no_shows where purchase_id = p_purchase_id and booking_id is null) then
+    delete from public.no_shows where purchase_id = p_purchase_id and booking_id is null;
+    update public.profiles
+       set no_show_count = greatest(0, coalesce(no_show_count,0) - 1)
+     where id = v_user_id;
+  end if;
 
   select coalesce(no_show_count,0) into v_new from public.profiles where id = v_user_id;
   return v_new;
