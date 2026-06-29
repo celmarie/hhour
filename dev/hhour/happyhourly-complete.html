@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629134033';
+var BUILD_VERSION = '20260629134952';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5964,6 +5964,7 @@ function dbDealToLocal(row) {
     img3: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return ''; })(),
     name: v.name || row.venue_name || 'Venue',
     address: row.address || v.address || 'Carrer de Sòria 11, Ciutat Vella, 08003 Barcelona',
+    website: row.website || '',
     deal: row.title,
     price: fmtPriceDisplay(row.price) || 'Free',
     wasPrice: fmtPriceDisplay(row.was_price) || '',
@@ -6012,6 +6013,7 @@ function dbUCToLocal(row) {
     _updatedAt: row.updated_at || row.created_at || '',
     name: row.venue_name,
     address: row.address || 'Carrer de Sòria 11, Ciutat Vella, 08003 Barcelona',
+    website: row.website || '',
     deal: row.title,
     price: row.price || null,
     wasPrice: row.was_price || null,
@@ -20380,6 +20382,7 @@ function admCollectEdits(){
     off:      off,
     discPct:  (!isNaN(priceN)&&!isNaN(wasN)&&wasN>0) ? Math.round((wasN-priceN)/wasN*100) : 0,
     img:      photoToSave,
+    website:  (document.getElementById('adm-edit-website')||{value:''}).value.trim(),
   };
 }
 
@@ -20407,6 +20410,7 @@ async function adminSaveAndApprove(){
     was_price: edits.wasPrice !== null ? edits.wasPrice : deal.wasPrice,
     hours: edits.hours || deal.hours,
     days: edits.days || deal.days,
+    website: edits.website || deal.website || '',
   };
   try {
     await db.from('community_deals').update(updatePayload).eq('id', dbId);
@@ -20669,7 +20673,8 @@ async function adminSaveEditsOnly(){
         category: edits.cat,
         emoji: edits.emoji||undefined,
         currency: edits.currency||'EUR',
-        discount_pct: edits.discPct||0
+        discount_pct: edits.discPct||0,
+        website: edits.website||''
       };
       var allPhotosM = [savedImg1, savedImg2, savedImg3].filter(Boolean);
       mUpdate.image_url = allPhotosM.length > 1 ? JSON.stringify(allPhotosM) : (allPhotosM[0] || '');
@@ -20718,7 +20723,8 @@ async function adminSaveEditsOnly(){
         emoji: edits.emoji||undefined,
         currency: edits.currency||'EUR',
         off_label: edits.off||undefined,
-        discount_pct: edits.discPct||0
+        discount_pct: edits.discPct||0,
+        website: edits.website||''
       };
       // Store all photos as JSON array in image_url — no extra columns needed
       var allPhotos = [savedImg1, savedImg2, savedImg3].filter(Boolean);
