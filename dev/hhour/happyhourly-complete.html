@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629031758';
+var BUILD_VERSION = '20260629033122';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -22754,6 +22754,14 @@ async function loadMerchantData(){
         var sym = finSym();
         var priceToNum = function(p){ return parseFloat(String(p == null ? '' : p).replace(/[^0-9.]/g,'')) || 0; };
 
+        // Which purchases has this merchant already flagged as a no-show?
+        // (no_show_purchase.sql adds a merchant read policy on no_shows.)
+        var _nsSet = {};
+        try {
+          var _ns = await db.from('no_shows').select('purchase_id').in('deal_id', dealIds);
+          (_ns && _ns.data || []).forEach(function(r){ if(r.purchase_id != null) _nsSet[r.purchase_id] = 1; });
+        } catch(e){}
+
         // Build a summary + purchase list per deal
         var byDeal = {};
         purch.forEach(function(p){
@@ -22769,13 +22777,15 @@ async function loadMerchantData(){
           if(p.status === 'used') byDeal[did].redeemed++;
           byDeal[did].rev += priceNum;
           byDeal[did].purchases.push({
+            id: p.id,
             code: p.code,
             buyer: (p.profiles && p.profiles.name) || 'Customer',
             email: (p.profiles && p.profiles.email) || '',
             status: p.status || 'active',
             date: p.created_at,
             redeemedAt: p.redeemed_at || null,
-            price: priceNum
+            price: priceNum,
+            noShow: !!_nsSet[p.id]
           });
         });
 
@@ -22805,7 +22815,7 @@ async function loadMerchantData(){
         try {
           var _vslim = vouchersData.map(function(v){
             return { id:v.id, name:v.name, emoji:v.emoji, sold:v.sold, redeemed:v.redeemed, total:v.total, priceNum:v.priceNum, price:v.price, rev:v.rev,
-              purchases: (v.purchases||[]).map(function(p){ return { code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, price:p.price }; }) };
+              purchases: (v.purchases||[]).map(function(p){ return { id:p.id, code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, price:p.price, noShow:!!p.noShow }; }) };
           });
           localStorage.setItem('hh_merch_vouchers_' + currentUser.id, JSON.stringify({v:_vslim, bal:meCurrentBalance, time:Date.now()}));
         } catch(e){}
@@ -23676,16 +23686,23 @@ function meOpenVoucherPurchases(dealId){
     try { return new Date(s).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
     catch(e){ return s || '—'; }
   };
-  var statusPill = function(st){
-    var used = st === 'used';
-    var col = used ? '#12A150' : '#d97706';
-    var bg  = used ? 'rgba(18,161,80,.1)' : 'rgba(217,119,6,.1)';
-    return '<span style="font-size:10px;font-weight:800;color:'+col+';background:'+bg+';padding:3px 9px;border-radius:20px;white-space:nowrap;">'+(used?'✓ Redeemed':'● Active')+'</span>';
+  var statusPill = function(p){
+    if(p.status === 'used') return '<span style="font-size:10px;font-weight:800;color:#12A150;background:rgba(18,161,80,.1);padding:3px 9px;border-radius:20px;white-space:nowrap;">✓ Redeemed</span>';
+    if(p.noShow)            return '<span style="font-size:10px;font-weight:800;color:#E8192C;background:rgba(232,25,44,.1);padding:3px 9px;border-radius:20px;white-space:nowrap;">✕ No-show</span>';
+    return '<span style="font-size:10px;font-weight:800;color:#d97706;background:rgba(217,119,6,.1);padding:3px 9px;border-radius:20px;white-space:nowrap;">● Active</span>';
   };
+  var did = String(dealId);
 
   var listHtml = purchases.length
     ? purchases.map(function(p){
         var initials = (p.buyer||'C').trim().substring(0,2).toUpperCase();
+        var nm = String(p.buyer||'').replace(/['"\\]/g,'');
+        // Flag a no-show only for an unredeemed purchase we have an id for.
+        var action = (p.status !== 'used' && p.id != null)
+          ? (p.noShow
+              ? '<button onclick="meUndoNoShowPurchase('+Number(p.id)+',\''+did+'\')" style="background:none;border:none;color:#9A9AB0;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:2px 4px;margin-top:4px;">Undo</button>'
+              : '<button onclick="meReportNoShowPurchase('+Number(p.id)+',\''+nm+'\',\''+did+'\')" style="background:rgba(232,25,44,.06);color:#E8192C;border:1px solid rgba(232,25,44,.25);border-radius:8px;padding:3px 10px;font-size:10px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;margin-top:4px;">No Show</button>')
+          : '';
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F0F0F4;">'
           + '<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#E8192C,#FF6B35);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">'+initials+'</div>'
           + '<div style="flex:1;min-width:0;">'
@@ -23693,9 +23710,10 @@ function meOpenVoucherPurchases(dealId){
             + '<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">'+esc(p.email||'')+'</div>'
             + '<div style="font-size:11px;color:#9A9AB0;margin-top:3px;font-family:Courier New,monospace;">'+(p.code||'—')+' · '+fmtDate(p.date)+'</div>'
           + '</div>'
-          + '<div style="text-align:right;flex-shrink:0;">'
+          + '<div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;">'
             + '<div style="font-size:13px;font-weight:800;color:#12A150;">'+sym+p.price.toFixed(2)+'</div>'
-            + '<div style="margin-top:4px;">'+statusPill(p.status)+'</div>'
+            + '<div style="margin-top:4px;">'+statusPill(p)+'</div>'
+            + action
           + '</div>'
         + '</div>';
       }).join('')
@@ -23737,6 +23755,42 @@ function meOpenVoucherPurchases(dealId){
 function meCloseVoucherPurchases(){
   var holder = document.getElementById('me-voucher-purchases-holder');
   if(holder) holder.innerHTML = '';
+}
+
+// Update local purchase state so the list reflects a no-show change without a reload.
+function _meSetPurchaseNoShow(dealId, purchaseId, val){
+  try {
+    var v = meVoucherPurchaseMap[String(dealId)];
+    if(v && v.purchases){ v.purchases.forEach(function(p){ if(Number(p.id)===Number(purchaseId)) p.noShow = val; }); }
+  } catch(e){}
+}
+// Merchant flags a PURCHASE the guest bought but never redeemed. RPC verifies the
+// caller owns the venue, refuses if already redeemed, idempotent. Bumps the
+// customer's no-show counter that admins review.
+async function meReportNoShowPurchase(purchaseId, name, dealId){
+  if(!confirm('Mark '+(name||'this guest')+' as a no-show for this voucher?\n\nThey bought it but didn’t redeem. This adds to their no-show count, which admins can review to take action.')) return;
+  try {
+    var { data, error } = await db.rpc('report_no_show_purchase', { p_purchase_id: purchaseId });
+    if(error) throw error;
+    _meSetPurchaseNoShow(dealId, purchaseId, true);
+    showToast('✓ No-show recorded'+(typeof data==='number' ? (' · '+data+' total') : ''));
+    meOpenVoucherPurchases(dealId);
+  } catch(e){
+    var m = (e && e.message) || '';
+    showToast('⚠️ '+(/already redeemed/i.test(m) ? 'Voucher was already redeemed' :
+                      /not authorized/i.test(m) ? 'Not your purchase' :
+                      /report_no_show_purchase|function|does not exist|schema cache/i.test(m) ? 'Run no_show_purchase.sql in Supabase first' :
+                      (m || 'Could not report no-show')));
+  }
+}
+async function meUndoNoShowPurchase(purchaseId, dealId){
+  try {
+    var { error } = await db.rpc('undo_no_show_purchase', { p_purchase_id: purchaseId });
+    if(error) throw error;
+    _meSetPurchaseNoShow(dealId, purchaseId, false);
+    showToast('Reverted');
+    meOpenVoucherPurchases(dealId);
+  } catch(e){ showToast('⚠️ '+((e&&e.message)||'Could not undo')); }
 }
 
 function meRenderRedeem(){
