@@ -8,6 +8,11 @@
 <meta http-equiv="Expires" content="0">
 <script src="https://js.stripe.com/v3/"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Vercel Web Analytics (cookieless, privacy-friendly — counts all visitors, pages,
+     referrers; tracks SPA route changes via the History API). Requires Web Analytics
+     to be ENABLED in the Vercel project dashboard (Analytics tab → Enable). -->
+<script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments);};</script>
+<script defer src="/_vercel/insights/script.js"></script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -5360,7 +5365,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629172426';
+var BUILD_VERSION = '20260629185436';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
