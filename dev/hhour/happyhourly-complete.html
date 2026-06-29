@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629154116';
+var BUILD_VERSION = '20260629162230';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -8787,6 +8787,7 @@ async function _fetchHeroDealCount(){
     var cr = await db.from('community_deals').select('id', { count:'exact', head:true }).eq('status','approved').is('deleted_at', null);
     var total = ((vr && vr.count) || 0) + ((cr && cr.count) || 0);
     if(total > 0){
+      window._accurateDealCount = total;   // reused by the map header so it matches the home
       _animateStat(document.getElementById('wh-stat-deals'), total);
       _animateStat(document.getElementById('rh-stat-deals'), total);
       try { var c=JSON.parse(localStorage.getItem('hh_hero_stats')||'{}')||{}; c.deals=total; localStorage.setItem('hh_hero_stats', JSON.stringify(c)); } catch(e){}
@@ -28808,7 +28809,7 @@ function refreshDealMapMarkers() {
   });
   var allDeals = _mapCapDeals([...verifiedDeals, ...communityDeals, ..._watchMapItems()]);
   var cnt = document.getElementById('map-deal-count');
-  if (cnt) cnt.textContent = allDeals.length + ' deals';
+  if (cnt) cnt.textContent = _mapDealCount() + ' deals';
 
   function placePin(deal, dlat, dlng) {
     if (deal._isWatch) { _placeWatchMarker(deal._spot, dlat, dlng); return; }
@@ -28893,6 +28894,15 @@ function _placeWatchMarker(s, lat, lng) {
 // exhaust the WebKit per-tab memory on low-end phones and crash the map. Keep the
 // nearest ~80 deals (by distance) plus all Where-to-Watch pins.
 var MAP_MAX_PINS = 80;
+// Accurate "N deals" for the map header — DEALS only (never the Where-to-Watch
+// football pins). Uses the same server-side total the home shows when available,
+// else the count of loaded verified + community deals.
+function _mapDealCount(){
+  if(typeof window._accurateDealCount === 'number' && window._accurateDealCount > 0) return window._accurateDealCount;
+  var v = (typeof vouchers !== 'undefined' ? vouchers : []).filter(function(d){ return d && d.verified !== false; }).length;
+  var u = (typeof ucDeals   !== 'undefined' ? ucDeals   : []).filter(function(d){ return d && d.id; }).length;
+  return v + u;
+}
 function _mapCapDeals(deals){
   try {
     if(!Array.isArray(deals)) return [];
@@ -29060,9 +29070,11 @@ function _refreshMapMarkers() {
     if (shouldShow && !marker._isWatch) visibleCount++;   // count deals only
   });
 
-  // Update deal count
+  // Update deal count. When BOTH deal filters are on, show the accurate total (the
+  // map only plots the nearest pins, so the placed-marker count would understate it);
+  // when a deal filter is off, show what's actually visible. Watch pins never count.
   var cnt = document.getElementById('map-deal-count');
-  if (cnt) cnt.textContent = visibleCount + ' deals';
+  if (cnt) cnt.textContent = ((mapFilters.verified && mapFilters.community) ? _mapDealCount() : visibleCount) + ' deals';
 }
 
 function _setupDealMap() {
@@ -29110,7 +29122,7 @@ function _setupDealMap() {
     console.log('[_setupDealMap] after filter - allDeals count:', allDeals.length);
 
     var cnt = document.getElementById('map-deal-count');
-    if (cnt) cnt.textContent = allDeals.length + ' deals';
+    if (cnt) cnt.textContent = _mapDealCount() + ' deals';
 
     function _placeDealPin(deal, lat, lng) {
       if (!isFinite(lat) || !isFinite(lng)) return;
