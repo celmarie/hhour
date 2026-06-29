@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629162230';
+var BUILD_VERSION = '20260629165735';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14710,6 +14710,11 @@ function _savePayoutQueue(){
 }
 var adminPayoutQueue=_loadPayoutQueue();
 var adminMerchants = [];
+// Admin-only "I've messaged this merchant" checklist. Keyed by venue id (or
+// 'email:<owner>' for pre-venue applications). Backed by the admin_contacted table
+// (RLS: admins only), so it's private to admins and survives cache clears.
+var _admContacted = {};
+function _merchKey(m){ return m && (m._venueId ? String(m._venueId) : (m.ownerEmail ? ('email:'+String(m.ownerEmail).toLowerCase()) : null)); }
 var _adminBankChangeRequests = [];
 var adminUsers = [];
 
@@ -14862,6 +14867,14 @@ async function loadAdminData(){
     // Users + venue owners (fetched in parallel above)
     var dbUsers = await _pUsers;
     var dbVenueOwners = await _pVenueOwners;
+
+    // Admin-only "messaged" checklist (admin_contacted.sql). Silently empty if the
+    // table isn't there yet or the reader isn't an admin (RLS).
+    try {
+      var _ac = await db.from('admin_contacted').select('key');
+      _admContacted = {};
+      (_ac && _ac.data || []).forEach(function(r){ if(r && r.key) _admContacted[r.key] = true; });
+    } catch(e){}
 
     // 3. Build user map keyed by profile id to deduplicate
     var userMap = {};
@@ -15721,6 +15734,42 @@ async function adminSaveNewMerchant() {
   }
 }
 
+// Admin-only checklist: toggle whether this merchant has been messaged/contacted.
+// Persists to the admin_contacted table (RLS: admins only). Updates the button in
+// place so the list doesn't scroll-jump.
+async function admToggleContacted(idx, btn){
+  var m = adminMerchants[idx]; if(!m) return;
+  var key = _merchKey(m);
+  if(!key){ showToast('⚠️ No id for this merchant yet'); return; }
+  var now = !_admContacted[key];
+  _admContacted[key] = now;
+  if(btn){
+    btn.textContent = now ? '✅' : '📩';
+    btn.style.background = now ? 'rgba(18,161,80,.12)' : '#F5F5F7';
+    btn.style.borderColor = now ? 'rgba(18,161,80,.35)' : 'transparent';
+    btn.title = now ? 'Messaged ✓ — tap to unmark' : 'Mark as messaged';
+  }
+  try {
+    if(now){
+      var up = await db.from('admin_contacted').upsert({ key:key, contacted:true, contacted_at:new Date().toISOString(), contacted_by:(currentUser&&currentUser.id)||null }, { onConflict:'key' });
+      if(up.error) throw up.error;
+      showToast('✅ Marked “'+(m.name||'merchant')+'” as messaged');
+    } else {
+      var del = await db.from('admin_contacted').delete().eq('key', key);
+      if(del.error) throw del.error;
+      showToast('↩︎ Unmarked “'+(m.name||'merchant')+'”');
+    }
+  } catch(e){
+    _admContacted[key] = !now;   // revert on failure
+    if(btn){
+      btn.textContent = !now ? '✅' : '📩';
+      btn.style.background = !now ? 'rgba(18,161,80,.12)' : '#F5F5F7';
+      btn.style.borderColor = !now ? 'rgba(18,161,80,.35)' : 'transparent';
+    }
+    var msg = (e && e.message) || '';
+    showToast('⚠️ '+(/admin_contacted|does not exist|schema cache|relation/i.test(msg) ? 'Run admin_contacted.sql in Supabase first' : (msg || 'Could not save')));
+  }
+}
 function adminEditMerchant(idx) {
   var m = adminMerchants[idx];
   if (!m) return;
@@ -18258,10 +18307,12 @@ function adminPage(page,btn){
               +'<span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:800;background:'+statusBg+';color:'+statusCol+';">'+m.status+'</span>'
             +'</div>'
             // Quick actions
-            +'<div style="display:flex;gap:6px;flex-shrink:0;">'
+            +(function(){ var _msgd = !!_admContacted[_merchKey(m)];
+              return '<div style="display:flex;gap:6px;flex-shrink:0;">'
+              +'<button onclick="event.stopPropagation();admToggleContacted('+realIdx+',this)" title="'+(_msgd?'Messaged ✓ — tap to unmark':'Mark as messaged')+'" style="background:'+(_msgd?'rgba(18,161,80,.12)':'#F5F5F7')+';border:1.5px solid '+(_msgd?'rgba(18,161,80,.35)':'transparent')+';border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">'+(_msgd?'✅':'📩')+'</button>'
               +'<button onclick="adminEditMerchant('+realIdx+')" title="Edit" style="background:#F5F5F7;border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">✏️</button>'
               +'<button onclick="adminPromptDeleteMerchant('+realIdx+')" title="Delete" style="background:rgba(232,25,44,.06);border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;">🗑️</button>'
-            +'</div>'
+            +'</div>'; })()
           +'</div>';
         }).join(''))
         +'</div>'
