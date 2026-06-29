@@ -5360,7 +5360,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260629165735';
+var BUILD_VERSION = '20260629172426';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -7112,6 +7112,17 @@ function findDealBySlug(slug){
 }
 
 // Route to the screen for the current URL (used on back/forward).
+// A non-matching role hit a portal URL (/merchant or /fireclay) via client-side
+// nav → show that portal's LOGIN, never the consumer app behind it. Mirrors the
+// handleAuthSession guard so the rule holds on both full loads AND SPA navigation.
+function _enterPortalLogin(){
+  try {
+    var mr=document.getElementById('merch-root'); if(mr) mr.style.display='none';
+    var ar=document.getElementById('admin-root'); if(ar) ar.style.display='none';
+    isGuest = false;
+    if(typeof showLoginScreen==='function') showLoginScreen();   // _applyLoginPrefill routes to merchant/admin by path
+  } catch(e){}
+}
 function _routeFromPath(){
   try{
     var path = (location.pathname||'/').replace(/\/+$/,'') || '/';
@@ -7132,6 +7143,8 @@ function _routeFromPath(){
         _suppressPush=true; try{ mePageNew(mtab); } finally { _suppressPush=false; }
       } else if(currentProfile && currentProfile.role==='merchant' && typeof openMerchantDash==='function'){
         openMerchantDash(); // opens the deep-linked tab from the URL
+      } else {
+        _enterPortalLogin();   // not a merchant → show the merchant login, never the consumer app
       }
       return;
     }
@@ -7142,14 +7155,19 @@ function _routeFromPath(){
         _suppressPush=true; try{ adminPage(apage); } finally { _suppressPush=false; }
       } else if(currentProfile && (currentProfile.role==='admin'||currentProfile.role==='super_admin') && typeof openAdmin==='function'){
         openAdmin(); // opens the deep-linked page from the URL
+      } else {
+        _enterPortalLogin();   // not an admin → show the admin login, never the consumer app
       }
       return;
     }
-    // Leaving a portal (back to a consumer path): close merchant/admin first.
+    // Leaving a portal (back to a consumer path): close merchant/admin first, and
+    // drop any portal login overlay (consumer paths are public / guest-first).
     var _mrEl=document.getElementById('merch-root');
     if(_mrEl && _mrEl.style.display!=='none') _mrEl.style.display='none';
     var _arEl=document.getElementById('admin-root');
     if(_arEl && _arEl.style.display!=='none') _arEl.style.display='none';
+    var _lsEl=document.getElementById('login-screen');           if(_lsEl && _lsEl.style.display!=='none') _lsEl.style.display='none';
+    var _mlsEl=document.getElementById('merchant-login-screen'); if(_mlsEl && _mlsEl.style.display!=='none') _mlsEl.style.display='none';
     var screen = _pathScreen[path];
     if(screen){ _suppressPush=true; try{ goScreen(screen); } finally { _suppressPush=false; } }
   }catch(e){ console.warn('[router]', e); }
