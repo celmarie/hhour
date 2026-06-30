@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630174053';
+var BUILD_VERSION = '20260630175336';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14992,8 +14992,9 @@ async function loadAdminData(){
     ).catch(function(){ return { data: [] }; });
 
     // "Still active" confirmations (status='info') — counter-signal for expired reports
+    // AND its own admin section. Pull detail columns so we can list who confirmed.
     var _pActiveVotes = withTimeout(
-      db.from('deal_reports').select('deal_id').eq('status','info'),
+      db.from('deal_reports').select('deal_id,deal_kind,deal_name,venue_name,reported_by,reported_at').eq('status','info').order('reported_at',{ascending:false}),
       5000
     ).catch(function(){ return { data: [] }; });
 
@@ -15277,14 +15278,22 @@ async function loadAdminData(){
       }
     } catch(e){ console.warn('[loadAdminData] deal_reports fetch failed (table may not exist yet):',e); }
 
-    // "Still active" vote counts per deal (counter-signal shown next to expired reports)
+    // "Still active" confirmations: per-deal counts (for the badges) AND a grouped
+    // list (for the admin "Still-Active Confirmations" section).
     try {
       var { data: avRows } = await _pActiveVotes;
       window._dealActiveVotes = {};
+      var _avg = {};
       (avRows||[]).forEach(function(r){
         window._dealActiveVotes[r.deal_id] = (window._dealActiveVotes[r.deal_id]||0) + 1;
+        var k = String(r.deal_id);
+        if(!_avg[k]) _avg[k] = { dbId:r.deal_id, kind:r.deal_kind||'community', name:r.deal_name||'Deal', venue:r.venue_name||'', count:0, who:[], lastAt:r.reported_at||null };
+        _avg[k].count++;
+        var nm = r.reported_by||'Customer'; if(_avg[k].who.indexOf(nm)===-1) _avg[k].who.push(nm);
+        if(r.reported_at && (!_avg[k].lastAt || r.reported_at > _avg[k].lastAt)) _avg[k].lastAt = r.reported_at;
       });
-    } catch(e){ window._dealActiveVotes = {}; }
+      window._adminActiveVotes = Object.keys(_avg).map(function(k){ return _avg[k]; }).sort(function(a,b){ return b.count - a.count; });
+    } catch(e){ window._dealActiveVotes = {}; window._adminActiveVotes = []; }
 
     // Deal mistake reports
     try {
@@ -18124,7 +18133,8 @@ function adminPage(page,btn){
               +'<div style="font-size:10px;color:#dc2626;font-weight:700;margin-top:2px;">⏰ Reported as expired</div>'
             +'</div>'
             +'<div onclick="event.stopPropagation()" style="display:flex;gap:6px;flex-shrink:0;">'
-              +'<button onclick="'+delFn+'" style="background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:9px;padding:6px 11px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗑️</button>'
+              +'<button onclick="adminOpenDealReview('+localId+',\''+src+'\')" title="Edit deal" style="background:#F5F5F7;color:#555;border:1.5px solid #E8E8EC;border-radius:9px;padding:6px 11px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✏️</button>'
+              +'<button onclick="'+delFn+'" title="Delete deal" style="background:rgba(220,38,38,.08);color:#dc2626;border:1.5px solid rgba(220,38,38,.2);border-radius:9px;padding:6px 11px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗑️</button>'
               +'<button onclick="adminIgnoreReport('+r.dealId+');adminPage(\'dashboard\',document.querySelector(\'.adm-nav-btn\'))" style="background:#F5F5F7;color:#9A9AB0;border:1.5px solid #E8E8EC;border-radius:9px;padding:6px 10px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Ignore</button>'
             +'</div>'
           +'</div>';
@@ -18666,7 +18676,12 @@ function adminPage(page,btn){
       var db2 = b._updatedAt || b._createdAt || tb;
       return da > db2 ? -1 : da < db2 ? 1 : 0;
     }
-    var pending  = pendingCommunityDeals.filter(function(d){ return d.status==='pending';  }).sort(function(a,b){ var da=a._createdAt||a._updatedAt||'', db=b._createdAt||b._updatedAt||''; return da<db?-1:da>db?1:0; });   // oldest first (newest at the bottom)
+    var _ps = window._admPendSort || 'oldest';
+    var pending  = pendingCommunityDeals.filter(function(d){ return d.status==='pending';  }).sort(function(a,b){
+      if(_ps==='venue') return String(a.venue||a.name||'').localeCompare(String(b.venue||b.name||''));
+      var _da=a._createdAt||a._updatedAt||'', _db=b._createdAt||b._updatedAt||'';
+      return _ps==='newest' ? (_da<_db?1:_da>_db?-1:0) : (_da<_db?-1:_da>_db?1:0);   // default: oldest first
+    });
     var approved = pendingCommunityDeals.filter(function(d){ return d.status==='approved'; }).sort(byRecent);
     var paused   = pendingCommunityDeals.filter(function(d){ return d.status==='paused';   }).sort(byRecent);
     var rejected = pendingCommunityDeals.filter(function(d){ return d.status==='rejected'; }).sort(byRecent);
@@ -18722,6 +18737,34 @@ function adminPage(page,btn){
       +'</div>';
     }
 
+    // ── STILL-ACTIVE CONFIRMATIONS (👍 from the deal-detail button) ─────────────
+    var _avg = (window._adminActiveVotes||[]);
+    if(_avg.length){
+      dHtml += '<div style="background:white;border-radius:14px;border:1.5px solid rgba(18,161,80,.3);overflow:hidden;margin-bottom:12px;">'
+        +'<div style="padding:14px 16px;border-bottom:1px solid #E8E8EC;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+          +'<span style="font-size:14px;font-weight:800;color:#12A150;">👍 Still-Active Confirmations</span>'
+          +'<span style="background:rgba(18,161,80,.1);color:#12A150;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+_avg.length+' deal'+(_avg.length>1?'s':'')+'</span>'
+          +'<span style="margin-left:auto;font-size:11px;color:#9A9AB0;font-weight:600;">Customers confirmed these are still running</span>'
+        +'</div>'
+        +_avg.map(function(g){
+          var lastAt=''; try{ if(g.lastAt) lastAt=new Date(g.lastAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){}
+          var who=(g.who||[]).slice(0,3).join(', ')+((g.who||[]).length>3?' +'+(g.who.length-3)+' more':'');
+          var localId = g.kind==='verified' ? g.dbId : g.dbId+10000;
+          return '<div style="padding:12px 16px;border-bottom:1px solid #F2F2F5;display:flex;align-items:center;gap:10px;">'
+            +'<div style="width:40px;height:40px;border-radius:11px;background:rgba(18,161,80,.08);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👍</div>'
+            +'<div style="flex:1;min-width:0;">'
+              +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+                +'<span style="font-size:13px;font-weight:800;color:#1A1A1A;">'+esc(g.name)+'</span>'
+                +'<span style="background:rgba(18,161,80,.1);color:#12A150;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;">'+g.count+' confirmation'+(g.count>1?'s':'')+'</span>'
+              +'</div>'
+              +'<div style="font-size:11px;color:#9A9AB0;margin-top:3px;">'+esc(g.venue)+' · '+(g.kind==='verified'?'✓ Merchant deal':'👥 Community deal')+' · by '+esc(who)+(lastAt?' · last '+esc(lastAt):'')+'</div>'
+            +'</div>'
+            +'<button onclick="adminPreviewDeal('+localId+',\''+g.kind+'\')" style="background:#F5F5F7;color:#1A1A1A;border:1.5px solid #E8E8EC;border-radius:9px;padding:6px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;">👁️ View</button>'
+          +'</div>';
+        }).join('')
+      +'</div>';
+    }
+
     // ── SUMMARY COUNTS ─────────────────────────────────────────────────────────
     dHtml += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">'
       +[['⏳','Pending',pending.length,'#d97706'],
@@ -18743,11 +18786,21 @@ function adminPage(page,btn){
         +'<span id="adm-pending-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
       +'</button>'
       +'<div id="adm-pending-community">'
+      +(pending.length ? '<div style="padding:10px 16px;border-bottom:1px solid #F0F0F4;display:flex;gap:8px;align-items:center;">'
+          +'<input id="adm-pend-search" type="text" value="'+esc(window._admPendQ||'')+'" placeholder="🔍 Search venue, deal, person…" oninput="admFilterPending(this.value)" onclick="event.stopPropagation()" style="flex:1;min-width:0;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:9px 12px;font-size:13px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;box-sizing:border-box;">'
+          +'<select onchange="admSortPending(this.value)" onclick="event.stopPropagation()" style="background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;cursor:pointer;flex-shrink:0;">'
+            +'<option value="oldest"'+(_ps==='oldest'?' selected':'')+'>Oldest</option>'
+            +'<option value="newest"'+(_ps==='newest'?' selected':'')+'>Newest</option>'
+            +'<option value="venue"'+(_ps==='venue'?' selected':'')+'>Venue A–Z</option>'
+          +'</select>'
+        +'</div>' : '')
       +(pending.length>1 ? '<div style="padding:7px 16px;border-bottom:1px solid #F0F0F4;text-align:right;"><button onclick="adminApproveAllPending()" style="background:none;border:none;color:#9A9AB0;font-size:11.5px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;padding:2px 4px;">Approve all '+pending.length+' →</button></div>' : '')
+      +(pending.length ? '<div id="adm-pend-none" style="display:none;padding:20px 16px;text-align:center;font-size:13px;color:#9A9AB0;font-weight:600;">No submissions match your search</div>' : '')
       +(pending.length===0
         ? '<div style="padding:28px 16px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">✅</div><div style="font-size:14px;font-weight:700;color:#9A9AB0;">No pending submissions</div></div>'
         : pending.map(function(deal){
-            return '<div style="padding:14px 16px;border-bottom:1px solid #E8E8EC;">'
+            var _pq = esc(((deal.venue||deal.name||'')+' '+(deal.deal||deal.desc||'')+' '+(deal.user||'')).toLowerCase());
+            return '<div class="adm-pend-row" data-q="'+_pq+'" style="padding:14px 16px;border-bottom:1px solid #E8E8EC;">'
               +'<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;">'
                 +'<div style="width:40px;height:40px;border-radius:50%;background:'+(deal.userCol||'#9A9AB0')+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:white;flex-shrink:0;">'+(deal.userAv||(deal.user||'??').substring(0,2).toUpperCase())+'</div>'
                 +'<div style="flex:1;">'
@@ -19708,6 +19761,29 @@ function admFilterLiveDeals(q){
     var hay = rows[i].getAttribute('data-q') || '';
     rows[i].style.display = (!q || hay.indexOf(q) !== -1) ? 'flex' : 'none';
   }
+}
+
+// Search the pending "Community submissions" queue — toggles row visibility in place
+// (keeps the input focused, no re-render). State persists in window._admPendQ.
+function admFilterPending(q){
+  window._admPendQ = q || '';
+  var needle = (q || '').trim().toLowerCase();
+  var rows = document.querySelectorAll('#adm-pending-community .adm-pend-row');
+  var shown = 0;
+  for(var i=0;i<rows.length;i++){
+    var hay = rows[i].getAttribute('data-q') || '';
+    var ok = (!needle || hay.indexOf(needle) !== -1);
+    rows[i].style.display = ok ? '' : 'none';
+    if(ok) shown++;
+  }
+  var none = document.getElementById('adm-pend-none');
+  if(none) none.style.display = (rows.length && !shown) ? 'block' : 'none';
+}
+// Sort changes the order → re-render the deals page, then re-apply the active search.
+function admSortPending(v){
+  window._admPendSort = v || 'oldest';
+  if(typeof adminPage === 'function') adminPage('deals', null);
+  setTimeout(function(){ try { admFilterPending(window._admPendQ || ''); } catch(e){} }, 0);
 }
 
 // Pause a live deal: status→'paused'. The feed only shows status='approved', so it
