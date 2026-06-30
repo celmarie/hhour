@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630232131';
+var BUILD_VERSION = '20260630232734';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5977,6 +5977,27 @@ function computeOffBadge(row) {
   return 'DEAL';
 }
 
+// Parse a human hours string ("4PM – 6PM", "5:30PM-9PM", "16:00–18:00") into numeric
+// 24h start/end (fractional). Community deals store only the hours STRING (no
+// time_from/time_to), so without this their "open now / available in" countdown fell
+// back to a wrong default (5PM–10PM) that didn't match the displayed hours.
+function _parseHoursNums(s){
+  s = String(s||'');
+  var m = s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:[–\-—]|to)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if(!m) return null;
+  function to24(h, mn, ap){
+    h = parseInt(h,10); mn = mn ? parseInt(mn,10) : 0; ap = (ap||'').toLowerCase();
+    if(ap==='pm' && h<12) h += 12;
+    if(ap==='am' && h===12) h = 0;
+    return h + mn/60;
+  }
+  var ap1 = m[3], ap2 = m[6];
+  if(!ap1 && ap2) ap1 = ap2;   // "4 – 6PM" → treat the first as PM too
+  var from = to24(m[1], m[2], ap1), to = to24(m[4], m[5], ap2);
+  if(isNaN(from) || isNaN(to)) return null;
+  return { from: from, to: to };
+}
+
 // ── DB row → in-memory deal shape ─────────────────────────────────────────────
 function dbDealToLocal(row) {
   var v = row.venues || {};
@@ -6006,8 +6027,8 @@ function dbDealToLocal(row) {
     distKm: dk,
     days: row.days || 'Daily',
     hours: row.hours || '5PM–10PM',
-    timeFrom: row.time_from || 17,
-    timeTo: row.time_to || 22,
+    timeFrom: (row.time_from != null ? row.time_from : (_parseHoursNums(row.hours)||{from:17}).from),
+    timeTo:   (row.time_to   != null ? row.time_to   : (_parseHoursNums(row.hours)||{to:22}).to),
     rating: 0,
     off: computeOffBadge(row),
     discPct: row.discount_pct || computeDiscPct(row),
@@ -6060,8 +6081,8 @@ function dbUCToLocal(row) {
     claimed: row.claimed || 0,
     days: row.days || 'Daily',
     hours: row.hours || '5PM–10PM',
-    timeFrom: row.time_from || 17,
-    timeTo: row.time_to || 22,
+    timeFrom: (row.time_from != null ? row.time_from : (_parseHoursNums(row.hours)||{from:17}).from),
+    timeTo:   (row.time_to   != null ? row.time_to   : (_parseHoursNums(row.hours)||{to:22}).to),
     verified: false,
     type: 'community',
     discPct: row.discount_pct || computeDiscPct(row),
@@ -15042,7 +15063,7 @@ async function loadAdminData(){
           img3: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return ''; })(),
           _createdAt: r.created_at || '',
           _updatedAt: r.updated_at || r.created_at || '',
-          timeFrom: r.time_from || 17, timeTo: r.time_to || 22,
+          timeFrom: (r.time_from != null ? r.time_from : (_parseHoursNums(r.hours)||{from:17}).from), timeTo: (r.time_to != null ? r.time_to : (_parseHoursNums(r.hours)||{to:22}).to),
           discPct: r.discount_pct || 0,
           rating: 0, timeLeft: '3h 00m',
           rejectionReason: r.rejection_reason || '',
