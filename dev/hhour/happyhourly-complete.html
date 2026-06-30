@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630233452';
+var BUILD_VERSION = '20260630234321';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -8810,6 +8810,15 @@ function _activeDaySet(daysStr){
   return out.length ? out : [0,1,2,3,4,5,6];
 }
 
+// Fractional 24h hour → "5:39 AM" clock string.
+function _fmtClock(h){
+  var hh = Math.floor(h) % 24; if(hh < 0) hh += 24;
+  var mm = Math.floor((h - Math.floor(h)) * 60 + 0.5); if(mm===60){ mm=0; hh=(hh+1)%24; }
+  var ap = hh >= 12 ? 'PM' : 'AM';
+  var h12 = hh % 12 || 12;
+  return h12 + ':' + (mm<10?'0':'') + mm + ap;
+}
+
 function refreshDeckCountdowns(){
   var nowCache = {};   // resolve "now" once per timezone per tick (Intl is not free)
   function nowFor(tz){ var k = tz||'_local'; if(nowCache[k]===undefined) nowCache[k] = _tzNow(tz); return nowCache[k]; }
@@ -8822,7 +8831,9 @@ function refreshDeckCountdowns(){
     var to   = parseFloat(el.dataset.to);
     var set  = _activeDaySet(el.dataset.days || '');
     var tzh  = (tz && tz !== uTz) ? _tzShort(tz) : '';   // only show the venue tz when it differs
-    var tzTag = tzh ? ' <span style="color:#9A9AB0;font-weight:600;">· '+tzh+'</span>' : '';
+    // When the venue tz differs, also show its CURRENT local time so the countdown is verifiable
+    // (e.g. "· now 5:39 AM GMT+8" → it's early morning there, so 4PM is hours away).
+    var tzTag = tzh ? ' <span style="color:#9A9AB0;font-weight:600;">· now '+_fmtClock(t.h)+' '+tzh+'</span>' : '';
     var activeToday = set.indexOf(t.dow) !== -1;
     var openNow = activeToday && (to > from ? (h >= from && h < to) : (h >= from || h < to)); // midnight-cross aware
     var html;
