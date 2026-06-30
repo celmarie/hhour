@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630234321';
+var BUILD_VERSION = '20260701001308';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -8830,10 +8830,7 @@ function refreshDeckCountdowns(){
     var from = parseFloat(el.dataset.from);
     var to   = parseFloat(el.dataset.to);
     var set  = _activeDaySet(el.dataset.days || '');
-    var tzh  = (tz && tz !== uTz) ? _tzShort(tz) : '';   // only show the venue tz when it differs
-    // When the venue tz differs, also show its CURRENT local time so the countdown is verifiable
-    // (e.g. "· now 5:39 AM GMT+8" → it's early morning there, so 4PM is hours away).
-    var tzTag = tzh ? ' <span style="color:#9A9AB0;font-weight:600;">· now '+_fmtClock(t.h)+' '+tzh+'</span>' : '';
+    var tzTag = '';   // no timezone label on the deck card (kept clean); the deal detail still shows the venue-time note
     var activeToday = set.indexOf(t.dow) !== -1;
     var openNow = activeToday && (to > from ? (h >= from && h < to) : (h >= from || h < to)); // midnight-cross aware
     var html;
