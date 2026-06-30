@@ -3517,7 +3517,7 @@ function _loadGT(){
           <button id="vd-directions-btn" onclick="openDirections()" style="background:var(--redl);color:var(--red);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">🗺️ Directions</button>
         </div>
         <!-- Venue website / Instagram (optional, set by the merchant) — filled by JS -->
-        <a id="vd-link" target="_blank" rel="noopener noreferrer" style="display:none;align-items:center;gap:8px;margin-bottom:14px;text-decoration:none;background:#F5F5F7;border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;font-size:13px;font-weight:700;color:var(--text);"></a>
+        <a id="vd-link" target="_blank" rel="noopener noreferrer" style="display:none;align-items:center;gap:11px;margin-bottom:14px;text-decoration:none;background:white;border:1.5px solid var(--border);border-radius:14px;padding:9px 12px;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:border-color .15s,box-shadow .15s;" onmouseover="this.style.borderColor='#D8D8E0';this.style.boxShadow='0 2px 10px rgba(0,0,0,.07)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)'"></a>
         <!-- Mini Google Map -->
         <div style="border-radius:14px;overflow:hidden;height:150px;margin-bottom:14px;position:relative;border:1.5px solid var(--border);">
           <iframe id="vd-mini-map" style="width:100%;height:100%;border:none;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src=""></iframe>
@@ -5384,7 +5384,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630130832';
+var BUILD_VERSION = '20260630132732';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -9847,19 +9847,29 @@ function openDeal(deal){
     var le=document.getElementById('vd-link'); if(!le) return;
     var raw=((deal.website||deal.social||'')+'').trim();
     if(!raw){ le.style.display='none'; le.removeAttribute('href'); return; }
-    var url, label, icon, low=raw.toLowerCase();
+    var url, label, type, iconSvg, iconBg, low=raw.toLowerCase();
+    var IG='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.6" cy="6.4" r="1.1" fill="#fff" stroke="none"/></svg>';
+    var WEB='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.9 2.6 15.1 0 18M12 3c-2.6 2.9-2.6 15.1 0 18"/></svg>';
+    var IG_BG='linear-gradient(135deg,#F58529,#DD2A7B,#8134AF,#515BD4)';
     if(low.indexOf('instagram.com')!==-1){
       url = raw.indexOf('http')===0 ? raw : 'https://'+raw.replace(/^\/+/,'');
-      var h=raw.replace(/^https?:\/\/(www\.)?instagram\.com\//i,'').replace(/[\/?#].*$/,'');
-      label = h ? '@'+h.replace(/^@/,'') : 'Instagram'; icon='📷';
+      var h=raw.replace(/^https?:\/\/(www\.)?instagram\.com\//i,'').replace(/[\/?#].*$/,'').replace(/^@/,'');
+      type='Instagram'; label = h ? '@'+h : 'View profile'; iconSvg=IG; iconBg=IG_BG;
     } else if(raw.charAt(0)==='@'){
-      url='https://instagram.com/'+raw.slice(1).replace(/[\/?#].*$/,''); label=raw; icon='📷';
+      url='https://instagram.com/'+raw.slice(1).replace(/[\/?#].*$/,'');
+      type='Instagram'; label=raw; iconSvg=IG; iconBg=IG_BG;
     } else {
       url = raw.indexOf('http')===0 ? raw : 'https://'+raw.replace(/^\/+/,'');
-      label = raw.replace(/^https?:\/\/(www\.)?/i,'').replace(/\/+$/,''); icon='🌐';
+      type='Website'; label = raw.replace(/^https?:\/\/(www\.)?/i,'').replace(/\/+$/,''); iconSvg=WEB; iconBg='linear-gradient(135deg,#E8192C,#FF5533)';
     }
     le.href=url;
-    le.innerHTML='<span style="font-size:15px;">'+icon+'</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(label)+'</span><span style="margin-left:auto;color:#9A9AB0;flex-shrink:0;">↗</span>';
+    le.innerHTML=
+      '<span style="width:40px;height:40px;border-radius:11px;background:'+iconBg+';display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.12);">'+iconSvg+'</span>'
+      +'<span style="display:flex;flex-direction:column;min-width:0;line-height:1.35;">'
+        +'<span style="font-size:13px;font-weight:800;color:var(--text);">'+type+'</span>'
+        +'<span style="font-size:12px;font-weight:600;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(label)+'</span>'
+      +'</span>'
+      +'<span style="margin-left:auto;flex-shrink:0;color:#C0C0CC;font-size:15px;font-weight:800;">↗</span>';
     le.style.display='flex';
   })();
   document.getElementById('vd-desc').textContent=deal.desc;
