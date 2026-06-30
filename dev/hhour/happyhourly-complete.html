@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630232734';
+var BUILD_VERSION = '20260630233452';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -8784,11 +8784,30 @@ function isDealActiveToday(deal){
 
 function fmtCountdown(sec){
   if(sec <= 0) return '0s';
-  var h = Math.floor(sec / 3600);
+  var d = Math.floor(sec / 86400);
+  var h = Math.floor((sec % 86400) / 3600);
   var m = Math.floor((sec % 3600) / 60);
   var s = sec % 60;
+  if(d > 0) return d + 'd ' + h + 'h';
   if(h > 0) return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
   return m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+}
+
+// Days the deal runs, as a set of 0=Sun..6=Sat (parses "Mon–Fri", "Daily", or a CSV).
+function _activeDaySet(daysStr){
+  var days = (daysStr || 'Daily').toLowerCase().trim();
+  if(!days || days === 'daily' || days === 'every day' || days === '—') return [0,1,2,3,4,5,6];
+  var dayIdx = {sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6};
+  var names  = ['sun','mon','tue','wed','thu','fri','sat'];
+  var rangeMatch = days.match(/([a-z]+)[–\-]([a-z]+)/);
+  if(rangeMatch){
+    var s = dayIdx[rangeMatch[1].substring(0,3)], e = dayIdx[rangeMatch[2].substring(0,3)];
+    if(s !== undefined && e !== undefined){
+      var set=[]; for(var d=0;d<7;d++){ if(s<=e ? (d>=s&&d<=e) : (d>=s||d<=e)) set.push(d); } return set;
+    }
+  }
+  var out=[]; for(var i=0;i<7;i++){ if(days.indexOf(names[i])!==-1) out.push(i); }
+  return out.length ? out : [0,1,2,3,4,5,6];
 }
 
 function refreshDeckCountdowns(){
@@ -8796,25 +8815,32 @@ function refreshDeckCountdowns(){
   function nowFor(tz){ var k = tz||'_local'; if(nowCache[k]===undefined) nowCache[k] = _tzNow(tz); return nowCache[k]; }
   var uTz = _userTzName();
   document.querySelectorAll('.deck-cd').forEach(function(el){
-    var tz = _tzForAddr(el.dataset.addr || '');   // the VENUE's timezone (null → viewer-local)
-    var h = nowFor(tz).h;
-    var from  = parseFloat(el.dataset.from);
-    var to    = parseFloat(el.dataset.to);
-    var today = el.dataset.today === '1';
-    // Show the venue's tz only when it differs from the viewer's, so "open now" isn't confusing.
-    var tzh = (tz && tz !== uTz) ? _tzShort(tz) : '';
+    var tz   = _tzForAddr(el.dataset.addr || '');   // the VENUE's timezone (null → viewer-local)
+    var t    = nowFor(tz);
+    var h    = t.h;
+    var from = parseFloat(el.dataset.from);
+    var to   = parseFloat(el.dataset.to);
+    var set  = _activeDaySet(el.dataset.days || '');
+    var tzh  = (tz && tz !== uTz) ? _tzShort(tz) : '';   // only show the venue tz when it differs
     var tzTag = tzh ? ' <span style="color:#9A9AB0;font-weight:600;">· '+tzh+'</span>' : '';
+    var activeToday = set.indexOf(t.dow) !== -1;
+    var openNow = activeToday && (to > from ? (h >= from && h < to) : (h >= from || h < to)); // midnight-cross aware
     var html;
-    if(!today){
-      html = '<span style="color:#9A9AB0;font-weight:700;">📅 Not today</span>';
-    } else if(h >= from && h < to){
-      var rem = Math.round((to - h) * 3600);
-      html = '<span style="color:#12A150;font-weight:700;">🟢 Open · closes in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(rem) + '</span></span>' + tzTag;
-    } else if(h < from){
-      var openIn = Math.round((from - h) * 3600);
-      html = '<span style="color:#B45309;font-weight:700;">🕐 Available in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(openIn) + '</span></span>' + tzTag;
+    if(openNow){
+      var rem = (to > from) ? (to - h) : (h >= from ? (24 - h + to) : (to - h));
+      html = '<span style="color:#12A150;font-weight:700;">🟢 Open · closes in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(Math.round(rem*3600)) + '</span></span>' + tzTag;
     } else {
-      html = '<span style="color:#9A9AB0;font-weight:700;">🔴 Closed today</span>' + tzTag;
+      // Always count down to the NEXT start — today if still upcoming, else the next active day.
+      var bestH = null;
+      for(var k=0;k<=7;k++){
+        var dow = (t.dow + k) % 7;
+        if(set.indexOf(dow) === -1) continue;
+        var hu = k*24 + from - h;
+        if(hu > 0){ bestH = hu; break; }
+      }
+      html = (bestH != null)
+        ? '<span style="color:#B45309;font-weight:700;">🕐 Available in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(Math.round(bestH*3600)) + '</span></span>' + tzTag
+        : '<span style="color:#9A9AB0;font-weight:700;">Not available</span>';
     }
     el.innerHTML = html;
   });
@@ -9159,7 +9185,7 @@ function renderCoupons(cat){
       +(function(){ var avg=getDealAvgRating(v.id)||v.rating||0; return '<div class="cimg-bottom"><div>'+wasTxt+'<div class="cimg-price">'+v.price+'</div></div>'+(avg>0?'<div class="cimg-rating">⭐ '+avg+'</div>':'')+'</div></div>'; })()
       +'<div class="cbody"><div class="cname">'+esc(v.name)+'</div><div class="cdeal-sub">'+dealDiscountLabel(v)+'</div>'
       +'<div class="cmeta"><span>📍 '+v.dist+'</span><span style="font-size:10px;color:#9A9AB0;">⏰ '+v.hours+'</span></div>'
-      +'<div style="font-size:11px;margin:4px 0 3px;"><span class="deck-cd" data-from="'+v.timeFrom+'" data-to="'+v.timeTo+'" data-today="'+todayAttr+'" data-addr="'+esc(v.address||'')+'"></span></div>'
+      +'<div style="font-size:11px;margin:4px 0 3px;"><span class="deck-cd" data-from="'+v.timeFrom+'" data-to="'+v.timeTo+'" data-today="'+todayAttr+'" data-days="'+esc(v.days||'')+'" data-addr="'+esc(v.address||'')+'"></span></div>'
       +'<div style="font-size:11px;font-weight:700;color:'+availColor+';margin:3px 0 6px;">🎟️ '+avail+' vouchers available</div>'
       +'<button class="buy-now" onclick="event.stopPropagation();isGuest?requireLogin(\'purchase vouchers\'):openVoucher('+v.id+')">'+(isGuest?'🔒 Sign in to buy':'Buy Now')+'</button>'
       +'</div></div>';
@@ -9198,7 +9224,7 @@ function renderUC(cat){
       +wasTxt
       +'<div style="font-size:20px;font-weight:900;color:white;font-family:Inter,sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.5);">'+uSym+u.price+'</div></div></div>'
       +'<div class="ucbody"><div class="ucname">'+esc(u.name)+'</div>'
-      +'<div class="ucmeta">📍 '+u.dist+' · <span class="deck-cd" data-from="'+u.timeFrom+'" data-to="'+u.timeTo+'" data-today="'+todayAttr+'" data-addr="'+esc(u.address||'')+'"></span></div>'
+      +'<div class="ucmeta">📍 '+u.dist+' · <span class="deck-cd" data-from="'+u.timeFrom+'" data-to="'+u.timeTo+'" data-today="'+todayAttr+'" data-days="'+esc(u.days||'')+'" data-addr="'+esc(u.address||'')+'"></span></div>'
       +(function(){ var avg=getDealAvgRating(u.id)||u.rating||0; return '<div style="display:flex;align-items:center;justify-content:space-between;"><div class="ucdeal">'+esc(u.deal)+'</div>'+(avg>0?'<div class="cimg-rating" style="color:var(--t2);">⭐ '+avg+'</div>':'')+'</div></div></div>'; })();
   }).join('') + seeAll;
   startDeckCountdowns();
@@ -13613,7 +13639,7 @@ function doSearch(q){
         ${d.desc?`<div style="font-size:12px;color:#9A9AB0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d.desc)}</div>`:''}
         <div style="font-size:11.5px;color:#666;font-weight:600;margin-top:3px;">📅 ${esc(d.days||'Daily')} · ⏰ ${esc(d.hours||'')}</div>
         <div style="font-size:11.5px;margin-top:3px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <span class="deck-cd" data-from="${d.timeFrom}" data-to="${d.timeTo}" data-today="${todayAttr}" data-addr="${esc(d.address||'')}"></span>
+          <span class="deck-cd" data-from="${d.timeFrom}" data-to="${d.timeTo}" data-today="${todayAttr}" data-days="${esc(d.days||'')}" data-addr="${esc(d.address||'')}"></span>
           ${d.verified?`<span style="font-weight:700;color:${availColor};">🎟️ ${avail} voucher${avail!==1?'s':''} left</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
