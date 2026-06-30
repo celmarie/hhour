@@ -8,6 +8,9 @@
 <meta http-equiv="Expires" content="0">
 <script src="https://js.stripe.com/v3/"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- tz-lookup: offline coordinate→IANA-timezone lookup (~73KB). Defines window.tzlookup(lat,lng).
+     Lets deal/coupon/event times follow the VENUE's timezone, not the viewer's. SW-cached → offline. -->
+<script defer src="https://cdn.jsdelivr.net/npm/tz-lookup@6.1.25/tz.js"></script>
 <!-- Vercel Web Analytics (cookieless, privacy-friendly — counts all visitors, pages,
      referrers; tracks SPA route changes via the History API). Requires Web Analytics
      to be ENABLED in the Vercel project dashboard (Analytics tab → Enable). -->
@@ -3518,6 +3521,8 @@ function _loadGT(){
         </div>
         <!-- Venue website / Instagram (optional, set by the merchant) — filled by JS -->
         <a id="vd-link" target="_blank" rel="noopener noreferrer" style="display:none;align-items:center;gap:11px;margin-bottom:14px;text-decoration:none;background:white;border:1.5px solid var(--border);border-radius:14px;padding:9px 12px;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:border-color .15s,box-shadow .15s;" onmouseover="this.style.borderColor='#D8D8E0';this.style.boxShadow='0 2px 10px rgba(0,0,0,.07)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)'"></a>
+        <!-- Venue-local-time note (shown only when the venue tz differs from the viewer's) — filled by JS -->
+        <div id="vd-tznote" style="display:none;font-size:11.5px;font-weight:700;color:#6B6B76;background:#F5F5F7;border-radius:9px;padding:7px 11px;margin-bottom:14px;"></div>
         <!-- Mini Google Map -->
         <div style="border-radius:14px;overflow:hidden;height:150px;margin-bottom:14px;position:relative;border:1.5px solid var(--border);">
           <iframe id="vd-mini-map" style="width:100%;height:100%;border:none;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src=""></iframe>
@@ -5384,7 +5389,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630132732';
+var BUILD_VERSION = '20260630135654';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -8650,15 +8655,16 @@ function isDealExpired(deal){
   if(!deal) return false;
   var ed = deal.endDate || deal.end_date || '';
   if(!ed) return false;
-  var end = new Date(String(ed).slice(0,10) + 'T23:59:59');
-  if(isNaN(end)) return false;
-  return end.getTime() < Date.now();
+  ed = String(ed).slice(0,10);
+  var t = _tzNow(_venueTz(deal));                          // "today" in the VENUE's timezone
+  var today = t.y + '-' + _p2(t.mo+1) + '-' + _p2(t.d);
+  return ed < today;   // expired only once the venue's local date passes the end date
 }
 
 function isDealActiveToday(deal){
   var days = (deal.days || 'Daily').toLowerCase().trim();
   if(!days || days === 'daily' || days === 'every day' || days === '—') return true;
-  var dow = new Date().getDay(); // 0=Sun
+  var dow = _tzNow(_venueTz(deal)).dow; // 0=Sun, in the VENUE's timezone
   var dayIdx = {sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6};
   var names  = ['sun','mon','tue','wed','thu','fri','sat'];
   var rangeMatch = days.match(/([a-z]+)[–\-]([a-z]+)/);
@@ -8682,9 +8688,11 @@ function fmtCountdown(sec){
 }
 
 function refreshDeckCountdowns(){
-  var now = new Date();
-  var h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+  var nowCache = {};   // resolve "now" once per timezone per tick (Intl is not free)
+  function nowFor(tz){ var k = tz||'_local'; if(nowCache[k]===undefined) nowCache[k] = _tzNow(tz); return nowCache[k]; }
   document.querySelectorAll('.deck-cd').forEach(function(el){
+    var tz = _tzForAddr(el.dataset.addr || '');   // the VENUE's timezone (null → viewer-local)
+    var h = nowFor(tz).h;
     var from  = parseFloat(el.dataset.from);
     var to    = parseFloat(el.dataset.to);
     var today = el.dataset.today === '1';
@@ -8906,6 +8914,52 @@ function recomputeDealDistances(){
     });
   });
 }
+// ════════ VENUE TIMEZONE ════════════════════════════════════════════════════
+// Every deal/coupon/event time follows the VENUE's local timezone, not the
+// viewer's — so a "5–7PM" Glasgow happy hour reads correctly from Manila. The
+// timezone is derived from the address coordinates (which the app already
+// geocodes for distance) via the bundled tz-lookup library — no API, no DB.
+var _tzAddrCache = {};   // lowercased address → IANA tz string (or null when un-geocodable)
+function _tzForAddr(addr){
+  if(!addr || typeof tzlookup !== 'function') return null;
+  var key = String(addr).toLowerCase().trim();
+  if(_tzAddrCache[key] !== undefined) return _tzAddrCache[key];
+  var c = _geoCache[key];
+  if(c && c.lat != null && c.lng != null){
+    var tz = null; try { tz = tzlookup(c.lat, c.lng); } catch(e){ tz = null; }
+    _tzAddrCache[key] = tz; return tz;
+  }
+  // Not geocoded yet → kick it off so the tz is ready on the next render/tick.
+  try { _geocodeCached(addr, function(){}); } catch(e){}
+  return null;   // until coords arrive, callers fall back to the viewer's local tz
+}
+function _venueTz(deal){ return deal ? _tzForAddr(deal.address || deal.location || deal.venueAddress || '') : null; }
+function _p2(n){ return (n<10?'0':'')+n; }
+// Current wall-clock in a timezone → {h: fractional hour, dow:0-6, y, mo:0-11, d}. Falls back to viewer-local.
+function _tzNow(tz){
+  var now = new Date();
+  if(!tz) return { h: now.getHours()+now.getMinutes()/60+now.getSeconds()/3600, dow: now.getDay(), y: now.getFullYear(), mo: now.getMonth(), d: now.getDate() };
+  try {
+    var parts = {};
+    new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12:false, weekday:'short', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' })
+      .formatToParts(now).forEach(function(p){ parts[p.type] = p.value; });
+    var hour = parseInt(parts.hour,10); if(hour===24) hour = 0;
+    var wd = {Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
+    return { h: hour + parseInt(parts.minute,10)/60 + parseInt(parts.second,10)/3600, dow: wd[parts.weekday], y: parseInt(parts.year,10), mo: parseInt(parts.month,10)-1, d: parseInt(parts.day,10) };
+  } catch(e){
+    return { h: now.getHours()+now.getMinutes()/60+now.getSeconds()/3600, dow: now.getDay(), y: now.getFullYear(), mo: now.getMonth(), d: now.getDate() };
+  }
+}
+function _userTzName(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch(e){ return ''; } }
+function _tzCity(tz){ if(!tz) return ''; var p = String(tz).split('/'); return (p[p.length-1]||'').replace(/_/g,' '); }
+function _tzShort(tz){ if(!tz) return ''; try { var p = new Intl.DateTimeFormat('en-US',{ timeZone:tz, timeZoneName:'short' }).formatToParts(new Date()).find(function(x){ return x.type==='timeZoneName'; }); return p?p.value:''; } catch(e){ return ''; } }
+// Display label, shown ONLY when the venue tz differs from the viewer's, e.g. "Madrid time (GMT+2)".
+function _venueTzLabel(deal){
+  var tz = _venueTz(deal); if(!tz || tz === _userTzName()) return '';
+  var city = _tzCity(tz), sh = _tzShort(tz);
+  return (city ? city+' time' : 'venue time') + (sh ? ' ('+sh+')' : '');
+}
+
 // True if at least one verified deal is actually buyable right now:
 // not expired and still has vouchers available (slots remaining). The
 // "Coming Soon" card only shows when this is false.
@@ -8997,7 +9051,7 @@ function renderCoupons(cat){
       +(function(){ var avg=getDealAvgRating(v.id)||v.rating||0; return '<div class="cimg-bottom"><div>'+wasTxt+'<div class="cimg-price">'+v.price+'</div></div>'+(avg>0?'<div class="cimg-rating">⭐ '+avg+'</div>':'')+'</div></div>'; })()
       +'<div class="cbody"><div class="cname">'+esc(v.name)+'</div><div class="cdeal-sub">'+dealDiscountLabel(v)+'</div>'
       +'<div class="cmeta"><span>📍 '+v.dist+'</span><span style="font-size:10px;color:#9A9AB0;">⏰ '+v.hours+'</span></div>'
-      +'<div style="font-size:11px;margin:4px 0 3px;"><span class="deck-cd" data-from="'+v.timeFrom+'" data-to="'+v.timeTo+'" data-today="'+todayAttr+'"></span></div>'
+      +'<div style="font-size:11px;margin:4px 0 3px;"><span class="deck-cd" data-from="'+v.timeFrom+'" data-to="'+v.timeTo+'" data-today="'+todayAttr+'" data-addr="'+esc(v.address||'')+'"></span></div>'
       +'<div style="font-size:11px;font-weight:700;color:'+availColor+';margin:3px 0 6px;">🎟️ '+avail+' vouchers available</div>'
       +'<button class="buy-now" onclick="event.stopPropagation();isGuest?requireLogin(\'purchase vouchers\'):openVoucher('+v.id+')">'+(isGuest?'🔒 Sign in to buy':'Buy Now')+'</button>'
       +'</div></div>';
@@ -9036,7 +9090,7 @@ function renderUC(cat){
       +wasTxt
       +'<div style="font-size:20px;font-weight:900;color:white;font-family:Inter,sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.5);">'+uSym+u.price+'</div></div></div>'
       +'<div class="ucbody"><div class="ucname">'+esc(u.name)+'</div>'
-      +'<div class="ucmeta">📍 '+u.dist+' · <span class="deck-cd" data-from="'+u.timeFrom+'" data-to="'+u.timeTo+'" data-today="'+todayAttr+'"></span></div>'
+      +'<div class="ucmeta">📍 '+u.dist+' · <span class="deck-cd" data-from="'+u.timeFrom+'" data-to="'+u.timeTo+'" data-today="'+todayAttr+'" data-addr="'+esc(u.address||'')+'"></span></div>'
       +(function(){ var avg=getDealAvgRating(u.id)||u.rating||0; return '<div style="display:flex;align-items:center;justify-content:space-between;"><div class="ucdeal">'+esc(u.deal)+'</div>'+(avg>0?'<div class="cimg-rating" style="color:var(--t2);">⭐ '+avg+'</div>':'')+'</div></div></div>'; })();
   }).join('') + seeAll;
   startDeckCountdowns();
@@ -9871,6 +9925,14 @@ function openDeal(deal){
       +'</span>'
       +'<span style="margin-left:auto;flex-shrink:0;color:#C0C0CC;font-size:15px;font-weight:800;">↗</span>';
     le.style.display='flex';
+  })();
+  // Venue-local-time note: clarify that the hours/countdown are in the venue's timezone
+  // (only when it differs from the viewer's, so local users see no clutter).
+  (function(){
+    var tn=document.getElementById('vd-tznote'); if(!tn) return;
+    var lbl=_venueTzLabel(deal);
+    if(lbl){ tn.innerHTML='🕒 Hours shown in <strong>'+esc(lbl)+'</strong>'; tn.style.display='block'; }
+    else { tn.style.display='none'; }
   })();
   document.getElementById('vd-desc').textContent=deal.desc;
   document.getElementById('vd-perks').innerHTML=(deal.perks||[]).map(p=>`<div class="vdperk"><div class="vdpc">✓</div><div class="vdpt">${p}</div></div>`).join('');
@@ -13443,7 +13505,7 @@ function doSearch(q){
         ${d.desc?`<div style="font-size:12px;color:#9A9AB0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d.desc)}</div>`:''}
         <div style="font-size:11.5px;color:#666;font-weight:600;margin-top:3px;">📅 ${esc(d.days||'Daily')} · ⏰ ${esc(d.hours||'')}</div>
         <div style="font-size:11.5px;margin-top:3px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <span class="deck-cd" data-from="${d.timeFrom}" data-to="${d.timeTo}" data-today="${todayAttr}"></span>
+          <span class="deck-cd" data-from="${d.timeFrom}" data-to="${d.timeTo}" data-today="${todayAttr}" data-addr="${esc(d.address||'')}"></span>
           ${d.verified?`<span style="font-weight:700;color:${availColor};">🎟️ ${avail} voucher${avail!==1?'s':''} left</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
@@ -24253,12 +24315,12 @@ function meRedemptionWindowCheck(deal){
   var tf = parseInt(deal.time_from, 10), tt = parseInt(deal.time_to, 10);
   if(isNaN(tf) || isNaN(tt)) return { ok:true };
   var grace = parseInt(deal.grace_period_min, 10) || 0;
-  var now = new Date();
-  var mins = now.getHours()*60 + now.getMinutes();
+  var t = _tzNow(_venueTz(deal));                 // "now" in the VENUE's timezone (falls back to local)
+  var mins = Math.floor(t.h*60);
 
   // Day-of-week check (days CSV like "Mon, Tue, Wed" or "Daily")
   var days = String(deal.days||'');
-  var dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()];
+  var dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][t.dow];
   var dayOk = !days || /daily/i.test(days) || days.toLowerCase().indexOf(dow.toLowerCase()) !== -1;
   if(!dayOk){
     return { ok:false, msg:'This deal runs <strong>'+days+'</strong> only — today is '+dow+'.' };
@@ -24275,7 +24337,9 @@ function meRedemptionWindowCheck(deal){
   }
   if(!inWin){
     var hrs = deal.hours || (tf+':00–'+tt+':00');
-    return { ok:false, msg:'Happy hour is <strong>'+hrs+'</strong>'+(grace>0?' (+'+grace+' min grace)':'')+'.<br>Current time: '+now.toTimeString().slice(0,5) };
+    var tlabel = _venueTzLabel(deal);
+    var hh = Math.floor(t.h), mm = Math.round((t.h - hh)*60); if(mm===60){ mm=0; hh=(hh+1)%24; }
+    return { ok:false, msg:'Happy hour is <strong>'+hrs+'</strong>'+(grace>0?' (+'+grace+' min grace)':'')+'.<br>Current time'+(tlabel?' ('+tlabel+')':'')+': '+_p2(hh)+':'+_p2(mm) };
   }
   return { ok:true };
 }
@@ -26860,11 +26924,13 @@ function _comEventDate(ev){
   return isNaN(d) ? null : d;
 }
 // True if the event is today or in the future (unparseable dates are kept).
+// "Today" is measured in the EVENT venue's timezone, not the viewer's, so an
+// event still happening at its venue isn't hidden for a viewer past their own midnight.
 function _comEventIsUpcoming(ev){
   var d = _comEventDate(ev);
   if(!d) return true;
-  var now = new Date();
-  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var t = _tzNow(_venueTz({ address: (ev && (ev.location || ev.address)) || '' }));
+  var today = new Date(t.y, t.mo, t.d);
   return d >= today;
 }
 
