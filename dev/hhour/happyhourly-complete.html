@@ -3516,6 +3516,8 @@ function _loadGT(){
           <div class="vd-venue" style="margin:0;"><span>📍</span><span id="vd-venue-txt">The Golden Tap · 0.3 mi</span></div>
           <button id="vd-directions-btn" onclick="openDirections()" style="background:var(--redl);color:var(--red);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">🗺️ Directions</button>
         </div>
+        <!-- Venue website / Instagram (optional, set by the merchant) — filled by JS -->
+        <a id="vd-link" target="_blank" rel="noopener noreferrer" style="display:none;align-items:center;gap:8px;margin-bottom:14px;text-decoration:none;background:#F5F5F7;border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;font-size:13px;font-weight:700;color:var(--text);"></a>
         <!-- Mini Google Map -->
         <div style="border-radius:14px;overflow:hidden;height:150px;margin-bottom:14px;position:relative;border:1.5px solid var(--border);">
           <iframe id="vd-mini-map" style="width:100%;height:100%;border:none;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src=""></iframe>
@@ -5378,7 +5380,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630125936';
+var BUILD_VERSION = '20260630130148';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -9835,6 +9837,27 @@ function openDeal(deal){
   document.getElementById('vd-off').textContent=deal.off;
   document.getElementById('vd-name').textContent=deal.deal;
   document.getElementById('vd-venue-txt').textContent=deal.name+' · '+deal.dist;
+  // Venue website / Instagram link (optional — merchant's "Website / Social" field).
+  // Auto-detects Instagram (URL or @handle) vs a plain website and shows the right icon.
+  (function(){
+    var le=document.getElementById('vd-link'); if(!le) return;
+    var raw=((deal.website||deal.social||'')+'').trim();
+    if(!raw){ le.style.display='none'; le.removeAttribute('href'); return; }
+    var url, label, icon, low=raw.toLowerCase();
+    if(low.indexOf('instagram.com')!==-1){
+      url = raw.indexOf('http')===0 ? raw : 'https://'+raw.replace(/^\/+/,'');
+      var h=raw.replace(/^https?:\/\/(www\.)?instagram\.com\//i,'').replace(/[\/?#].*$/,'');
+      label = h ? '@'+h.replace(/^@/,'') : 'Instagram'; icon='📷';
+    } else if(raw.charAt(0)==='@'){
+      url='https://instagram.com/'+raw.slice(1).replace(/[\/?#].*$/,''); label=raw; icon='📷';
+    } else {
+      url = raw.indexOf('http')===0 ? raw : 'https://'+raw.replace(/^\/+/,'');
+      label = raw.replace(/^https?:\/\/(www\.)?/i,'').replace(/\/+$/,''); icon='🌐';
+    }
+    le.href=url;
+    le.innerHTML='<span style="font-size:15px;">'+icon+'</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(label)+'</span><span style="margin-left:auto;color:#9A9AB0;flex-shrink:0;">↗</span>';
+    le.style.display='flex';
+  })();
   document.getElementById('vd-desc').textContent=deal.desc;
   document.getElementById('vd-perks').innerHTML=(deal.perks||[]).map(p=>`<div class="vdperk"><div class="vdpc">✓</div><div class="vdpt">${p}</div></div>`).join('');
   document.getElementById('vc-overlay').classList.remove('show');
