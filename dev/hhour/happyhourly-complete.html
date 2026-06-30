@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630161445';
+var BUILD_VERSION = '20260630161927';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -30413,6 +30413,30 @@ function _setupDealMap() {
      belt-and-suspenders against the iOS crash. Gradient + solid card remain. */
   #login-screen .hh-blob, #login-screen .hh-emoji, #merchant-login-screen .ml-blob{ display:none !important; }
 </style>
+<style>
+  /* Compact the consumer login on phones so the whole form fits one screen (no scroll). */
+  @media (max-width: 600px){
+    #login-screen{ padding-top:calc(12px + env(safe-area-inset-top,0px)) !important; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)) !important; justify-content:safe center; }
+    #hh-login-card{ padding:18px 24px 16px !important; border-radius:24px !important; }
+    #lg-logo-wrap{ margin-bottom:8px !important; }
+    #hh-logo-badge{ width:104px !important; }
+    #login-mode-title{ margin-top:3px !important; font-size:13px !important; }
+    #auth-mode-wrap{ margin-bottom:11px !important; padding:4px !important; }
+    #auth-mode-wrap button{ padding:9px !important; }
+    #lg-fields{ gap:8px !important; margin-bottom:9px !important; }
+    #login-screen input:not([type=checkbox]){ padding-top:13px !important; padding-bottom:13px !important; }
+    #login-error{ min-height:0 !important; margin-bottom:4px !important; }
+    #captcha-box{ margin-bottom:8px !important; }
+    #signin-btn{ padding:14px !important; margin-bottom:7px !important; }
+    #login-forgot-wrap{ margin-bottom:7px !important; }
+    #login-or-div{ margin:0 0 8px !important; }
+    #gsi-button{ margin-bottom:8px !important; }
+    #google-btn{ padding:11px !important; margin-bottom:8px !important; }
+    #guest-btn{ padding:11px !important; margin-bottom:8px !important; }
+    #login-signup-cta{ margin-bottom:2px !important; }
+    #login-role-links{ margin-top:8px !important; }
+  }
+</style>
 <div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:none;flex-direction:column;align-items:center;justify-content:safe center;padding:26px 20px calc(26px + env(safe-area-inset-bottom, 0px));font-family:'Inter',sans-serif;overflow-y:auto;background:linear-gradient(165deg,#FFF7EF 0%,#FFE9D8 48%,#FFD9C2 100%);">
 
   <!-- playful drifting color blobs -->
@@ -30434,7 +30458,7 @@ function _setupDealMap() {
   <div id="hh-login-card" style="position:relative;width:100%;max-width:392px;background:#fff;border:1px solid #FBEEE4;border-radius:30px;padding:36px 28px 28px;box-shadow:0 30px 70px rgba(214,118,60,.22),0 6px 18px rgba(0,0,0,.05);">
 
     <!-- logo + title -->
-    <div class="hh-stagger" style="text-align:center;margin-bottom:22px;animation-delay:.1s;">
+    <div id="lg-logo-wrap" class="hh-stagger" style="text-align:center;margin-bottom:22px;animation-delay:.1s;">
       <img id="hh-logo-badge" src="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-logo.png?v=3" alt="Appie Hour" style="width:150px;height:auto;margin:0 auto 4px;display:block;">
       <div id="login-mode-title" style="font-size:14px;color:#8A7B72;font-weight:600;margin-top:6px;">hey, welcome! 👋</div>
     </div>
@@ -30446,7 +30470,7 @@ function _setupDealMap() {
     </div>
 
     <!-- Input fields -->
-    <div class="hh-stagger" style="display:flex;flex-direction:column;gap:11px;margin-bottom:14px;animation-delay:.26s;">
+    <div id="lg-fields" class="hh-stagger" style="display:flex;flex-direction:column;gap:11px;margin-bottom:14px;animation-delay:.26s;">
       <div id="signup-name-row" style="display:none;gap:11px;">
         <input id="signup-first" type="text" disabled placeholder="First name" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="given-name">
         <input id="signup-last" type="text" disabled placeholder="Last name" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="family-name">
