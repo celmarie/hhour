@@ -5378,7 +5378,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630125142';
+var BUILD_VERSION = '20260630125936';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14065,36 +14065,32 @@ function switchLoginTab(role){
 var GOOGLE_CLIENT_ID = '1030170680113-6v2dcolldolrfrlbfts8rmhi93osgavv.apps.googleusercontent.com';
 var _gsiReady = false;
 
+// Pick the error box that's actually on screen: the desktop web-login popup uses
+// #wl-error; the full-screen login uses #login-error. Writing to the wrong one made
+// Google sign-in errors invisible in the popup (looked like "nothing happened").
+function _activeLoginErrEl(){
+  try {
+    var pop = document.getElementById('web-login-pop');
+    if(pop && pop.style.display && pop.style.display !== 'none') return document.getElementById('wl-error');
+  } catch(e){}
+  return document.getElementById('login-error');
+}
 async function handleGoogleCredential(resp){
-  var errEl = document.getElementById('login-error'); if(errEl) errEl.textContent = '';
+  var errEl = _activeLoginErrEl(); if(errEl) errEl.textContent = '';
   try{
     if(!resp || !resp.credential) return;   // user dismissed the chooser
     var { data, error } = await db.auth.signInWithIdToken({ provider:'google', token: resp.credential });
     if(error){ if(errEl) errEl.textContent = error.message; return; }
     if(data && data.user){
-      // This screen is the CUSTOMER login — only customer accounts may enter here.
-      // A merchant/admin Google account must use its own portal. (Mirrors the role
-      // gate in doLogin, which only covers password sign-in.)
-      if(loginRole === 'customer'){
-        var _profRole = '';
-        try {
-          var _pr = await db.from('profiles').select('role').eq('id', data.user.id).maybeSingle();
-          _profRole = (_pr && _pr.data && _pr.data.role) || '';
-        } catch(e) {}
-        var _jwtRole = (data.user.app_metadata && data.user.app_metadata.role)
-                    || (data.user.user_metadata && data.user.user_metadata.role) || '';
-        var _role = _profRole || _jwtRole || 'customer';   // new Google users have no profile yet → customer
-        if(_role === 'merchant' || _role === 'admin' || _role === 'super_admin'){
-          // Generic message (matches doLogin) — never reveal the account exists
-          // under another role, so a wrong-portal login gives nothing away.
-          await db.auth.signOut().catch(function(){});
-          if(errEl) errEl.textContent = 'Invalid email or password.';
-          return;
-        }
-      }
-      // onAuthStateChange won't re-route once _authInitialized is set, so route here
-      // explicitly (mirrors doLogin). handleAuthSession auto-creates the profile.
-      _authInitialized = true; await handleAuthSession(data.user);
+      // A successful Google sign-in PROVES the person owns this account, so route them
+      // to wherever their role belongs — a customer stays on the consumer site, a
+      // merchant/admin account is sent to its portal. Previously the consumer login
+      // silently signed a non-customer account back out ("Invalid email or password"),
+      // which stranded an owner's OWN admin/merchant Google account: it could never
+      // sign in from the consumer login. handleAuthSession routes by role.
+      _authInitialized = true;
+      try { closeWebLoginPopup(); } catch(e){}
+      await handleAuthSession(data.user);
     }
   }catch(e){
     if(errEl) errEl.textContent = 'Google sign-in failed: ' + (e.message || e);
