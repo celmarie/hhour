@@ -11,6 +11,10 @@
 <!-- tz-lookup: offline coordinate→IANA-timezone lookup (~73KB). Defines window.tzlookup(lat,lng).
      Lets deal/coupon/event times follow the VENUE's timezone, not the viewer's. SW-cached → offline. -->
 <script defer src="https://cdn.jsdelivr.net/npm/tz-lookup@6.1.25/tz.js"></script>
+<!-- Marker clustering for the deal map: at low zoom, nearby pins merge into a few cluster
+     bubbles instead of rendering all of them — prevents the iOS memory crash on zoom-out
+     and removes the need for any zoom limit. Exposes window.markerClusterer. SW-cached. -->
+<script defer src="https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
 <!-- Vercel Web Analytics (cookieless, privacy-friendly — counts all visitors, pages,
      referrers; tracks SPA route changes via the History API). Requires Web Analytics
      to be ENABLED in the Vercel project dashboard (Analytics tab → Enable). -->
@@ -5388,7 +5392,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701002847';
+var BUILD_VERSION = '20260701004152';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6297,11 +6301,9 @@ function setupDealSubscriptions() {
 }
 
 function refreshAllViews() {
-  // Refresh map if visible
+  // Refresh map if visible — re-place markers (refreshDealMapMarkers clears + re-geocodes).
   if (curScreen === 'map' && _gmapObj) {
-    _gmapMarkers.forEach(m => m.setMap(null));
-    _gmapMarkers = [];
-    _setupDealMap();
+    refreshDealMapMarkers();
   }
 
   // Refresh deals list if visible
@@ -29403,6 +29405,43 @@ function initHomeMap(lat, lng) {
   if (el && src && !el.src) el.src = src;
 }
 
+// ── Deal-map marker clustering ───────────────────────────────────────────────
+// Pins are created WITHOUT a map and handed to _mapPlaceMarker. When the clusterer
+// library is loaded, it groups them into cluster bubbles at low zoom (so zooming all
+// the way out renders a handful of bubbles, not 80 pins → no iOS memory crash). If the
+// library isn't available, it falls back to placing markers directly (old behavior).
+var _gmapCluster = null;
+function _initMapClusterer(){
+  _gmapCluster = null;
+  try {
+    if(window.markerClusterer && markerClusterer.MarkerClusterer && _gmapObj){
+      _gmapCluster = new markerClusterer.MarkerClusterer({ map: _gmapObj });
+    }
+  } catch(e){ _gmapCluster = null; console.warn('[map] clusterer init failed', e); }
+}
+function _markerPassesFilter(marker){
+  if(marker._isWatch) return !!mapFilters.football;
+  if(marker._dealVerified) return !!mapFilters.verified;
+  return !!mapFilters.community;
+}
+function _mapPlaceMarker(marker){
+  _gmapMarkers.push(marker);
+  var show = _markerPassesFilter(marker);
+  if(_gmapCluster){ if(show) { try { _gmapCluster.addMarker(marker); } catch(e){ marker.setMap(_gmapObj); } } }
+  else { marker.setMap(show ? _gmapObj : null); }
+}
+function _mapSyncClusters(){
+  if(_gmapCluster){
+    try { _gmapCluster.clearMarkers(); _gmapCluster.addMarkers(_gmapMarkers.filter(_markerPassesFilter)); return; } catch(e){}
+  }
+  _gmapMarkers.forEach(function(m){ try { m.setMap(_markerPassesFilter(m) ? _gmapObj : null); } catch(e){} });
+}
+function _mapClearMarkers(){
+  if(_gmapCluster){ try { _gmapCluster.clearMarkers(); } catch(e){} }
+  (_gmapMarkers||[]).forEach(function(m){ try { m.setMap(null); } catch(e){} });
+  _gmapMarkers = [];
+}
+
 function refreshDealMapMarkers() {
   // Refresh markers without reinitializing the whole map
   if (!_gmapObj) {
@@ -29412,9 +29451,7 @@ function refreshDealMapMarkers() {
   _gmapMarkersAt = Date.now();   // pins freshly placed — cache stays warm for MAP_STALE_MS
 
   // Remove all existing markers
-  _gmapMarkers = _gmapMarkers || [];
-  _gmapMarkers.forEach(function(m) { m.setMap(null); });
-  _gmapMarkers = [];
+  _mapClearMarkers();
 
   // Get current map center
   var center = _gmapObj.getCenter();
@@ -29439,11 +29476,11 @@ function refreshDealMapMarkers() {
       var isVerified = deal.verified === true;
       var pinColor = isVerified ? '#2563EB' : '#22C55E';
       var marker = new google.maps.Marker({
-        position: { lat: dlat, lng: dlng }, map: _gmapObj, title: deal.name,
+        position: { lat: dlat, lng: dlng }, title: deal.name,
         icon: { path: google.maps.SymbolPath.CIRCLE, scale: 18, fillColor: pinColor, fillOpacity: 1, strokeColor: 'white', strokeWeight: 2.5, labelOrigin: new google.maps.Point(0, 0) },
         label: { text: deal.off ? deal.off.replace(' OFF','') : '🍺', color: 'white', fontSize: '9px', fontWeight: '800' }
       });
-      _gmapMarkers.push(marker);
+      marker._dealVerified = isVerified;
       var infoHtml = '<div style="font-family:Inter,sans-serif;max-width:240px;padding:4px 0;">' +
         '<div style="font-weight:800;font-size:14px;color:#1A1A1A;">' + esc(deal.name||'') + '</div>' +
         (addr ? '<div style="font-size:11px;color:#888;margin:2px 0;">📍 ' + addr + '</div>' : '') +
@@ -29457,8 +29494,10 @@ function refreshDealMapMarkers() {
           '<button onclick="window.open(\'https://maps.google.com/?q=' + encodeURIComponent(addr) + '\',\'_blank\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;">🗺️ Go</button>' +
         '</div></div>';
       marker.addListener('click', function() { _gmapOpenInfo(marker, infoHtml); });
+      _mapPlaceMarker(marker);
     } catch(e) { console.error('[refreshDealMapMarkers]', deal.name, e); }
   }
+  _mapSyncClusters();   // ensure cluster reflects any markers placed synchronously
 
   _geocodePlaceDeals(allDeals, placePin);
 }
@@ -29469,7 +29508,6 @@ function _placeWatchMarker(s, lat, lng) {
   try {
     var marker = new google.maps.Marker({
       position: { lat: lat, lng: lng },
-      map: _gmapObj,
       title: (s.venue_name || '') + ' — ' + (s.match_label || ''),
       icon: {
         path: google.maps.SymbolPath.CIRCLE,
@@ -29503,7 +29541,7 @@ function _placeWatchMarker(s, lat, lng) {
         '</div>' +
       '</div>';
     marker.addListener('click', function() { _gmapOpenInfo(marker, infoHtml); });
-    _gmapMarkers.push(marker);
+    _mapPlaceMarker(marker);
   } catch(e) { console.error('[_placeWatchMarker]', e); }
 }
 
@@ -29680,16 +29718,12 @@ function _refreshMapMarkers() {
   if (!_gmapObj) return;
 
   var visibleCount = 0;
-  // Hide/show existing markers based on filter. Football (Where-to-Watch) pins
-  // are toggled on their own; deals split into verified vs community.
+  // Count visible DEAL pins (watch pins excluded) for the header…
   _gmapMarkers.forEach(function(marker) {
-    var shouldShow;
-    if (marker._isWatch)            shouldShow = mapFilters.football;
-    else if (marker._dealVerified)  shouldShow = mapFilters.verified;
-    else                            shouldShow = mapFilters.community;
-    marker.setVisible(shouldShow);
-    if (shouldShow && !marker._isWatch) visibleCount++;   // count deals only
+    if (_markerPassesFilter(marker) && !marker._isWatch) visibleCount++;
   });
+  // …then rebuild the clustered/plain markers to match the active filters.
+  _mapSyncClusters();
 
   // Update deal count. When BOTH deal filters are on, show the accurate total (the
   // map only plots the nearest pins, so the placed-marker count would understate it);
@@ -29724,13 +29758,12 @@ function _setupDealMap() {
 
     _gmapObj = new google.maps.Map(document.getElementById('deal-map'), {
       center: center, zoom: 14,
-      // Cap zoom-out: the full world view loads a huge tile set and, with all the pins
-      // held in memory, repeatedly crashes the iOS WebKit tab. minZoom keeps it to a
-      // regional view (still wide enough to browse an area) and prevents the OOM.
-      minZoom: 4, maxZoom: 19,
+      // No zoom limit — pins are clustered (see _mapPlaceMarker), so zooming all the way
+      // out renders just a few cluster bubbles instead of every pin (no iOS memory crash).
       disableDefaultUI: true, zoomControl: true,
       styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
     });
+    _initMapClusterer();
     // (Don't build the home-screen map iframe here — it's a second Maps instance that
     //  needlessly doubles memory on the map screen; the home map loads on the home.)
 
@@ -29755,12 +29788,9 @@ function _setupDealMap() {
       try {
         var isVerified = deal.verified === true;
         var pinColor = isVerified ? '#2563EB' : '#22C55E';
-        var shouldShow = (isVerified && mapFilters.verified) || (!isVerified && mapFilters.community);
         var marker = new google.maps.Marker({
           position: { lat: lat, lng: lng },
-          map: _gmapObj,
           title: deal.name,
-          visible: shouldShow,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
             scale: 18,
@@ -29790,7 +29820,7 @@ function _setupDealMap() {
             '</div>' +
           '</div>';
         marker.addListener('click', function() { _gmapOpenInfo(marker, infoHtml); });
-        _gmapMarkers.push(marker);
+        _mapPlaceMarker(marker);
       } catch(e) {
         console.error('[_placeDealPin] error for', deal.name, e);
       }
