@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630154715';
+var BUILD_VERSION = '20260630161445';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14222,15 +14222,13 @@ function switchLoginTab(role){
   // Glassmorphism: admin uses the smoked dark-glass theme; customer = warm glass.
   var _ls=document.getElementById('login-screen'); if(_ls) _ls.classList.toggle('ls-admin', role==='admin');
   // Title reflects the active login (separation per access rights)
+  // #login-screen now only ever shows customer or admin (merchant returned early → green).
   var _mt=document.getElementById('login-mode-title');
-  if(_mt) _mt.textContent = role==='merchant' ? '🏪 Merchant login — for venue owners'
-                          : role==='admin'    ? '🛡 Admin login — staff only'
-                          :                     "hey, welcome! 👋";
+  if(_mt) _mt.textContent = role==='admin' ? '🛡 Admin login — staff only' : "hey, welcome! 👋";
   // Demo credentials are intentionally NOT shown — the app is live.
   var _dh=document.getElementById('login-demo-hint');
   if(_dh){ _dh.innerHTML=''; _dh.style.display='none'; }
-  // Corner links: show the two roles you're NOT currently on
-  var lm=document.getElementById('link-merchant'); if(lm) lm.style.display = role==='merchant'?'none':'block';
+  // Corner links: show the admin/customer roles you're NOT currently on (merchant link removed).
   var la=document.getElementById('link-admin');    if(la) la.style.display = (_adminLoginAllowed && role!=='admin') ? 'block' : 'none';
   var lc=document.getElementById('link-customer'); if(lc) lc.style.display = role==='customer'?'none':'block';
   // Guest + Google are customer-only. Sign-up is for customer + merchant (admins
