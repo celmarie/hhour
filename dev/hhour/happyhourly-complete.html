@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701001308';
+var BUILD_VERSION = '20260701002847';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -29724,6 +29724,10 @@ function _setupDealMap() {
 
     _gmapObj = new google.maps.Map(document.getElementById('deal-map'), {
       center: center, zoom: 14,
+      // Cap zoom-out: the full world view loads a huge tile set and, with all the pins
+      // held in memory, repeatedly crashes the iOS WebKit tab. minZoom keeps it to a
+      // regional view (still wide enough to browse an area) and prevents the OOM.
+      minZoom: 4, maxZoom: 19,
       disableDefaultUI: true, zoomControl: true,
       styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
     });
