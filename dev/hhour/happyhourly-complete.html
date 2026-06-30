@@ -3607,7 +3607,7 @@ function _loadGT(){
             <div style="width:34px;height:34px;border-radius:10px;background:rgba(217,119,6,.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">💡</div>
             <div style="min-width:0;">
               <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:3px;letter-spacing:-.1px;">Community-reported deal</div>
-              <div style="font-size:12px;color:var(--t2);font-weight:500;line-height:1.65;">Posted by a community member, not the venue. Just visit the bar to enjoy this offer — no voucher needed.</div>
+              <div style="font-size:12px;color:var(--t2);font-weight:500;line-height:1.65;">Posted by a community member, not the venue, and not verified by Appie Hour — details may be inaccurate or expired, so confirm with the bar before visiting. No voucher needed. Appie Hour isn’t affiliated with this venue and isn’t responsible for the offer. Venue owner? Tap <strong>Report incorrect information</strong> to request revision or removal.</div>
             </div>
           </div>
           <button class="buy-btn" style="background:linear-gradient(135deg,#16161E,#33333F);display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 6px 18px rgba(20,20,30,.25);" onclick="openDirections()">
@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630162930';
+var BUILD_VERSION = '20260630173347';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
