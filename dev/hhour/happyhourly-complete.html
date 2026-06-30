@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630180541';
+var BUILD_VERSION = '20260630180956';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -15324,6 +15324,7 @@ async function loadAdminData(){
             cat:row.category||'cocktails',status:row.status||'pending',
             image_url:row.image_url||'',
             submitterIp:row.submitter_ip||'',submitterLocation:row.submitter_location||'',
+            _createdAt:row.created_at||'',
             submittedAt:row.created_at?new Date(row.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):''
           });
         });
@@ -17612,15 +17613,38 @@ function adminLoadWatchSpots(){
   if(typeof db==='undefined'||!db.from){ c.innerHTML='<div style="color:#9A9AB0;font-size:13px;">Database not available.</div>'; return; }
   db.from('match_screenings').select('id,user_id,host_name,venue_name,location,match_label,match_date,kickoff_time,reservation_needed,reservation_info,notes,emoji,image_url,going,status,created_at,timezone,matches,crowd_busy,crowd_ok,crowd_chill,lat,lng,slug').eq('status','approved').order('match_date',{ascending:true}).then(function(r){
     if(r&&r.error){ c.innerHTML='<div style="color:#E8192C;font-size:13px;">'+_watchEsc(r.error.message)+'</div>'; return; }
-    var rows=(r&&r.data)||[];
-    _admWatchRows=rows;
-    if(!rows.length){ c.innerHTML='<div style="color:#9A9AB0;font-size:13px;">No spots shared yet.</div>'; return; }
-    c.innerHTML=rows.map(function(s){
-      var _ms=_watchMatchesOf(s);
-      var title=_ms.length>1 ? (_ms.length+' matches: '+_ms.map(function(m){return m.label;}).join(', ')) : ((_ms[0]&&_ms[0].label)||s.match_label||'');
-      var meta=(_ms.length===1&&_ms[0]) ? ((_ms[0].dateStr?_watchFmtDate(_ms[0].dateStr):'')+(_ms[0].timeStr?' · '+_ms[0].timeStr+(_ms[0].tz?' '+_ms[0].tz:''):'')) : '';
+    _admWatchRows=(r&&r.data)||[];
+    _admWatchRender();
+  }).catch(function(e){ c.innerHTML='<div style="color:#E8192C;font-size:13px;">'+_watchEsc((e&&e.message)||'load failed')+'</div>'; });
+}
+// Render the submitted-spots list from the cached rows with search + sort (re-renders
+// from cache — no DB reload — so sorting is instant).
+function _admWatchRender(){
+  var c=document.getElementById('adm-watch-spots'); if(!c) return;
+  var rows=_admWatchRows||[];
+  if(!rows.length){ c.innerHTML='<div style="color:#9A9AB0;font-size:13px;">No spots shared yet.</div>'; return; }
+  var _ws=window._admWatchSort||'date';
+  var sorted=rows.slice().sort(function(a,b){
+    if(_ws==='venue') return String(a.venue_name||'').localeCompare(String(b.venue_name||''));
+    if(_ws==='newest'){ var ca=a.created_at||'',cb=b.created_at||''; return ca<cb?1:ca>cb?-1:0; }
+    var ma=a.match_date||'',mb=b.match_date||''; return ma<mb?-1:ma>mb?1:0;   // default: match date ↑
+  });
+  c.innerHTML='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">'
+      +'<input id="adm-watch-search" type="text" value="'+_watchEsc((window._admQ&&window._admQ['adm-watch-list'])||'')+'" placeholder="🔍 Search spots, venue, match…" oninput="admSearchRows(\'adm-watch-list\',this.value,\'adm-watch-none\')" style="flex:1;min-width:0;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:9px 12px;font-size:13px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;box-sizing:border-box;">'
+      +'<select onchange="window._admWatchSort=this.value;_admWatchRender();setTimeout(function(){admSearchRows(\'adm-watch-list\',(window._admQ&&window._admQ[\'adm-watch-list\'])||\'\',\'adm-watch-none\');},0)" style="background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;cursor:pointer;flex-shrink:0;">'
+        +'<option value="date"'+(_ws==='date'?' selected':'')+'>Match date</option>'
+        +'<option value="newest"'+(_ws==='newest'?' selected':'')+'>Newest</option>'
+        +'<option value="venue"'+(_ws==='venue'?' selected':'')+'>Venue A–Z</option>'
+      +'</select>'
+    +'</div>'
+    +'<div id="adm-watch-none" style="display:none;padding:18px 0;text-align:center;font-size:13px;color:#9A9AB0;font-weight:600;">No spots match your search</div>'
+    +'<div id="adm-watch-list">'+sorted.map(function(s){
+      var _msx=_watchMatchesOf(s);
+      var title=_msx.length>1 ? (_msx.length+' matches: '+_msx.map(function(m){return m.label;}).join(', ')) : ((_msx[0]&&_msx[0].label)||s.match_label||'');
+      var meta=(_msx.length===1&&_msx[0]) ? ((_msx[0].dateStr?_watchFmtDate(_msx[0].dateStr):'')+(_msx[0].timeStr?' · '+_msx[0].timeStr+(_msx[0].tz?' '+_msx[0].tz:''):'')) : '';
       if(s.location) meta += (meta?' · ':'')+s.location;
-      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #F5F5F8;">'
+      var _wq=_watchEsc(((title||'')+' '+(s.venue_name||'')+' '+(s.location||'')+' '+(s.host_name||'')).toLowerCase());
+      return '<div class="adm-srow" data-q="'+_wq+'" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #F5F5F8;">'
         +'<div style="min-width:0;">'
           +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;">⚽ '+_watchEsc(title)+'</div>'
           +'<div style="font-size:12px;color:#12A150;font-weight:700;">'+_watchEsc(s.venue_name||'')+'</div>'
@@ -17631,8 +17655,7 @@ function adminLoadWatchSpots(){
           +'<button onclick="adminWatchDelete('+s.id+')" title="Delete" style="background:#FDEDED;border:none;border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer;color:#E8192C;">🗑</button>'
         +'</div>'
       +'</div>';
-    }).join('');
-  }).catch(function(e){ c.innerHTML='<div style="color:#E8192C;font-size:13px;">'+_watchEsc((e&&e.message)||'load failed')+'</div>'; });
+    }).join('')+'</div>';
 }
 function adminWatchDelete(id){
   if(!confirm('Delete this spot?')) return;
@@ -21724,7 +21747,13 @@ function aUpdateEventsBadge(){
 }
 
 function aRenderEvents(){
+  var _evs = window._admEvSort || 'recent';
   var pending  = (typeof comAdminPendingMeetups!=='undefined') ? comAdminPendingMeetups.filter(function(m){return m.status==='pending';})  : [];
+  pending.sort(function(a,b){
+    if(_evs==='title') return String(a.title||'').localeCompare(String(b.title||''));
+    var _da=a._createdAt||'', _db=b._createdAt||'';
+    return _evs==='oldest' ? (_da<_db?-1:_da>_db?1:0) : (_da<_db?1:_da>_db?-1:0);
+  });
   var approved = (typeof comAdminPendingMeetups!=='undefined') ? comAdminPendingMeetups.filter(function(m){return m.status==='approved';}) : [];
   var rejected = (typeof comAdminPendingMeetups!=='undefined') ? comAdminPendingMeetups.filter(function(m){return m.status==='rejected';}) : [];
 
@@ -21760,10 +21789,20 @@ function aRenderEvents(){
       +'<div style="font-size:15px;font-weight:700;color:#9A9AB0;font-family:Inter,sans-serif;">No pending event submissions</div>'
     +'</div>';
   } else {
+    html += '<div style="padding:10px 16px;border-bottom:1px solid #F0F0F4;display:flex;gap:8px;align-items:center;">'
+        +'<input id="adm-ev-search" type="text" value="'+esc((window._admQ&&window._admQ['adm-ev-pending'])||'')+'" placeholder="🔍 Search events, host, location…" oninput="admSearchRows(\'adm-ev-pending\',this.value,\'adm-ev-none\')" onclick="event.stopPropagation()" style="flex:1;min-width:0;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:9px 12px;font-size:13px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;box-sizing:border-box;">'
+        +'<select onchange="admReSort(\'_admEvSort\',this.value,\'events\',\'adm-ev-pending\',\'adm-ev-none\')" onclick="event.stopPropagation()" style="background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;cursor:pointer;flex-shrink:0;">'
+          +'<option value="recent"'+(_evs==='recent'?' selected':'')+'>Newest</option>'
+          +'<option value="oldest"'+(_evs==='oldest'?' selected':'')+'>Oldest</option>'
+          +'<option value="title"'+(_evs==='title'?' selected':'')+'>Title A–Z</option>'
+        +'</select>'
+      +'</div>'
+      +'<div id="adm-ev-none" style="display:none;padding:20px 16px;text-align:center;font-size:13px;color:#9A9AB0;font-weight:600;">No events match your search</div>';
     html += pending.map(function(ev, i){
       var catColors = {cocktails:'#7B2FBE',beer:'#12A150',wine:'#9B2335',social:'#2563EB',food:'#d97706',rooftop:'#0891B2'};
       var col = catColors[ev.cat] || '#555';
-      return '<div onclick="admOpenEventDetail(\''+ev.id+'\')" style="padding:18px;border-bottom:1.5px solid #F8F8FA;cursor:pointer;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
+      var _eq = esc(((ev.title||'')+' '+(ev.host||'')+' '+(ev.location||'')+' '+(ev.desc||'')).toLowerCase());
+      return '<div class="adm-srow" data-q="'+_eq+'" onclick="admOpenEventDetail(\''+ev.id+'\')" style="padding:18px;border-bottom:1.5px solid #F8F8FA;cursor:pointer;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
 
         // Header row: emoji + title + badge
         +'<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;">'
