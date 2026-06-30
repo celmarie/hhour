@@ -5389,7 +5389,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630135654';
+var BUILD_VERSION = '20260630140607';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -8690,23 +8690,27 @@ function fmtCountdown(sec){
 function refreshDeckCountdowns(){
   var nowCache = {};   // resolve "now" once per timezone per tick (Intl is not free)
   function nowFor(tz){ var k = tz||'_local'; if(nowCache[k]===undefined) nowCache[k] = _tzNow(tz); return nowCache[k]; }
+  var uTz = _userTzName();
   document.querySelectorAll('.deck-cd').forEach(function(el){
     var tz = _tzForAddr(el.dataset.addr || '');   // the VENUE's timezone (null → viewer-local)
     var h = nowFor(tz).h;
     var from  = parseFloat(el.dataset.from);
     var to    = parseFloat(el.dataset.to);
     var today = el.dataset.today === '1';
+    // Show the venue's tz only when it differs from the viewer's, so "open now" isn't confusing.
+    var tzh = (tz && tz !== uTz) ? _tzShort(tz) : '';
+    var tzTag = tzh ? ' <span style="color:#9A9AB0;font-weight:600;">· '+tzh+'</span>' : '';
     var html;
     if(!today){
       html = '<span style="color:#9A9AB0;font-weight:700;">📅 Not today</span>';
     } else if(h >= from && h < to){
       var rem = Math.round((to - h) * 3600);
-      html = '<span style="color:#12A150;font-weight:700;">🟢 Open · closes in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(rem) + '</span></span>';
+      html = '<span style="color:#12A150;font-weight:700;">🟢 Open · closes in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(rem) + '</span></span>' + tzTag;
     } else if(h < from){
       var openIn = Math.round((from - h) * 3600);
-      html = '<span style="color:#B45309;font-weight:700;">🕐 Available in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(openIn) + '</span></span>';
+      html = '<span style="color:#B45309;font-weight:700;">🕐 Available in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(openIn) + '</span></span>' + tzTag;
     } else {
-      html = '<span style="color:#9A9AB0;font-weight:700;">🔴 Closed today</span>';
+      html = '<span style="color:#9A9AB0;font-weight:700;">🔴 Closed today</span>' + tzTag;
     }
     el.innerHTML = html;
   });
@@ -27082,6 +27086,8 @@ function comOpenDetail(id){
         +'<div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:18px;margin-bottom:2px;">⏰</div><div style="font-size:12px;font-weight:700;color:var(--text);">'+m.time+'</div><div style="font-size:10px;color:var(--t3);">TIME</div></div>'
         +'<div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:18px;margin-bottom:2px;">👥</div><div style="font-size:12px;font-weight:700;color:var(--text);">'+m.going+'/'+m.capacity+'</div><div style="font-size:10px;color:var(--t3);">GOING</div></div>'
       +'</div>'
+      // Event time is in the venue's local timezone — flag it when it differs from the viewer's.
+      +(function(){ var _l=_venueTzLabel({address:(m.location||'')}); return _l?'<div style="font-size:11.5px;font-weight:700;color:#6B6B76;background:#F5F5F7;border-radius:9px;padding:7px 11px;margin-bottom:14px;">🕒 Time shown in <strong>'+esc(_l)+'</strong></div>':''; })()
       // Location — clickable Google Maps link
       +'<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(m.location)+'" target="_blank" style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:14px;text-decoration:none;">'
         +'<div style="font-size:20px;">📍</div>'
