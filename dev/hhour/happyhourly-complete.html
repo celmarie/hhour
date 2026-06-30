@@ -3978,6 +3978,10 @@ function _loadGT(){
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Address <span style="color:#E8192C;">*</span></label>
               <input id="uc-addr" type="text" readonly tabindex="-1" placeholder="Auto-filled from the venue you select" style="width:100%;background:#EFEFF2;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#6B6B76;outline:none;box-sizing:border-box;cursor:not-allowed;">
             </div>
+            <div>
+              <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Website / Instagram <span style="font-size:9px;font-weight:600;color:#9A9AB0;text-transform:none;letter-spacing:0;">— optional</span></label>
+              <input id="uc-website" type="text" autocomplete="off" inputmode="url" placeholder="instagram.com/venue, @venue or website.com" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+            </div>
           </div>
           <div style="height:1px;background:#F0F0F4;margin:0 16px;"></div>
           <div style="padding:14px 18px 6px;">
@@ -5380,7 +5384,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630130148';
+var BUILD_VERSION = '20260630130832';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -13084,6 +13088,7 @@ function _submitDealInner(){
   var title=(document.getElementById('uc-deal-title')||{value:''}).value.trim();
   var d=(document.getElementById('uc-deal-desc')||{value:''}).value.trim();
   var addr=(document.getElementById('uc-addr')||{value:''}).value.trim();
+  var website=(document.getElementById('uc-website')||{value:''}).value.trim();   // optional site/Instagram
   if(!v){showToast('Please enter a venue name 📍');return;}
   if(!addr){showToast('Please enter an address 📍');return;}
   // Duplicate checker — venue NAME + ADDRESS together (chains share names across
@@ -13134,6 +13139,7 @@ function _submitDealInner(){
     type: 'community', cat: catVal, dist: '—', distKm: 0,
     rating: 0, off: off, discPct: 0, isFree: isFreeSelected,
     timeLeft: '—', claimed: 0, ago: 'Just now', wasPrice: was,
+    website: website,
     img: _ucPhotos[0] || '',
     img2: _ucPhotos[1] || '',
     img3: _ucPhotos[2] || '',
@@ -13164,6 +13170,7 @@ function _submitDealInner(){
           emoji: submission.emoji, address: addr || '',
           category: catVal || 'bars',
           image_url: dbImageUrl,
+          website: website || null,
           status: 'pending'
         }).select().single();
         if (insErr) {
@@ -13197,7 +13204,7 @@ function _submitDealInner(){
   });
 
   // Reset post screen
-  ['uc-venue','uc-addr','uc-deal-title','uc-deal-desc','uc-deal-price','uc-deal-was','uc-deal-start-date','uc-deal-end-date'].forEach(function(id){
+  ['uc-venue','uc-addr','uc-website','uc-deal-title','uc-deal-desc','uc-deal-price','uc-deal-was','uc-deal-start-date','uc-deal-end-date'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.value='';
   });
   var tsReset=document.getElementById('uc-deal-time-start');if(tsReset)tsReset.value='17:00';
