@@ -5388,7 +5388,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630180956';
+var BUILD_VERSION = '20260630232131';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -17584,21 +17584,27 @@ function adminRenderWorldCup(){
 
   // Submitted spots (moderation)
   html += '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;">'
-    + '<div style="padding:16px;border-bottom:1px solid #E8E8EC;display:flex;align-items:center;justify-content:space-between;">'
-      + '<div><div style="font-size:16px;font-weight:900;color:#1A1A1A;">📍 Submitted spots</div>'
+    + '<button onclick="admToggleSection(\'adm-watch-spots\',\'adm-watch-chev\')" style="width:100%;padding:16px;border:none;border-bottom:1px solid #E8E8EC;background:none;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;">'
+      + '<div style="min-width:0;"><div style="font-size:16px;font-weight:900;color:#1A1A1A;">📍 Submitted spots</div>'
       + '<div style="font-size:12px;color:#9A9AB0;margin-top:4px;">Bars/restaurants shared by the community</div></div>'
-      + '<button onclick="adminLoadWatchSpots()" style="background:#F0F2F5;border:1.5px solid #E8E8EC;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">🔄 Refresh</button>'
-    + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
+        + '<span onclick="event.stopPropagation();adminLoadWatchSpots()" style="background:#F0F2F5;border:1.5px solid #E8E8EC;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">🔄 Refresh</span>'
+        + '<span id="adm-watch-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
+      + '</div>'
+    + '</button>'
     + '<div id="adm-watch-spots" style="padding:16px;"><div style="color:#9A9AB0;font-size:13px;">Loading…</div></div>'
   + '</div>';
 
   // Spot reports (moderation queue)
   html += '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;margin-top:20px;">'
-    + '<div style="padding:16px;border-bottom:1px solid #E8E8EC;display:flex;align-items:center;justify-content:space-between;">'
-      + '<div><div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚠️ Spot reports</div>'
+    + '<button onclick="admToggleSection(\'adm-spot-reports\',\'adm-spot-rep-chev\')" style="width:100%;padding:16px;border:none;border-bottom:1px solid #E8E8EC;background:none;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;">'
+      + '<div style="min-width:0;"><div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚠️ Spot reports</div>'
       + '<div style="font-size:12px;color:#9A9AB0;margin-top:4px;">Community reports about incorrect information</div></div>'
-      + '<button onclick="adminLoadSpotReports()" style="background:#F0F2F5;border:1.5px solid #E8E8EC;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">🔄 Refresh</button>'
-    + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
+        + '<span onclick="event.stopPropagation();adminLoadSpotReports()" style="background:#F0F2F5;border:1.5px solid #E8E8EC;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">🔄 Refresh</span>'
+        + '<span id="adm-spot-rep-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
+      + '</div>'
+    + '</button>'
     + '<div id="adm-spot-reports" style="padding:16px;"><div style="color:#9A9AB0;font-size:13px;">Loading…</div></div>'
   + '</div>';
 
@@ -17983,6 +17989,8 @@ function adminPage(page,btn){
   document.querySelectorAll('.adm-nav-btn').forEach(function(b){b.classList.remove('adm-nav-on');});
   if(btn)btn.classList.add('adm-nav-on');
   var body=document.getElementById('admin-body');if(!body)return;
+  // After this page renders, collapse every section by default (microtask → before paint).
+  Promise.resolve().then(function(){ try { _admCollapseSections(); } catch(e){} });
   var sym=finSym();
   if(page==='dashboard'){
     var pendingDeals  = pendingCommunityDeals.filter(function(d){return d.status==='pending';})
@@ -20305,6 +20313,24 @@ function admToggleSection(listId, chevId){
   var open = list.style.display !== 'none';
   list.style.display = open ? 'none' : 'block';
   if(chev) chev.style.transform = open ? '' : 'rotate(90deg)';
+  // Remember the user's choice so it survives re-renders (default is collapsed).
+  window._admOpenSections = window._admOpenSections || {};
+  window._admOpenSections[listId] = !open;   // state AFTER the toggle
+}
+// All admin sections start COLLAPSED by default — except ones the user expanded this
+// session. Runs after each admin render (microtask, before paint → no flash).
+function _admCollapseSections(){
+  try {
+    var btns = document.querySelectorAll('[onclick*="admToggleSection("]');
+    for(var i=0;i<btns.length;i++){
+      var m = (btns[i].getAttribute('onclick')||'').match(/admToggleSection\(\s*'([^']+)'\s*,\s*'([^']+)'\s*\)/);
+      if(!m) continue;
+      var listId=m[1], chevId=m[2];
+      if(window._admOpenSections && window._admOpenSections[listId]) continue;  // user opened it → leave open
+      var list=document.getElementById(listId); if(list) list.style.display='none';
+      var chev=document.getElementById(chevId); if(chev) chev.style.transform='';
+    }
+  } catch(e){}
 }
 
 async function adminRevertVoucher(id){
