@@ -5378,7 +5378,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630124031';
+var BUILD_VERSION = '20260630125142';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6754,31 +6754,11 @@ let savedDeals = [];
 let myVouchers = [];
 
 // ── Review store: keyed by deal id ───────────────────────────────────────────
-var dealReviews = {
-  0: [
-    {user:'Alex P.',av:'A',col:'#E8192C',rating:5,text:'Best happy hour in the area! The wings are a must-try.',date:'2024-02-15',verified:true},
-    {user:'Maria S.',av:'M',col:'#7B2FBE',rating:4,text:'Great vibes, but gets really crowded after 6 PM.',date:'2024-02-10',verified:true},
-    {user:'Jake L.',av:'J',col:'#2563EB',rating:5,text:'Incredible value for money. The bartenders are super friendly.',date:'2024-01-28',verified:true},
-  ],
-  1: [
-    {user:'Sara R.',av:'S',col:'#12A150',rating:5,text:'The sushi here is absolutely fresh. Best happy hour sushi I\'ve had.',date:'2024-02-14',verified:true},
-    {user:'Tom K.',av:'T',col:'#d97706',rating:4,text:'Great deal, but the wait can be long on weekends.',date:'2024-01-30',verified:true},
-  ],
-  2: [
-    {user:'Laia F.',av:'L',col:'#E8192C',rating:5,text:'The cocktails are creative and delicious. Perfect Friday night spot!',date:'2024-02-12',verified:true},
-  ],
-  3: [],
-  4: [
-    {user:'Marco K.',av:'M',col:'#12A150',rating:5,text:'House wine is actually really good. Perfect deal for a date night.',date:'2024-02-08',verified:true},
-  ],
-  10: [
-    {user:'David R.',av:'D',col:'#2563EB',rating:4,text:'€2 cañas is real! Confirmed it myself last Thursday.',date:'2024-02-11',verified:false},
-  ],
-  11: [],
-  12: [
-    {user:'Ana G.',av:'A',col:'#7B2FBE',rating:5,text:'Rooftop views are amazing. The 3-for-2 deal actually works!',date:'2024-02-09',verified:false},
-  ],
-};
+// Real reviews are loaded per-deal from Supabase by loadReviewsForDeal(). This
+// starts EMPTY — it was previously seeded with fake reviews (Alex P., Maria S., …)
+// that showed on deals AND blocked real reviews from loading (the early-return in
+// loadReviewsForDeal saw the seed as "already loaded").
+var dealReviews = {};
 
 // Average rating for a deal
 function getDealAvgRating(id){
@@ -7301,9 +7281,13 @@ document.addEventListener('DOMContentLoaded', async function(){
     else setTimeout(_gmapsPreload, 6000);
   }
 
-  // Check session FIRST — hide login screen immediately so refresh doesn't show it
+  // Check session FIRST — hide login screen immediately so refresh doesn't show it.
+  // EXCEPT on a portal URL (/merchant, /fireclay): a logged-in but WRONG-role account
+  // (e.g. a customer opening /fireclay) must keep seeing the portal login that the
+  // handleAuthSession guard shows. Blindly hiding it here revealed the consumer app
+  // behind the login at a portal URL.
   var { data: { session } } = await db.auth.getSession();
-  if (session) {
+  if (session && !_loginRequiredPath()) {
     var _ls = document.getElementById('login-screen');
     if (_ls) _ls.style.display = 'none';
   }
@@ -14516,13 +14500,19 @@ function _endPortalBoot(){ try { document.documentElement.classList.remove('port
 
 function openAdmin(){
   _endPortalBoot();
-  // Hard guard: only admins/super-admins may ever see the admin UI.
+  // Hard guard: ONLY admin / super_admin may ever see the admin UI. Block every other
+  // role AND the no-profile / guest case (role undefined) — previously a falsy role
+  // slipped past this check. The server's RLS is the real enforcement; this just keeps
+  // the UI from ever rendering for a non-admin.
   var _r = currentProfile && currentProfile.role;
-  if(_r && _r !== 'admin' && _r !== 'super_admin'){
-    console.warn('[openAdmin] blocked for role:', _r);
+  if(_r !== 'admin' && _r !== 'super_admin'){
+    console.warn('[openAdmin] blocked for role:', _r || '(none)');
     var _mr=document.getElementById('merch-root'); if(_mr) _mr.style.display='none';
     var _ar=document.getElementById('admin-root'); if(_ar) _ar.style.display='none';
-    if(typeof goScreen==='function') goScreen('deals');
+    // Non-admin landed here on a portal URL → show the admin login, not the consumer app.
+    var _lp=(location.pathname||'').replace(/\/+$/,'').toLowerCase();
+    if((_lp==='/fireclay' || _lp.indexOf('/fireclay/')===0) && typeof showLoginScreen==='function'){ showLoginScreen(); }
+    else if(typeof goScreen==='function'){ goScreen('deals'); }
     return;
   }
   var el=document.getElementById('admin-root');
@@ -26654,11 +26644,10 @@ function crMaybeInit(){if(!_crInited){_crInited=true;crInitScreen();}else{crUpda
 // ══════════════════════════════════════════════════
 // COMMUNITY
 // ══════════════════════════════════════════════════
-var comCurrentTab='feed';var comMeetups=[
-  {id:1,emoji:'🍹',title:'Rooftop Cocktail Night',desc:'Join us for rooftop cocktails, DJ music, and the best views in Barcelona!',date:'Sat 24 May',time:'7:00 PM',location:'Sky Lounge, Barceloneta',host:'Laia F.',hostAv:'LF',hostCol:'#2563EB',going:12,capacity:40,price:'€5',type:'paid',cat:'rooftop',status:'approved',tags:['Rooftop','Cocktails']},
-  {id:2,emoji:'🍺',title:'Friday Craft Beer Crawl',desc:'Guided crawl through 4 of the best craft beer bars in Eixample.',date:'Fri 30 May',time:'6:00 PM',location:'Eixample bar hop',host:'Marco K.',hostAv:'MK',hostCol:'#12A150',going:28,capacity:50,price:'Free',type:'free',cat:'beer',status:'approved',tags:['Beer','Social']},
-  {id:3,emoji:'🍷',title:'Wine & Cheese Social',desc:'A relaxed evening of fine wines and cheese pairings.',date:'Sat 7 Jun',time:'5:00 PM',location:'La Cave, Gràcia',host:'Sara R.',hostAv:'SR',hostCol:'#7B2FBE',going:8,capacity:20,price:'€8',type:'paid',cat:'wine',status:'approved',tags:['Wine','Cosy']},
-];
+// Real community events load from Supabase (loadEventsFromSupabase). Starts EMPTY —
+// it was seeded with fake meetups (Rooftop Cocktail Night, …) that showed to guests
+// and anyone whenever the DB had no approved events.
+var comCurrentTab='feed';var comMeetups=[];
 var comMyEvents=[];var comMyCreated=[];var comAdminPendingMeetups=[];
 var comTicketType='free';var comSelectedCat='cocktails';var comTicketCurrency='EUR';
 
