@@ -4505,9 +4505,9 @@ function _loadGT(){
             <div style="flex:1;"><div class="prow-text" style="margin:0;">Your Data &amp; Privacy Rights</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">What we hold & your rights (access, deletion)</div></div>
             <div class="prow-arrow">›</div>
           </div>
-          <div class="prow" onclick="exportMyData()" style="cursor:pointer;">
+          <div class="prow" onclick="requestMyData()" style="cursor:pointer;">
             <div style="font-size:18px;width:40px;text-align:center;flex-shrink:0;">📥</div>
-            <div style="flex:1;"><div class="prow-text" style="margin:0;">Download my data</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">Export a copy of your personal data (JSON)</div></div>
+            <div style="flex:1;"><div class="prow-text" style="margin:0;">Request my data</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:2px;">We’ll verify your request and email you when your export is ready</div></div>
             <div class="prow-arrow">›</div>
           </div>
         </div>
@@ -5389,7 +5389,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630140607';
+var BUILD_VERSION = '20260630142252';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -7852,15 +7852,10 @@ function applyFilters(){
 // Right to ACCESS + PORTABILITY: gather everything we hold about the signed-in
 // user and download it as a single JSON file. Tables are queried defensively so
 // a missing table / RLS block never aborts the whole export.
-async function exportMyData(){
-  if(!currentUser || !currentUser.id){
-    if(typeof requireLogin==='function') requireLogin('download your data');
-    else showToast('🔒 Please sign in to download your data');
-    return;
-  }
-  showToast('📦 Preparing your data…');
-  var uid = currentUser.id;
-  // Tables keyed by the user's id, and the column that holds it.
+// Gather every row tied to a user across the app's tables, into one export object.
+// Reused by the admin/DPO "generate export" action. Best-effort: a table that's
+// missing or not readable under the caller's RLS is simply skipped.
+async function _gatherExportFor(uid, email){
   var sources = [
     ['profiles','id'], ['community_deals','user_id'], ['match_screenings','user_id'],
     ['community_events','user_id'], ['reviews','user_id'], ['saved_deals','user_id'],
@@ -7869,11 +7864,7 @@ async function exportMyData(){
     ['deal_reports','user_id'], ['deal_mistake_reports','user_id'], ['merchant_applications','user_id'],
     ['deal_arrival_times','user_id'], ['screening_reports','user_id']
   ];
-  var out = {
-    export_generated: new Date().toISOString(),
-    account: { id: uid, email: currentUser.email || (currentProfile && currentProfile.email) || null },
-    data: {}
-  };
+  var out = { export_generated: new Date().toISOString(), account: { id: uid, email: email || null }, data: {} };
   for(var i=0;i<sources.length;i++){
     var tbl=sources[i][0], col=sources[i][1];
     try {
@@ -7881,18 +7872,73 @@ async function exportMyData(){
       if(!q.error && q.data && q.data.length) out.data[tbl] = q.data;
     } catch(e){ /* table may not exist / be readable — skip */ }
   }
-  try {
-    var blob = new Blob([JSON.stringify(out,null,2)], {type:'application/json'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'appie-hour-my-data-' + new Date().toISOString().slice(0,10) + '.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
-    showToast('✅ Your data has been downloaded');
-  } catch(e){
-    showToast('⚠️ Could not generate the file: ' + (e.message||e));
+  return out;
+}
+function _downloadJSON(obj, filename){
+  var blob = new Blob([JSON.stringify(obj,null,2)], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+}
+// GDPR Right to access — DSAR. We no longer hand the raw file to the customer
+// instantly: that skips identity verification + redaction. Instead the request is
+// queued for the admin/DPO, who verifies, prepares and releases it. The customer is
+// emailed at each step. (Admins still generate the file from the DSAR queue.)
+async function requestMyData(){
+  if(!currentUser || !currentUser.id){
+    if(typeof requireLogin==='function') requireLogin('request your data');
+    else showToast('🔒 Please sign in to request your data');
+    return;
   }
+  var uid = currentUser.id;
+  var email = currentUser.email || (currentProfile && currentProfile.email) || '';
+  var name  = (currentProfile && currentProfile.name) || '';
+  try {
+    // Don't pile up duplicates — one open request at a time.
+    var ex = await db.from('data_requests').select('id,status').eq('user_id', uid).in('status', ['pending','verifying','ready']).limit(1);
+    if(!ex.error && ex.data && ex.data.length){
+      if(typeof _drClose==='function') _drClose();
+      _showDsarConfirm(true);
+      return;
+    }
+    var ins = await db.from('data_requests').insert({ user_id: uid, user_email: email, user_name: name, type: 'export', status: 'pending' });
+    if(ins.error) throw ins.error;
+    if(typeof _drClose==='function') _drClose();
+    _showDsarConfirm(false);
+    // Acknowledgement email (best-effort; user emails their own address → allowed).
+    try {
+      var s = await db.auth.getSession(); var t = s && s.data && s.data.session && s.data.session.access_token;
+      fetch('/api/send-email', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(t||'')},
+        body: JSON.stringify({ type:'data-request-received', email: email, name: (name||'there').split(' ')[0] }) });
+    } catch(e){}
+  } catch(e){
+    var m=(e&&e.message)||'';
+    showToast('⚠️ '+(/data_requests|does not exist|schema cache|relation/i.test(m) ? 'Run data_requests.sql in Supabase first' : (m||'Could not submit your request')));
+  }
+}
+function _showDsarConfirm(already){
+  var ov=document.getElementById('dsar-confirm-ov'); if(ov) ov.remove();
+  ov=document.createElement('div'); ov.id='dsar-confirm-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999999;background:rgba(20,12,8,.55);display:flex;align-items:center;justify-content:center;padding:22px;font-family:Inter,sans-serif;';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML='<div style="background:#fff;border-radius:20px;max-width:380px;width:100%;padding:24px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);">'
+    +'<div style="font-size:44px;margin-bottom:10px;">📨</div>'
+    +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;margin-bottom:8px;">'+(already?'Already in progress':'Request received')+'</div>'
+    +'<div style="font-size:13.5px;font-weight:600;color:#6B5D54;line-height:1.55;margin-bottom:18px;">'+(already
+        ? 'Your data request is already being reviewed. We’ll email you when your export is ready.'
+        : 'We’ll verify your request and email you when your export is ready.')+'</div>'
+    +'<button onclick="var o=document.getElementById(\'dsar-confirm-ov\');if(o)o.remove();" style="width:100%;background:#E8192C;color:#fff;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Got it</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+}
+// Legacy direct self-export (kept for admins; no longer linked from the customer UI).
+async function exportMyData(){
+  if(!currentUser || !currentUser.id){ showToast('🔒 Please sign in first'); return; }
+  showToast('📦 Preparing your data…');
+  var out = await _gatherExportFor(currentUser.id, currentUser.email || (currentProfile && currentProfile.email) || null);
+  try { _downloadJSON(out, 'appie-hour-my-data-' + new Date().toISOString().slice(0,10) + '.json'); showToast('✅ Your data has been downloaded'); }
+  catch(e){ showToast('⚠️ Could not generate the file: ' + (e.message||e)); }
 }
 
 // Right to BE INFORMED: a plain-language summary of what we hold and the user's
@@ -7914,7 +7960,7 @@ function showDataRights(){
     + '<div style="font-size:12px;font-weight:800;color:#9A8B82;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;">What we store</div>'
     + '<div style="font-size:13.5px;font-weight:600;color:#3A2E26;line-height:1.6;background:#FAF5F0;border-radius:12px;padding:12px 14px;margin-bottom:18px;">Your account (name, email, date of birth for age verification), deals & watch spots you post, reviews, saved deals, voucher purchases, credits, and notification history.</div>'
     + '<div style="font-size:12px;font-weight:800;color:#9A8B82;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;">Your rights</div>'
-    + _drRight('📥','Right to access &amp; portability','Download a full copy of your data as a file.','Download my data','exportMyData')
+    + _drRight('📥','Right to access &amp; portability','Request a copy of your data — we verify your identity and email it to you.','Request my data','requestMyData')
     + _drRight('✏️','Right to correct','Update your name and profile details in Edit Profile.','Edit my profile','_drEditProfile')
     + _drRight('🗑️','Right to erasure','Permanently delete your account and all associated data.','Delete my account','_drDelete')
     + _drRight('🔐','Right to be informed','Read how we collect and use your data.','Privacy Policy','_drPrivacy')
@@ -14829,6 +14875,7 @@ function _savePayoutQueue(){
 }
 var adminPayoutQueue=_loadPayoutQueue();
 var adminMerchants = [];
+var adminDataRequests = [];   // GDPR DSAR queue (data_requests table)
 // Admin-only "I've messaged this merchant" checklist. Keyed by venue id (or
 // 'email:<owner>' for pre-venue applications). Backed by the admin_contacted table
 // (RLS: admins only), so it's private to admins and survives cache clears.
@@ -14994,6 +15041,12 @@ async function loadAdminData(){
       _admContacted = {};
       (_ac && _ac.data || []).forEach(function(r){ if(r && r.key) _admContacted[r.key] = true; });
     } catch(e){}
+
+    // GDPR DSAR queue — newest first. Silently empty if the table isn't there yet.
+    try {
+      var _dr = await db.from('data_requests').select('*').order('requested_at', { ascending:false });
+      adminDataRequests = (_dr && _dr.data) || [];
+    } catch(e){ adminDataRequests = []; }
 
     // 3. Build user map keyed by profile id to deduplicate
     var userMap = {};
@@ -15851,6 +15904,90 @@ async function adminSaveNewMerchant() {
   } catch(e) {
     showToast('⚠️ Error: '+(e.message||'Could not add merchant'));
   }
+}
+
+// ════ GDPR DSAR queue (admin / DPO) ══════════════════════════════════════════
+// Renders the data-request queue at the top of the admin Users page. Lifecycle:
+// pending → (verify identity) → Generate export (downloads JSON, status 'ready') →
+// review/redact → Release & email (status 'released') | Reject.
+function _admDsarQueueHtml(){
+  var reqs = adminDataRequests || [];
+  if(!reqs.length) return '';   // nothing requested → no clutter
+  var open = reqs.filter(function(r){ return r.status!=='released' && r.status!=='rejected'; });
+  var SM = { pending:['#B45309','rgba(217,119,6,.12)','⏳ Pending review'], verifying:['#2563EB','rgba(37,99,235,.12)','🔎 Verifying'],
+             ready:['#12A150','rgba(18,161,80,.12)','📦 Ready to release'], released:['#12A150','rgba(18,161,80,.10)','✅ Released'],
+             rejected:['#9A9AB0','rgba(154,154,176,.12)','✕ Rejected'] };
+  function row(r){
+    var i = adminDataRequests.indexOf(r);
+    var sm = SM[r.status] || SM.pending;
+    var when=''; try { when = new Date(r.requested_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e){}
+    var actions = (r.status==='released' || r.status==='rejected') ? '' :
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">'
+      +'<button onclick="admDsarGenerate('+i+')" style="background:#1A1A1A;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">⬇ Generate export</button>'
+      +'<button onclick="admDsarRelease('+i+')" style="background:rgba(18,161,80,.1);color:#12A150;border:1.5px solid rgba(18,161,80,.25);border-radius:8px;padding:7px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✅ Release &amp; email</button>'
+      +'<button onclick="admDsarReject('+i+')" style="background:rgba(232,25,44,.06);color:#E8192C;border:1.5px solid rgba(232,25,44,.18);border-radius:8px;padding:7px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Reject</button>'
+      +'</div>';
+    return '<div style="padding:12px 16px;border-bottom:1px solid #F5F5F7;">'
+      +'<div style="display:flex;align-items:center;gap:10px;">'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;">'+esc(r.user_name||r.user_email||'User')+'</div>'
+          +'<div style="font-size:11px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(r.user_email||'')+(when?' · '+esc(when):'')+'</div>'
+          +(r.notes?'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">📝 '+esc(r.notes)+'</div>':'')
+        +'</div>'
+        +'<span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:800;background:'+sm[1]+';color:'+sm[0]+';white-space:nowrap;flex-shrink:0;">'+sm[2]+'</span>'
+      +'</div>'+actions
+    +'</div>';
+  }
+  return '<div style="background:white;border-radius:14px;border:2px solid '+(open.length?'#d97706':'#E8E8EC')+';overflow:hidden;margin-bottom:14px;">'
+    +'<button onclick="admToggleSection(\'adm-dsar-list\',\'adm-dsar-chev\')" style="width:100%;padding:12px 16px;background:'+(open.length?'rgba(217,119,6,.07)':'#FAFAFA')+';border:none;border-bottom:1px solid #EEE;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:Inter,sans-serif;">'
+      +'<div style="text-align:left;"><div style="font-size:13px;font-weight:800;color:#1A1A1A;">🛡️ Data Requests (DSAR)</div>'
+      +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">'+(open.length?open.length+' awaiting review':'All handled')+' · verify → generate → release</div></div>'
+      +'<span id="adm-dsar-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
+    +'</button>'
+    +'<div id="adm-dsar-list">'+ reqs.map(row).join('') +'</div>'
+  +'</div>';
+}
+async function admDsarGenerate(idx){
+  var r = adminDataRequests[idx]; if(!r) return;
+  showToast('📦 Generating export for '+(r.user_email||'user')+'…');
+  try {
+    var out = await _gatherExportFor(r.user_id, r.user_email);
+    out.dsar = { request_id: r.id, generated_by: (currentProfile&&currentProfile.email)||'', generated_at: new Date().toISOString(),
+                 note: 'Review and redact third-party / sensitive fields before releasing to the data subject.' };
+    _downloadJSON(out, 'dsar-'+String(r.user_email||r.user_id).replace(/[^a-z0-9._-]/gi,'_')+'-'+new Date().toISOString().slice(0,10)+'.json');
+    var up = await db.from('data_requests').update({ status:'ready', handled_by:(currentUser&&currentUser.id)||null, updated_at:new Date().toISOString() }).eq('id', r.id);
+    if(!up.error) r.status='ready';
+    adminPage('users', null);
+    showToast('⬇ Export downloaded — review & redact, then Release.');
+  } catch(e){ showToast('⚠️ '+((e&&e.message)||'Could not generate export')); }
+}
+async function admDsarRelease(idx){
+  var r = adminDataRequests[idx]; if(!r) return;
+  if(!confirm('Mark RELEASED and email '+(r.user_email||'the user')+' that their export is ready?\n\nMake sure you have already sent them the reviewed/redacted file.')) return;
+  try {
+    var up = await db.from('data_requests').update({ status:'released', handled_by:(currentUser&&currentUser.id)||null, updated_at:new Date().toISOString() }).eq('id', r.id);
+    if(up.error) throw up.error;
+    r.status='released';
+    try {
+      var s=await db.auth.getSession(); var t=s&&s.data&&s.data.session&&s.data.session.access_token;
+      fetch('/api/send-email',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(t||'')},
+        body: JSON.stringify({ type:'data-export-ready', email:r.user_email, name:(r.user_name||'there').split(' ')[0] }) });
+    } catch(e){}
+    adminPage('users', null);
+    showToast('✅ Released — customer emailed.');
+  } catch(e){ showToast('⚠️ '+((e&&e.message)||'Could not release')); }
+}
+async function admDsarReject(idx){
+  var r = adminDataRequests[idx]; if(!r) return;
+  var reason = prompt('Reason for rejecting this data request (kept in the queue, not emailed):', 'Could not verify identity');
+  if(reason===null) return;
+  try {
+    var up = await db.from('data_requests').update({ status:'rejected', notes:reason||'', handled_by:(currentUser&&currentUser.id)||null, updated_at:new Date().toISOString() }).eq('id', r.id);
+    if(up.error) throw up.error;
+    r.status='rejected'; r.notes=reason||'';
+    adminPage('users', null);
+    showToast('Request rejected.');
+  } catch(e){ showToast('⚠️ '+((e&&e.message)||'Could not update')); }
 }
 
 // Admin-only checklist: toggle whether this merchant has been messaged/contacted.
@@ -18256,7 +18393,7 @@ function adminPage(page,btn){
       ? adminUsers.filter(function(u){ return (u.name+u.email+u.role).toLowerCase().includes(_userSearch.toLowerCase()); })
       : adminUsers;
     var emptyUsers = '<div style="padding:32px 20px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">👥</div><div style="font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:4px;">No users yet</div><div style="font-size:12px;color:#9A9AB0;">Users who sign up will appear here</div></div>';
-    body.innerHTML=''
+    body.innerHTML=_admDsarQueueHtml()
       // Search bar + actions
       +'<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:12px;">'
         +'<div style="padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #E8E8EC;">'

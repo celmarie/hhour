@@ -131,6 +131,34 @@ export default async function handler(req, res) {
     `;
   }
 
+  // DSAR — request received (sent to the customer when they request their data)
+  if (type === 'data-request-received') {
+    subject = `We've received your data request`;
+    html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1>Your data request 📩</h1>
+        <p>Hi ${name || 'there'},</p>
+        <p>We've received your request for a copy of your personal data. To protect your account, our team will <strong>verify your request</strong> before preparing the export.</p>
+        <p>We'll email you again as soon as your export is ready. This is usually completed within 30 days, as required by data-protection law.</p>
+        <p style="margin-top: 30px; font-size: 12px; color: #666;">If you didn't make this request, please contact us via Help &amp; Support right away.</p>
+      </div>
+    `;
+  }
+
+  // DSAR — export ready (sent by an admin/DPO when releasing the export)
+  if (type === 'data-export-ready') {
+    const { note } = data || {};
+    subject = `Your data export is ready`;
+    html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1>Your data export is ready ✅</h1>
+        <p>Hi ${name || 'there'},</p>
+        <p>We've verified your request and prepared a copy of your personal data. ${note ? String(note) : 'Your export is attached to / linked from this message, or will follow shortly from our team.'}</p>
+        <p style="margin-top: 30px; font-size: 12px; color: #666;">Questions about your data? Just reply to this email.</p>
+      </div>
+    `;
+  }
+
   if (!subject || !html) {
     return res.status(400).json({ error: 'Unknown email type' });
   }
