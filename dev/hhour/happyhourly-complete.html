@@ -5389,7 +5389,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630142252';
+var BUILD_VERSION = '20260630145641';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -7881,41 +7881,79 @@ function _downloadJSON(obj, filename){
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
 }
-// GDPR Right to access — DSAR. We no longer hand the raw file to the customer
-// instantly: that skips identity verification + redaction. Instead the request is
-// queued for the admin/DPO, who verifies, prepares and releases it. The customer is
-// emailed at each step. (Admins still generate the file from the DSAR queue.)
-async function requestMyData(){
+// GDPR Right to access — DSAR. We never hand the raw file to the customer instantly
+// (that skips identity verification + redaction). Instead we verify they control the
+// account inbox via a 6-digit email code, then the SERVER files the request; the
+// admin/DPO reviews, prepares and releases it. The customer is emailed at each step.
+function requestMyData(){
   if(!currentUser || !currentUser.id){
     if(typeof requireLogin==='function') requireLogin('request your data');
     else showToast('🔒 Please sign in to request your data');
     return;
   }
-  var uid = currentUser.id;
-  var email = currentUser.email || (currentProfile && currentProfile.email) || '';
-  var name  = (currentProfile && currentProfile.name) || '';
+  if(typeof _drClose==='function') _drClose();
+  _openDsarOtpModal();
+}
+function _dsarOtpCard(){ return document.getElementById('dsar-otp-card'); }
+function _dsarOtpClose(){ var o=document.getElementById('dsar-otp-ov'); if(o) o.remove(); }
+function _openDsarOtpModal(){
+  var ov=document.getElementById('dsar-otp-ov'); if(ov) ov.remove();
+  ov=document.createElement('div'); ov.id='dsar-otp-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999999;background:rgba(20,12,8,.55);display:flex;align-items:center;justify-content:center;padding:22px;font-family:Inter,sans-serif;';
+  ov.onclick=function(e){ if(e.target===ov) _dsarOtpClose(); };
+  ov.innerHTML='<div id="dsar-otp-card" style="background:#fff;border-radius:20px;max-width:400px;width:100%;padding:24px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3);"></div>';
+  document.body.appendChild(ov);
+  _dsarOtpStep1();
+}
+function _dsarOtpStep1(){
+  var c=_dsarOtpCard(); if(!c) return;
+  var email=(currentUser&&currentUser.email)||(currentProfile&&currentProfile.email)||'';
+  var masked=email.replace(/^(.).*(@.*)$/,'$1***$2');
+  c.innerHTML='<div style="font-size:40px;text-align:center;margin-bottom:8px;">🛡️</div>'
+    +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;text-align:center;margin-bottom:6px;">Verify it\'s you</div>'
+    +'<div style="font-size:13.5px;font-weight:600;color:#6B5D54;line-height:1.55;text-align:center;margin-bottom:18px;">For your security we\'ll email a 6-digit code to <strong>'+esc(masked)+'</strong>. Enter it to confirm your data request.</div>'
+    +'<div id="dsar-otp-err" style="display:none;font-size:12.5px;font-weight:700;color:#E8192C;text-align:center;margin-bottom:10px;"></div>'
+    +'<button id="dsar-otp-send" onclick="_dsarOtpSend()" style="width:100%;background:#E8192C;color:#fff;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Email me a code</button>'
+    +'<button onclick="_dsarOtpClose()" style="width:100%;margin-top:8px;background:none;color:#9A8B82;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>';
+}
+async function _dsarOtpSend(){
+  var btn=document.getElementById('dsar-otp-send'); var err=document.getElementById('dsar-otp-err');
+  if(err) err.style.display='none';
+  if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
   try {
-    // Don't pile up duplicates — one open request at a time.
-    var ex = await db.from('data_requests').select('id,status').eq('user_id', uid).in('status', ['pending','verifying','ready']).limit(1);
-    if(!ex.error && ex.data && ex.data.length){
-      if(typeof _drClose==='function') _drClose();
-      _showDsarConfirm(true);
-      return;
-    }
-    var ins = await db.from('data_requests').insert({ user_id: uid, user_email: email, user_name: name, type: 'export', status: 'pending' });
-    if(ins.error) throw ins.error;
-    if(typeof _drClose==='function') _drClose();
-    _showDsarConfirm(false);
-    // Acknowledgement email (best-effort; user emails their own address → allowed).
-    try {
-      var s = await db.auth.getSession(); var t = s && s.data && s.data.session && s.data.session.access_token;
-      fetch('/api/send-email', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(t||'')},
-        body: JSON.stringify({ type:'data-request-received', email: email, name: (name||'there').split(' ')[0] }) });
-    } catch(e){}
-  } catch(e){
-    var m=(e&&e.message)||'';
-    showToast('⚠️ '+(/data_requests|does not exist|schema cache|relation/i.test(m) ? 'Run data_requests.sql in Supabase first' : (m||'Could not submit your request')));
-  }
+    var s=await db.auth.getSession(); var t=s&&s.data&&s.data.session&&s.data.session.access_token;
+    var r=await fetch('/api/request-data',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(t||'')},body:JSON.stringify({action:'send'})});
+    var j=await r.json().catch(function(){return{};});
+    if(!r.ok) throw new Error(j.error||'Could not send the code');
+    _dsarOtpStep2(j.emailMasked||'');
+  } catch(e){ if(err){ err.textContent='⚠️ '+(e.message||'Could not send the code'); err.style.display='block'; } if(btn){ btn.disabled=false; btn.textContent='Email me a code'; } }
+}
+function _dsarOtpStep2(masked){
+  var c=_dsarOtpCard(); if(!c) return;
+  c.innerHTML='<div style="font-size:40px;text-align:center;margin-bottom:8px;">✉️</div>'
+    +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;text-align:center;margin-bottom:6px;">Enter your code</div>'
+    +'<div style="font-size:13.5px;font-weight:600;color:#6B5D54;line-height:1.55;text-align:center;margin-bottom:16px;">We emailed a 6-digit code'+(masked?' to <strong>'+esc(masked)+'</strong>':'')+'. It expires in 10 minutes.</div>'
+    +'<input id="dsar-otp-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')" style="width:100%;text-align:center;letter-spacing:10px;font-size:24px;font-weight:800;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:14px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;box-sizing:border-box;margin-bottom:12px;" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'" onkeydown="if(event.key===\'Enter\')_dsarOtpVerify()">'
+    +'<div id="dsar-otp-err" style="display:none;font-size:12.5px;font-weight:700;color:#E8192C;text-align:center;margin-bottom:10px;"></div>'
+    +'<button id="dsar-otp-verify" onclick="_dsarOtpVerify()" style="width:100%;background:#E8192C;color:#fff;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Verify &amp; submit request</button>'
+    +'<button onclick="_dsarOtpSend()" style="width:100%;margin-top:8px;background:none;color:#6B5D54;border:none;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Resend code</button>'
+    +'<button onclick="_dsarOtpClose()" style="width:100%;background:none;color:#9A8B82;border:none;padding:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>';
+  setTimeout(function(){ var i=document.getElementById('dsar-otp-code'); if(i) i.focus(); }, 60);
+}
+async function _dsarOtpVerify(){
+  var code=(document.getElementById('dsar-otp-code')||{value:''}).value.trim();
+  var btn=document.getElementById('dsar-otp-verify'); var err=document.getElementById('dsar-otp-err');
+  if(err) err.style.display='none';
+  if(!/^\d{6}$/.test(code)){ if(err){ err.textContent='Enter the 6-digit code.'; err.style.display='block'; } return; }
+  if(btn){ btn.disabled=true; btn.textContent='Verifying…'; }
+  try {
+    var s=await db.auth.getSession(); var t=s&&s.data&&s.data.session&&s.data.session.access_token;
+    var r=await fetch('/api/request-data',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(t||'')},body:JSON.stringify({action:'verify',code:code})});
+    var j=await r.json().catch(function(){return{};});
+    if(!r.ok) throw new Error(j.error||'Verification failed');
+    _dsarOtpClose();
+    _showDsarConfirm(!!j.already);
+  } catch(e){ if(err){ err.textContent='⚠️ '+(e.message||'Verification failed'); err.style.display='block'; } if(btn){ btn.disabled=false; btn.textContent='Verify & submit request'; } }
 }
 function _showDsarConfirm(already){
   var ov=document.getElementById('dsar-confirm-ov'); if(ov) ov.remove();
@@ -15961,21 +15999,38 @@ async function admDsarGenerate(idx){
     showToast('⬇ Export downloaded — review & redact, then Release.');
   } catch(e){ showToast('⚠️ '+((e&&e.message)||'Could not generate export')); }
 }
-async function admDsarRelease(idx){
+// Release: attach the reviewed/redacted export FILE to the email so the customer
+// actually receives their data (not an empty "it's ready" notice). The DPO picks the
+// JSON they prepared from "Generate export"; we email it as an attachment + mark released.
+function admDsarRelease(idx){
   var r = adminDataRequests[idx]; if(!r) return;
-  if(!confirm('Mark RELEASED and email '+(r.user_email||'the user')+' that their export is ready?\n\nMake sure you have already sent them the reviewed/redacted file.')) return;
-  try {
-    var up = await db.from('data_requests').update({ status:'released', handled_by:(currentUser&&currentUser.id)||null, updated_at:new Date().toISOString() }).eq('id', r.id);
-    if(up.error) throw up.error;
-    r.status='released';
-    try {
-      var s=await db.auth.getSession(); var t=s&&s.data&&s.data.session&&s.data.session.access_token;
-      fetch('/api/send-email',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(t||'')},
-        body: JSON.stringify({ type:'data-export-ready', email:r.user_email, name:(r.user_name||'there').split(' ')[0] }) });
-    } catch(e){}
-    adminPage('users', null);
-    showToast('✅ Released — customer emailed.');
-  } catch(e){ showToast('⚠️ '+((e&&e.message)||'Could not release')); }
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json,application/json';
+  inp.onchange = function(){
+    var f = inp.files && inp.files[0]; if(!f) return;
+    if(f.size > 18*1024*1024){ showToast('⚠️ File too big to email (~18MB max). Send a download link instead.'); return; }
+    showToast('📤 Sending export to '+(r.user_email||'user')+'…');
+    var reader = new FileReader();
+    reader.onload = async function(){
+      var b64 = String(reader.result||'').split(',')[1] || '';   // strip the data: prefix
+      if(!b64){ showToast('⚠️ Could not read that file.'); return; }
+      try {
+        var s=await db.auth.getSession(); var t=s&&s.data&&s.data.session&&s.data.session.access_token;
+        var resp=await fetch('/api/send-email',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+(t||'')},
+          body: JSON.stringify({ type:'data-export-ready', email:r.user_email, name:(r.user_name||'there').split(' ')[0],
+            data:{ attachment:{ filename: (f.name||'your-appie-hour-data.json'), content: b64 } } }) });
+        var j=await resp.json().catch(function(){return{};});
+        if(!resp.ok) throw new Error(j.error||'Email failed');
+        var up=await db.from('data_requests').update({ status:'released', handled_by:(currentUser&&currentUser.id)||null, updated_at:new Date().toISOString() }).eq('id', r.id);
+        if(up.error) throw up.error;
+        r.status='released';
+        adminPage('users', null);
+        showToast('✅ Export emailed to '+(r.user_email||'user')+' & marked released.');
+      } catch(e){ showToast('⚠️ '+((e&&e.message)||'Could not release')); }
+    };
+    reader.readAsDataURL(f);
+  };
+  inp.click();
 }
 async function admDsarReject(idx){
   var r = adminDataRequests[idx]; if(!r) return;

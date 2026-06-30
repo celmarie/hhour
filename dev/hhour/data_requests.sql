@@ -1,8 +1,9 @@
--- Data Subject Access Requests (GDPR DSAR queue)
+-- Data Subject Access Requests (GDPR DSAR queue) + email-OTP verification
 -- ---------------------------------------------------------------------------
--- A customer taps "Request my data" → a row lands here as 'pending'. An admin /
--- DPO then verifies identity, generates + redacts the export, and releases it
--- (emailing the customer). Nothing is auto-released — every request is reviewed.
+-- A customer taps "Request my data" → must verify a 6-digit code emailed to their
+-- account address → only then is a 'pending' row created (server-side, after the
+-- code checks out). An admin / DPO then verifies, generates + redacts the export,
+-- and releases it (emailing the customer). Nothing is auto-released.
 --
 -- Safe to run multiple times.
 
@@ -11,10 +12,10 @@ create table if not exists public.data_requests (
   user_id      uuid not null references public.profiles(id) on delete cascade,
   user_email   text,
   user_name    text,
-  type         text not null default 'export',     -- 'export' (extendable: 'erasure', …)
+  type         text not null default 'export',     -- 'export' (extendable)
   status       text not null default 'pending',     -- pending | verifying | ready | released | rejected
-  notes        text,                                -- DPO notes / rejection reason
-  handled_by   uuid,                                -- admin who actioned it
+  notes        text,
+  handled_by   uuid,
   requested_at timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
@@ -23,13 +24,11 @@ create index if not exists data_requests_user_idx   on public.data_requests(user
 
 alter table public.data_requests enable row level security;
 
--- A signed-in user may create their OWN request…
+-- Requests are created ONLY by the server (service role, after OTP) — no client insert.
 drop policy if exists data_requests_insert_own on public.data_requests;
-create policy data_requests_insert_own on public.data_requests
-  for insert to authenticated
-  with check (user_id = auth.uid());
+revoke insert on public.data_requests from authenticated;
 
--- …and read their own; admins read everything.
+-- Users read their own; admins read everything.
 drop policy if exists data_requests_select on public.data_requests;
 create policy data_requests_select on public.data_requests
   for select to authenticated
@@ -45,4 +44,16 @@ create policy data_requests_admin_update on public.data_requests
   using      (coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), '') in ('admin','super_admin'))
   with check (coalesce((auth.jwt() -> 'app_metadata' ->> 'role'), '') in ('admin','super_admin'));
 
-grant select, insert, update on public.data_requests to authenticated;
+grant select, update on public.data_requests to authenticated;
+
+-- One-time email-OTP store for verifying a data request. Touched ONLY by the
+-- server (service role) — RLS is on with no policies, so no client can read/write it.
+create table if not exists public.data_request_otp (
+  user_id    uuid primary key references public.profiles(id) on delete cascade,
+  code_hash  text not null,
+  expires_at timestamptz not null,
+  attempts   int  not null default 0,
+  created_at timestamptz not null default now()
+);
+alter table public.data_request_otp enable row level security;
+revoke all on public.data_request_otp from anon, authenticated;

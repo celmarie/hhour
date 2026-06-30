@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Auth check failed' });
   }
 
-  let subject, html;
+  let subject, html, attachments = null;
 
   // Welcome email for new users
   if (type === 'welcome') {
@@ -145,15 +145,21 @@ export default async function handler(req, res) {
     `;
   }
 
-  // DSAR — export ready (sent by an admin/DPO when releasing the export)
+  // DSAR — export ready (sent by an admin/DPO when releasing the export).
+  // The export file is attached to THIS email (data.attachment = { filename, content:base64 }).
   if (type === 'data-export-ready') {
-    const { note } = data || {};
+    const att = data && data.attachment;
+    const hasFile = att && att.content && att.filename;
+    if (hasFile) {
+      attachments = [{ filename: String(att.filename), content: String(att.content) }];
+    }
     subject = `Your data export is ready`;
     html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h1>Your data export is ready ✅</h1>
         <p>Hi ${name || 'there'},</p>
-        <p>We've verified your request and prepared a copy of your personal data. ${note ? String(note) : 'Your export is attached to / linked from this message, or will follow shortly from our team.'}</p>
+        <p>We've verified your request and prepared a copy of your personal data.</p>
+        <p>${hasFile ? 'Your export is <strong>attached to this email</strong> as a JSON file.' : 'Our team will send your export file to you shortly.'}</p>
         <p style="margin-top: 30px; font-size: 12px; color: #666;">Questions about your data? Just reply to this email.</p>
       </div>
     `;
@@ -169,6 +175,7 @@ export default async function handler(req, res) {
       to: email,
       subject: subject,
       html: html,
+      ...(attachments ? { attachments } : {}),
     });
 
     // Resend SDK v3 returns errors in `error`, not by throwing — surface them.
