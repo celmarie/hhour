@@ -5365,7 +5365,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260630122409';
+var BUILD_VERSION = '20260630123707';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6730,25 +6730,15 @@ async function handleAuthSession(user) {
 // ── DATA ──
 
 
-let alerts = [
-  {id:0,type:'new',icon:'📍',cls:'ai-red',title:'New Happy Hour Near You!',body:'The Golden Tap is offering 50% off. Deal ends in 2 hours.',time:'5 min ago',unread:true,act:true},
-  {id:1,type:'ending',icon:'⏰',cls:'ai-red2',title:'Deal Ending Soon',body:'Sushi Zen happy hour ends in 30 minutes. Don\'t miss out!',time:'15 min ago',unread:true,act:true},
-  {id:2,type:'rewards',icon:'🎁',cls:'ai-purple',title:'You Earned 50 Credits!',body:'Your visit to La Dolce Vita was confirmed. Credits added to your account.',time:'2 hours ago',unread:false,act:true},
-  {id:3,type:'new',icon:'📍',cls:'ai-orange',title:'Premium Deal Unlocked',body:'Cocktail Cloud now available with 60% off premium cocktails.',time:'3 hours ago',unread:false,act:false},
-  {id:4,type:'rewards',icon:'🏆',cls:'ai-green',title:'Explorer Badge Earned!',body:'You\'ve visited 5 different venues this week. Keep it up!',time:'5 hours ago',unread:false,act:false},
-  {id:5,type:'ending',icon:'⏰',cls:'ai-red2',title:'Last Chance: Vino & Co.',body:'Only 30 minutes left on the house wine deal. Go now!',time:'Yesterday',unread:false,act:true},
-];
+// These hold the SIGNED-IN user's personal data, populated from Supabase by
+// loadUserData(). They MUST start empty — seeding them with sample rows leaked
+// fake "your vouchers / notifications / saved" to guests and to any user before
+// their real data loaded (looked like another account's data).
+let alerts = [];
 
-let savedDeals = [
-  {id:0,emoji:'🍺',imgClass:'ci1',img:'https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=400&q=80',name:'The Golden Tap',deal:'2-for-1 cocktails',price:'$4.99',days:'Mon–Fri',hours:'4–7PM'},
-  {id:1,emoji:'🍣',imgClass:'ci2',img:'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&q=80',name:'Sushi Zen',deal:'Half-price sushi sets',price:'$12.99',days:'Daily',hours:'5–8PM'},
-  {id:3,emoji:'🍕',imgClass:'ci4',img:'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80',name:'La Dolce Vita',deal:'Free appetizer with drinks',price:'FREE',days:'Mon–Thu',hours:'4–6PM'},
-];
+let savedDeals = [];
 
-let myVouchers = [
-  {vid:0,code:'HH-M4X9',qty:1,used:false},
-  {vid:2,code:'HH-C3L8',qty:1,used:true},
-];
+let myVouchers = [];
 
 // ── Review store: keyed by deal id ───────────────────────────────────────────
 var dealReviews = {
@@ -14448,7 +14438,8 @@ async function doLogout(){
   currentUser = null; currentProfile = null; isGuest = false; _sessionRouted = false; _pendingLoginScreen = null;
   _lastHandledUserId = null;   // next login is a fresh user → reset will run
   updateGuestVisibility();
-  myVouchers = []; savedDeals = [];
+  myVouchers = []; savedDeals = []; alerts = [];   // clear ALL personal data so it can't bleed into a guest/next session
+  try { comMyEvents = []; } catch(e){}             // RSVP'd events are personal too
   try { meVenueId = null; meVenueName = ''; _meCurrentPage = null; } catch(e){}  // no merchant state bleeds into the next login
   // Reset the profile display so a previous account's name/avatar/email can't
   // linger into the next session (the "Golden Tap + admin@…" mix-up).
