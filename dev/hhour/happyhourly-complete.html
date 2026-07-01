@@ -5301,25 +5301,25 @@ function _loadGT(){
         <div style="font-size:18px;font-weight:800;color:white;flex:1;display:flex;align-items:center;gap:9px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Deals Near You</div>
         <div id="map-deal-count" style="background:rgba(255,255,255,.2);color:white;border-radius:12px;padding:4px 10px;font-size:12px;font-weight:800;"></div>
       </div>
-      <div style="padding:12px 16px;background:white;border-bottom:1px solid var(--border);flex-shrink:0;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-          <button id="filter-verified" onclick="toggleMapFilter('verified')" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #2563EB;background:white;color:#2563EB;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"><div style="width:10px;height:10px;border-radius:50%;background:#2563EB;"></div>Verified</button>
-          <button id="filter-community" onclick="toggleMapFilter('community')" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #E8192C;background:white;color:#E8192C;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"><div style="width:10px;height:10px;border-radius:50%;background:#E8192C;"></div>Community</button>
-          <button id="filter-football" onclick="toggleMapFilter('football')" style="display:none;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #7B2FBE;background:white;color:#7B2FBE;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"><span style="font-size:13px;line-height:1;">⚽</span>Football</button>
-          <div style="margin-left:auto;font-size:10px;color:var(--t3);font-weight:600;white-space:nowrap;">Tap pin to view</div>
+      <!-- Map area: filters float OVER the map (Google-Maps style); no white strip, so the map sits right under the header. -->
+      <div id="map-wrap" style="flex:3 1 0;position:relative;width:100%;min-height:200px;">
+        <div id="deal-map" style="position:absolute;inset:0;width:100%;height:100%;"></div>
+        <div style="position:absolute;top:12px;left:0;right:0;z-index:500;display:flex;justify-content:center;gap:8px;padding:0 12px;pointer-events:none;flex-wrap:wrap;">
+          <button id="filter-verified" onclick="toggleMapFilter('verified')" style="pointer-events:auto;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;border:2px solid #2563EB;background:white;color:#2563EB;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.2);"><div style="width:10px;height:10px;border-radius:50%;background:#2563EB;"></div>Verified</button>
+          <button id="filter-community" onclick="toggleMapFilter('community')" style="pointer-events:auto;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;border:2px solid #E8192C;background:white;color:#E8192C;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.2);"><div style="width:10px;height:10px;border-radius:50%;background:#E8192C;"></div>Community</button>
+          <button id="filter-football" onclick="toggleMapFilter('football')" style="display:none;pointer-events:auto;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;border:2px solid #7B2FBE;background:white;color:#7B2FBE;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.2);"><span style="font-size:13px;line-height:1;">⚽</span>Football</button>
+        </div>
+        <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;pointer-events:none;">
+          <div style="font-size:32px;margin-bottom:8px;">🗺️</div>
+          <div style="font-size:14px;font-weight:700;color:var(--t2);">Loading map…</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:4px;">Getting your location</div>
+        </div>
+        <div id="map-nokey" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;padding:24px;background:white;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.12);">
+          <div style="font-size:40px;margin-bottom:10px;">🔑</div>
+          <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px;">API Key Required</div>
+          <div style="font-size:12px;color:var(--t2);line-height:1.6;">Add your Google Maps key to <code>GMAPS_KEY</code> in the script and reload.</div>
         </div>
       </div>
-      <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;pointer-events:none;">
-        <div style="font-size:32px;margin-bottom:8px;">🗺️</div>
-        <div style="font-size:14px;font-weight:700;color:var(--t2);">Loading map…</div>
-        <div style="font-size:12px;color:var(--t3);margin-top:4px;">Getting your location</div>
-      </div>
-      <div id="map-nokey" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;padding:24px;background:white;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.12);">
-        <div style="font-size:40px;margin-bottom:10px;">🔑</div>
-        <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px;">API Key Required</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.6;">Add your Google Maps key to <code>GMAPS_KEY</code> in the script and reload.</div>
-      </div>
-      <div id="deal-map" style="flex:3 1 0;width:100%;min-height:180px;"></div>
       <!-- Venues within the current map view — like Agoda's map+list. Scrollable, compact cards. -->
       <div id="map-venue-list" style="flex:1 1 0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-top:1px solid var(--border);"></div>
       <div id="map-offline" style="display:none;flex:1;width:100%;min-height:0;overflow-y:auto;background:var(--bg);box-sizing:border-box;"></div>
@@ -5433,7 +5433,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702001047';
+var BUILD_VERSION = '20260702001857';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -30212,7 +30212,8 @@ window.addEventListener('offline', function(){ var s=document.getElementById('sc
 window.addEventListener('online', function(){
   var s=document.getElementById('screen-map'); if(!s || !s.classList.contains('active')) return;
   var o=document.getElementById('map-offline'); if(o) o.style.display='none';
-  var m=document.getElementById('deal-map'); if(m) m.style.display='';
+  var m=document.getElementById('map-wrap'); if(m) m.style.display='';
+  var vl=document.getElementById('map-venue-list'); if(vl) vl.style.display='';
   try { if(typeof _gmapObj!=='undefined' && _gmapObj && _gmapObj.invalidateSize) _gmapObj.invalidateSize(); } catch(e){}
   if(typeof initDealMap==='function') initDealMap();
 });
@@ -30220,15 +30221,18 @@ window.addEventListener('online', function(){
 function initDealMap() {
   // Offline: show the cached nearby-deals list instead of the (unavailable) live map.
   var _mapOff = document.getElementById('map-offline');
-  var _mapEl  = document.getElementById('deal-map');
+  var _mapEl  = document.getElementById('map-wrap');   // the whole map area (map + floating filters)
+  var _mapVl  = document.getElementById('map-venue-list');
   if(!navigator.onLine){
     var _ml = document.getElementById('map-loading'); if(_ml) _ml.style.display = 'none';
     if(_mapEl) _mapEl.style.display = 'none';
+    if(_mapVl) _mapVl.style.display = 'none';
     if(_mapOff){ _mapOff.style.display = 'block'; _renderOfflineMapList(); }
     return;
   }
   if(_mapOff) _mapOff.style.display = 'none';
   if(_mapEl && _mapEl.style.display === 'none') _mapEl.style.display = '';
+  if(_mapVl && _mapVl.style.display === 'none') _mapVl.style.display = '';
   if (GMAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
     document.getElementById('map-loading').style.display = 'none';
     document.getElementById('map-nokey').style.display = 'block';
