@@ -5431,7 +5431,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701212606';
+var BUILD_VERSION = '20260701213153';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -7000,29 +7000,34 @@ function _addrPosition(d, inputEl) {
 
 var _addrValidSuggestions = {}; // Store valid suggestions per input
 
-var _addrSeq = 0;   // request sequence — render only the latest response (kills flicker,
-                    // adds NO delay). No debounce, no new-API attempt: fire immediately.
+var _addrPredTimer = null;   // OWN timer (NOT the _addrTimer used by the map preview — reusing
+                             // that name made the two features clobber each other's timers).
+var _addrSeq = 0;            // render only the latest response → no out-of-order flicker.
 function addrInput(inputId) {
   var inputEl = document.getElementById(inputId);
   var q = inputEl ? inputEl.value.trim() : '';
   _addrDropInputId = inputId;
   var d = document.getElementById('addr-drop');
-  if (!d || !q || q.length < 2) { _addrHideDrop(); return; }
+  if (!d || !q || q.length < 2) { if(_addrPredTimer){ clearTimeout(_addrPredTimer); _addrPredTimer=null; } _addrHideDrop(); return; }
 
   var svc = _addrGetSvc();
   if (!svc) { _loadGMapsAPI(function(){ addrInput(inputId); }); return; }
 
-  var places = google.maps.places;
+  // Light debounce: coalesce keystrokes so we don't fire a Google request AND rebuild the
+  // dropdown on every letter (that per-keystroke pile-up was janking/crashing on mobile).
+  if (_addrPredTimer) clearTimeout(_addrPredTimer);
   var seq = ++_addrSeq;
-  svc.getPlacePredictions({ input: q }, function(preds, status) {
-    if (seq !== _addrSeq || _addrDropInputId !== inputId) return;   // ignore stale/out-of-order
-    if (!preds || status !== places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
-    _addrRender(inputId, preds.map(function(p){
-      return { description: p.description,
-               main: (p.structured_formatting||{}).main_text || p.description.split(',')[0],
-               sec:  (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim() };
-    }), d, inputEl);
-  });
+  _addrPredTimer = setTimeout(function(){
+    svc.getPlacePredictions({ input: q }, function(preds, status) {
+      if (seq !== _addrSeq || _addrDropInputId !== inputId) return;   // ignore stale/out-of-order
+      if (!preds || status !== google.maps.places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
+      _addrRender(inputId, preds.map(function(p){
+        return { description: p.description,
+                 main: (p.structured_formatting||{}).main_text || p.description.split(',')[0],
+                 sec:  (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim() };
+      }), d, inputEl);
+    });
+  }, 140);
 }
 
 // Render normalized suggestions ({description, main, sec}) into the dropdown.
