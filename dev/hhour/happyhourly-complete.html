@@ -470,7 +470,7 @@ textarea.finput{resize:none;height:80px;}
 /* SEARCH OVERLAY */
 .soverlay{position:absolute;inset:0;background:var(--bg);z-index:60;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
 .soverlay.open{transform:translateY(0);}
-.so-top{background:var(--red);padding:14px 18px;display:flex;gap:10px;align-items:center;}
+.so-top{background:var(--red);padding:calc(14px + env(safe-area-inset-top,0px)) 18px 14px;display:flex;gap:10px;align-items:center;}
 .so-inp{flex:1;background:white;border-radius:10px;padding:11px 14px;border:none;outline:none;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--text);}
 .so-cancel{font-size:14px;font-weight:700;color:white;cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;white-space:nowrap;}
 .so-body{flex:1;overflow-y:auto;padding:16px 18px;scrollbar-width:none;}
@@ -5407,7 +5407,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701140716';
+var BUILD_VERSION = '20260701141455';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
