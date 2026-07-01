@@ -5431,7 +5431,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701213940';
+var BUILD_VERSION = '20260701214840';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6949,53 +6949,23 @@ function _addrHideDrop() {
 }
 
 function _addrPosition(d, inputEl) {
-  var r   = inputEl.getBoundingClientRect();
-  // Use visualViewport when available (handles mobile keyboard correctly)
-  var vv  = window.visualViewport;
-  var vvW = vv ? vv.width : window.innerWidth;
-  var vvH = vv ? vv.height : window.innerHeight;
-  var vvOffsetTop  = vv ? vv.offsetTop  : 0;
-  var vvOffsetLeft = vv ? vv.offsetLeft : 0;
-  // Convert to visual-viewport coordinates
-  var top    = r.top    - vvOffsetTop;
-  var bottom = r.bottom - vvOffsetTop;
-  var left   = r.left   - vvOffsetLeft;
-
-  // Ensure dropdown doesn't overflow screen width on mobile
-  var dropWidth = r.width;
-  var maxLeft = vvW - dropWidth;
-  var finalLeft = Math.max(0, Math.min(left, maxLeft));
-
-  d.style.left  = finalLeft + 'px';
-  d.style.width = dropWidth + 'px';
-  d.style.right = 'auto';
-
-  // On mobile, always show BELOW the input field
-  var isMobile = window.innerWidth < 768;
-  var spaceBelow = vvH - bottom;
-
-  if (isMobile) {
-    // Mobile: always show below with scroll if needed
-    d.style.top          = bottom + 'px';
-    d.style.bottom       = 'auto';
-    d.style.maxHeight    = Math.max(200, spaceBelow - 20) + 'px';
-    d.style.borderRadius = '0 0 12px 12px';
-    d.style.overflowY    = 'auto';
-  } else {
-    // Desktop: show above/below based on space
-    var spaceAbove = top;
-    if (spaceBelow >= 120 || spaceBelow >= spaceAbove) {
-      d.style.top          = bottom + 'px';
-      d.style.bottom       = 'auto';
-      d.style.maxHeight    = Math.max(spaceBelow - 8, 80) + 'px';
-      d.style.borderRadius = '0 0 12px 12px';
-    } else {
-      d.style.top          = 'auto';
-      d.style.bottom       = (vvH - top + 4) + 'px';
-      d.style.maxHeight    = Math.min(280, spaceAbove - 8) + 'px';
-      d.style.borderRadius = '12px 12px 0 0';
-    }
-  }
+  // #addr-drop is position:fixed, so getBoundingClientRect() is already in the right
+  // coordinate space — place the dropdown directly BELOW the input. (The old code
+  // subtracted visualViewport.offsetTop, which on iOS with the keyboard open threw the
+  // dropdown up to the top of the screen.)
+  var r  = inputEl.getBoundingClientRect();
+  var vw = document.documentElement.clientWidth || window.innerWidth;
+  var pad = 8;
+  var width = r.width;
+  var left = Math.max(pad, Math.min(r.left, vw - width - pad));
+  d.style.left         = left + 'px';
+  d.style.width        = width + 'px';
+  d.style.right        = 'auto';
+  d.style.top          = r.bottom + 'px';   // just under the field
+  d.style.bottom       = 'auto';
+  d.style.borderRadius = '0 0 12px 12px';
+  d.style.overflowY    = 'auto';
+  d.style.maxHeight    = '240px';           // ~3 rows; scrolls if needed
 }
 
 var _addrValidSuggestions = {}; // Store valid suggestions per input
@@ -7063,7 +7033,7 @@ function _addrGoogleFallback(inputId, q, seq, d, inputEl) {
 function _addrRender(inputId, items, d, inputEl) {
   _addrValidSuggestions[inputId] = items.map(function(p){ return p.description; });
   var pin = '<svg width="16" height="20" viewBox="0 0 24 24" fill="#9E9E9E" style="flex-shrink:0;margin-top:1px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
-  d.innerHTML = items.slice(0,8).map(function(p,i){
+  d.innerHTML = items.slice(0,3).map(function(p,i){
     var main = p.main || (p.description||'').split(',')[0];
     var sec  = p.sec || '';
     var esc  = (p.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
