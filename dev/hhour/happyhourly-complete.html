@@ -5433,7 +5433,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702011128';
+var BUILD_VERSION = '20260702015340';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5773,6 +5773,15 @@ function _applyLoginPrefill(){
           u.value = em;
           var p = document.getElementById('login-pass'); if(p) setTimeout(function(){ try{ p.focus(); }catch(e){} }, 250);
         }
+      }
+    }
+    // Remember me: prefill the saved email (customer login) and tick the box.
+    if(tab !== 'merchant'){
+      var _rmEmail=''; try { _rmEmail = localStorage.getItem('hh_login_remember') || ''; } catch(e){}
+      var _u = document.getElementById('login-user');
+      if(_rmEmail && _u && !_u.value){
+        _u.value = _rmEmail;
+        var _rmk = document.getElementById('login-remember'); if(_rmk) _rmk.checked = true;
       }
     }
   }catch(e){}
@@ -7806,8 +7815,9 @@ function applyAppCategories(){
     fCats.innerHTML = '<div class="f-cat-chip f-sel" onclick="fToggleCat(this)" data-val="all" style="padding:12px 8px;text-align:center;cursor:pointer;"><div style="font-size:20px;margin-bottom:4px;">🍹</div><div style="font-size:11px;font-weight:700;">All</div></div>'
       + appCategories.map(function(c){return '<div class="f-cat-chip" onclick="fToggleCat(this)" data-val="'+c.id+'" style="padding:12px 8px;text-align:center;cursor:pointer;"><div style="font-size:20px;margin-bottom:4px;">'+c.emoji+'</div><div style="font-size:11px;font-weight:700;">'+c.label+'</div></div>';}).join('');
   }
-  // Merchant + community create-deal selects
-  ['me-deal-cat','uc-deal-cat'].forEach(function(selId){
+  // Merchant + community create-deal selects + admin edit-deal select
+  // (adm-edit-cat was left on the legacy hardcoded categories — keep it in sync too).
+  ['me-deal-cat','uc-deal-cat','adm-edit-cat'].forEach(function(selId){
     var sel = document.getElementById(selId);
     if(!sel) return;
     var cur = sel.value;
@@ -14466,15 +14476,11 @@ var _loginMode = 'signin';
 
 function _updateSignupCta(){
   var cta=document.getElementById('login-signup-cta'); if(!cta) return;
-  if(loginRole==='admin' || loginRole==='merchant'){ cta.style.display='none'; return; }   // admins + merchants don't self-register here
+  // Only shown in SIGN-UP mode now — the "Create Account" button (below Continue as
+  // Guest) is the entry into signup; this link is just the way back to sign-in.
+  if(_loginMode!=='signup' || loginRole==='admin' || loginRole==='merchant'){ cta.style.display='none'; return; }
   cta.style.display='block';
-  if(_loginMode==='signup'){
-    cta.textContent = 'Already have an account? Sign in';
-  } else if(loginRole==='merchant'){
-    cta.textContent = '🏪 Own a venue? Register your business →';
-  } else {
-    cta.textContent = 'New to Appie Hour? Create an account →';
-  }
+  cta.textContent = 'Already have an account? Sign in';
 }
 function switchAuthMode(mode){
   _loginMode = mode;
@@ -14495,8 +14501,22 @@ function switchAuthMode(mode){
   if(lastEl){ lastEl.style.display = (isSU && !isMerchant) ? 'block' : 'none'; }
   if(dobWrap){ dobWrap.style.display = (isSU && !isMerchant) ? 'block' : 'none'; }
   if(confirmEl){ confirmEl.style.display = isSU ? 'block' : 'none'; }
-  var forgotWrap = document.getElementById('login-forgot-wrap');
-  if(forgotWrap){ forgotWrap.style.display = isSU ? 'none' : 'block'; }
+  // Split-login layout: the "or / Google / Guest / Create Account" block + the
+  // remember-me row belong to SIGN-IN only. In signup mode we show just the form +
+  // a "back to sign in" link. (Customer-only; admin has none of these.)
+  var isCust = (loginRole === 'customer');
+  var rememberRow = document.getElementById('login-remember-row');
+  if(rememberRow){ rememberRow.style.display = isSU ? 'none' : 'flex'; }
+  var guestB = document.getElementById('guest-btn');
+  if(guestB){ guestB.style.display = (!isSU && isCust) ? 'flex' : 'none'; }
+  var createB = document.getElementById('create-acct-btn');
+  if(createB){ createB.style.display = (!isSU && isCust) ? 'block' : 'none'; }
+  var gsiB = document.getElementById('gsi-button');
+  if(gsiB){ gsiB.style.display = (!isSU && isCust) ? 'flex' : 'none'; }
+  var orB = document.getElementById('login-or-div');
+  if(orB){ orB.style.display = (!isSU && isCust) ? 'flex' : 'none'; }
+  var ggB = document.getElementById('google-btn');
+  if(ggB && isSU){ ggB.style.display = 'none'; }
   if(btn) btn.textContent = isSU ? (loginRole==='merchant' ? 'Register Business' : 'Create Account') : 'Sign In';
   if(modeSI){ modeSI.style.background = isSU ? 'none' : '#fff'; modeSI.style.color = isSU ? '#9b8b86' : '#1A1A1A'; modeSI.style.boxShadow = isSU ? 'none' : '0 2px 8px rgba(0,0,0,.06)'; }
   if(modeSU){ modeSU.style.background = isSU ? '#fff' : 'none'; modeSU.style.color = isSU ? '#1A1A1A' : '#9b8b86'; modeSU.style.boxShadow = isSU ? '0 2px 8px rgba(0,0,0,.06)' : 'none'; }
@@ -14627,7 +14647,7 @@ function switchLoginTab(role){
   // Title reflects the active login (separation per access rights)
   // #login-screen now only ever shows customer or admin (merchant returned early → green).
   var _mt=document.getElementById('login-mode-title');
-  if(_mt) _mt.textContent = role==='admin' ? '🛡 Admin login — staff only' : "hey, welcome! 👋";
+  if(_mt) _mt.textContent = role==='admin' ? '🛡 Admin login — staff only' : "Hey, welcome! 👋";
   // Demo credentials are intentionally NOT shown — the app is live.
   var _dh=document.getElementById('login-demo-hint');
   if(_dh){ _dh.innerHTML=''; _dh.style.display='none'; }
@@ -14897,6 +14917,9 @@ async function doLogin(captchaId){
     var u = (document.getElementById('login-user').value || '').trim();
     var p = (document.getElementById('login-pass').value || '').trim();
     var errEl = document.getElementById('login-error');
+
+    // Remember me → persist the email so it's prefilled next time (never the password).
+    try { var _rmk=document.getElementById('login-remember'); if(_rmk){ if(_rmk.checked && u){ localStorage.setItem('hh_login_remember', u); } else if(!_rmk.checked){ localStorage.removeItem('hh_login_remember'); } } } catch(e){}
 
     console.log('Email:', u, 'Pass length:', p.length);
 
@@ -20977,7 +21000,7 @@ function adminOpenDealReview(id, source){
     document.getElementById('adm-edit-currency').value = deal.currency||'EUR';
     document.getElementById('adm-edit-price').value = deal.price||'';
     document.getElementById('adm-edit-was').value = deal.wasPrice||'';
-    document.getElementById('adm-edit-cat').value = deal.cat||'bars';
+    document.getElementById('adm-edit-cat').value = _canonCat(deal.cat);
     document.getElementById('adm-edit-website').value = deal.website||deal.social||'';
     document.getElementById('adm-edit-date-start').value = deal.start_date||'';
     document.getElementById('adm-edit-date-end').value = deal.end_date||'';
@@ -21195,7 +21218,7 @@ function adminReviewDeal(id){
     document.getElementById('adm-edit-venue').value = deal.venue||deal.name||'';
     document.getElementById('adm-edit-address').value = deal.address||'';
     document.getElementById('adm-edit-emoji').value = deal.emoji||'';
-    document.getElementById('adm-edit-cat').value = deal.cat||'bars';
+    document.getElementById('adm-edit-cat').value = _canonCat(deal.cat);
     document.getElementById('adm-edit-currency').value = deal.currency||'EUR';
     document.getElementById('adm-edit-price').value = deal.price||'';
     document.getElementById('adm-edit-was').value = deal.wasPrice||'';
@@ -31227,121 +31250,150 @@ function _setupDealMap() {
   #login-screen .hh-blob, #login-screen .hh-emoji, #merchant-login-screen .ml-blob{ display:none !important; }
 </style>
 <style>
-  /* Compact the consumer login on phones so the whole form fits one screen (no scroll). */
-  @media (max-width: 600px){
-    #login-screen{ padding-top:calc(12px + env(safe-area-inset-top,0px)) !important; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)) !important; justify-content:safe center; }
-    #hh-login-card{ padding:18px 24px 16px !important; border-radius:24px !important; }
-    #lg-logo-wrap{ margin-bottom:8px !important; }
-    #hh-logo-badge{ width:104px !important; }
-    #login-mode-title{ margin-top:3px !important; font-size:13px !important; }
-    #auth-mode-wrap{ margin-bottom:11px !important; padding:4px !important; }
-    #auth-mode-wrap button{ padding:9px !important; }
-    #lg-fields{ gap:8px !important; margin-bottom:9px !important; }
-    #login-screen input:not([type=checkbox]){ padding-top:13px !important; padding-bottom:13px !important; }
-    #login-error{ min-height:0 !important; margin-bottom:4px !important; }
-    #captcha-box{ margin-bottom:8px !important; }
-    #signin-btn{ padding:14px !important; margin-bottom:7px !important; }
-    #login-forgot-wrap{ margin-bottom:7px !important; }
-    #login-or-div{ margin:0 0 8px !important; }
-    #gsi-button{ margin-bottom:8px !important; }
-    #google-btn{ padding:11px !important; margin-bottom:8px !important; }
-    #guest-btn{ padding:11px !important; margin-bottom:8px !important; }
-    #login-role-links{ margin-top:8px !important; }
+  /* ══ Split login: red brand panel (left) + white form (right) ══════════════
+     Mobile-first, matches the Appie Hour brand mockup. Overrides the older
+     glass-card rules above via higher (2-id) specificity. */
+  #login-screen{ background:#fff !important; }
+  /* Form inputs on the white panel: solid light fill + visible border
+     (defeats the translucent-glass input rules defined earlier). */
+  #login-screen #lg-right input:not([type=checkbox]){
+    background:#F5F5F7 !important; border:1.5px solid #E6E4EA !important; color:#1A1A1A !important;
+    -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
   }
+  #login-screen #lg-right input:not([type=checkbox])::placeholder{ color:#A79C92 !important; }
+  #login-screen #lg-right input:not([type=checkbox]):focus{
+    border-color:#E01F34 !important; box-shadow:0 0 0 3px rgba(224,31,52,.14) !important; background:#fff !important;
+  }
+  /* Neutralise the old warm-glass card chrome — the form now floats on white. */
+  #login-screen #lg-right #hh-login-card{
+    background:transparent !important; border:none !important; box-shadow:none !important;
+    -webkit-backdrop-filter:none !important; backdrop-filter:none !important; padding:0 !important;
+  }
+  /* Roomier form on small phones by trimming the red panel a touch. */
+  @media (max-width:380px){
+    #lg-left{ flex-basis:37% !important; }
+    #lg-brand-name{ font-size:21px !important; }
+    #lg-tagline{ font-size:13px !important; }
+    #lg-cocktail{ font-size:84px !important; }
+    #login-screen #lg-right input:not([type=checkbox]){ font-size:14px !important; }
+    #login-screen #lg-right #login-pass{ padding-left:38px !important; padding-right:42px !important; }
+  }
+  /* Short/landscape viewports: drop the decorative cocktail so the brand text isn't clipped. */
+  @media (max-height:480px){
+    #lg-cocktail-wrap{ display:none !important; }
+    #lg-left{ justify-content:center !important; padding-bottom:24px !important; }
+  }
+  @media (prefers-reduced-motion: reduce){ #lg-cocktail{ animation:none !important; } }
 </style>
-<div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:none;flex-direction:column;align-items:center;justify-content:safe center;padding:26px 20px calc(26px + env(safe-area-inset-bottom, 0px));font-family:'Inter',sans-serif;overflow-y:auto;background:linear-gradient(165deg,#FFF7EF 0%,#FFE9D8 48%,#FFD9C2 100%);">
+<div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:none;flex-direction:row;align-items:stretch;justify-content:center;font-family:'Inter',sans-serif;overflow:hidden;background:#fff;">
 
-  <!-- playful drifting color blobs -->
-  <div class="hh-blob" style="top:-60px;left:-50px;width:260px;height:260px;background:radial-gradient(circle,rgba(255,138,61,.45),transparent 70%);"></div>
-  <div class="hh-blob" style="bottom:-70px;right:-50px;width:300px;height:300px;background:radial-gradient(circle,rgba(255,90,120,.32),transparent 70%);animation-delay:-6s;"></div>
-  <div class="hh-blob" style="top:42%;left:-80px;width:200px;height:200px;background:radial-gradient(circle,rgba(255,205,80,.4),transparent 70%);animation-delay:-3s;"></div>
-
-  <!-- floating drink emojis -->
-  <div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
-    <span class="hh-emoji" style="left:10%;font-size:26px;animation-duration:22s;animation-delay:0s;">🍹</span>
-    <span class="hh-emoji" style="left:30%;font-size:20px;animation-duration:26s;animation-delay:7s;">🍸</span>
-    <span class="hh-emoji" style="left:52%;font-size:30px;animation-duration:24s;animation-delay:3s;">🍻</span>
-    <span class="hh-emoji" style="left:72%;font-size:22px;animation-duration:28s;animation-delay:10s;">🍷</span>
-    <span class="hh-emoji" style="left:88%;font-size:18px;animation-duration:21s;animation-delay:14s;">🍾</span>
-    <span class="hh-emoji" style="left:42%;font-size:24px;animation-duration:30s;animation-delay:17s;">🍊</span>
+  <!-- ══ LEFT: red brand panel ══ -->
+  <div id="lg-left" style="flex:0 0 42%;max-width:220px;position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;color:#fff;background:linear-gradient(165deg,#F5273C 0%,#D6122E 52%,#A50C24 100%);padding:calc(env(safe-area-inset-top,0px) + 46px) 14px 0;overflow:hidden;">
+    <!-- location pin (white) with Appie sparkle (red) -->
+    <div style="filter:drop-shadow(0 10px 22px rgba(0,0,0,.28));margin-bottom:14px;">
+      <svg width="56" height="72" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M29 2C14.6 2 3 13.4 3 27.4 3 45.6 29 72 29 72s26-26.4 26-44.6C55 13.4 43.4 2 29 2Z" fill="#fff"/>
+        <path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#E01F34"/>
+      </svg>
+    </div>
+    <div id="lg-brand-name" style="font-size:25px;font-weight:900;letter-spacing:-.4px;line-height:1;margin-bottom:16px;">Appie Hour</div>
+    <div id="lg-tagline" style="font-size:14.5px;font-weight:600;line-height:1.5;opacity:.96;">Find &amp; share the best happy hours near you.</div>
+    <!-- cocktail hero anchored to the bottom -->
+    <div id="lg-cocktail-wrap" style="margin-top:auto;position:relative;width:100%;height:150px;">
+      <div style="position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:160px;height:160px;background:radial-gradient(circle,rgba(255,222,150,.42),transparent 66%);"></div>
+      <div id="lg-cocktail" style="position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);font-size:104px;line-height:1;filter:drop-shadow(0 -4px 18px rgba(0,0,0,.3));">🍹</div>
+    </div>
   </div>
 
-  <!-- friendly white card -->
-  <div id="hh-login-card" style="position:relative;width:100%;max-width:392px;background:#fff;border:1px solid #FBEEE4;border-radius:30px;padding:36px 28px 28px;box-shadow:0 30px 70px rgba(214,118,60,.22),0 6px 18px rgba(0,0,0,.05);">
+  <!-- ══ RIGHT: white form panel ══ -->
+  <div id="lg-right" style="flex:1 1 auto;min-width:0;background:#fff;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:safe center;padding:calc(env(safe-area-inset-top,0px) + 30px) 20px calc(env(safe-area-inset-bottom,0px) + 26px);">
+    <div id="hh-login-card" style="width:100%;max-width:360px;margin:0 auto;">
 
-    <!-- logo + title -->
-    <div id="lg-logo-wrap" class="hh-stagger" style="text-align:center;margin-bottom:22px;animation-delay:.1s;">
-      <img id="hh-logo-badge" src="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-logo.png?v=3" alt="Appie Hour" style="width:150px;height:auto;margin:0 auto 4px;display:block;">
-      <div id="login-mode-title" style="font-size:14px;color:#8A7B72;font-weight:600;margin-top:6px;">hey, welcome! 👋</div>
-    </div>
+      <!-- welcome title -->
+      <div id="login-mode-title" style="font-size:21px;font-weight:800;color:#1A1A1A;letter-spacing:-.3px;margin-bottom:20px;">Hey, welcome! 👋</div>
 
-    <!-- Sign In / Sign Up toggle — customer only -->
-    <div id="auth-mode-wrap" class="hh-stagger" style="display:flex;background:#F4ECE4;border-radius:14px;padding:5px;margin-bottom:18px;animation-delay:.18s;">
-      <button id="mode-signin" onclick="switchAuthMode('signin')" style="flex:1;padding:10px;border-radius:10px;background:#fff;border:none;font-size:13.5px;font-weight:800;color:#1A1A1A;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.06);transition:all .2s;">Sign In</button>
-      <button id="mode-signup" onclick="switchAuthMode('signup')" style="flex:1;padding:10px;border-radius:10px;background:none;border:none;font-size:13.5px;font-weight:700;color:#9b8b86;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;">Create Account</button>
-    </div>
-
-    <!-- Input fields -->
-    <div id="lg-fields" class="hh-stagger" style="display:flex;flex-direction:column;gap:11px;margin-bottom:14px;animation-delay:.26s;">
-      <div id="signup-name-row" style="display:none;gap:11px;">
-        <input id="signup-first" type="text" disabled placeholder="First name" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="given-name">
-        <input id="signup-last" type="text" disabled placeholder="Last name" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="family-name">
+      <!-- Input fields -->
+      <div id="lg-fields" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;">
+        <div id="signup-name-row" style="display:none;gap:10px;">
+          <input id="signup-first" type="text" disabled placeholder="First name" style="flex:1 1 0;min-width:0;background:#F5F5F7;border:1.5px solid #E6E4EA;border-radius:14px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="given-name">
+          <input id="signup-last" type="text" disabled placeholder="Last name" style="flex:1 1 0;min-width:0;background:#F5F5F7;border:1.5px solid #E6E4EA;border-radius:14px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="family-name">
+        </div>
+        <div id="signup-dob-wrap" style="display:none;">
+          <label style="display:block;font-size:11px;font-weight:700;color:#8A7B72;margin:0 0 5px 4px;">Date of birth (for age verification)</label>
+          <input id="signup-dob" type="date" style="width:100%;background:#F5F5F7;border:1.5px solid #E6E4EA;border-radius:14px;padding:13px 16px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;">
+        </div>
+        <!-- email (mail icon on the left) -->
+        <div style="position:relative;">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);display:flex;pointer-events:none;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B8ABA0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          </span>
+          <input id="login-user" type="hidden" data-pwfield="1" data-ot="email" disabled placeholder="Email address" style="width:100%;background:#F5F5F7;border:1.5px solid #E6E4EA;border-radius:14px;padding:14px 16px 14px 42px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="email">
+        </div>
+        <!-- password (lock icon left, show/hide eye right) -->
+        <div style="position:relative;">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);display:flex;pointer-events:none;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B8ABA0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          </span>
+          <input id="login-pass" type="hidden" data-pwfield="1" data-ot="password" disabled placeholder="Password" style="width:100%;background:#F5F5F7;border:1.5px solid #E6E4EA;border-radius:14px;padding:14px 46px 14px 42px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
+          <button type="button" onclick="togglePw('login-pass')" title="Show / hide password" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.04);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8A7B72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <input id="signup-confirm" type="hidden" data-pwfield="1" data-ot="password" disabled placeholder="Confirm password" style="display:none;width:100%;background:#F5F5F7;border:1.5px solid #E6E4EA;border-radius:14px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')doSignUp()">
       </div>
-      <div id="signup-dob-wrap" style="display:none;">
-        <label style="display:block;font-size:11px;font-weight:700;color:#8A7B72;margin:0 0 5px 4px;">Date of birth (for age verification)</label>
-        <input id="signup-dob" type="date" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;">
+
+      <!-- Remember me + Forgot password (sign-in only) -->
+      <div id="login-remember-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#6B5D54;cursor:pointer;">
+          <input type="checkbox" id="login-remember" style="width:16px;height:16px;accent-color:#E01F34;cursor:pointer;flex-shrink:0;"> Remember me
+        </label>
+        <a onclick="custForgotPassword()" style="font-size:13px;font-weight:700;color:#E01F34;cursor:pointer;white-space:nowrap;">Forgot password?</a>
       </div>
-      <input id="login-user" type="hidden" data-pwfield="1" data-ot="email" disabled placeholder="Email address" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" autocomplete="email">
-      <div style="position:relative;">
-        <input id="login-pass" type="hidden" data-pwfield="1" data-ot="password" disabled placeholder="Password" style="width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 48px 15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')_loginMode==='signup'?doSignUp():doLogin()">
-        <button type="button" onclick="togglePw('login-pass')" title="Show / hide password" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.04);border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A7B72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
+
+      <div id="login-error" style="color:#E8192C;font-size:13px;font-weight:700;margin-bottom:8px;min-height:0;text-align:center;"></div>
+      <div id="captcha-box" style="display:none;justify-content:center;margin-bottom:10px;"></div>
+
+      <!-- Sign In (solid red) -->
+      <button type="button" id="signin-btn" onclick="_loginMode==='signup'?doSignUp():doLogin()" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 14px 30px rgba(214,18,46,.42)'" onmouseout="this.style.transform='';this.style.boxShadow='0 10px 24px rgba(214,18,46,.32)'" style="position:relative;overflow:hidden;width:100%;background:linear-gradient(135deg,#F5273C,#D6122E);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;box-shadow:0 10px 24px rgba(214,18,46,.32);transition:transform .15s,box-shadow .2s;">Sign In</button>
+
+      <!-- OR divider (customer only) -->
+      <div id="login-or-div" style="display:flex;align-items:center;gap:10px;margin:0 0 14px;">
+        <div style="flex:1;height:1px;background:#EDE3DA;"></div>
+        <div style="font-size:11px;font-weight:700;color:#9b8b86;">or</div>
+        <div style="flex:1;height:1px;background:#EDE3DA;"></div>
       </div>
-      <input id="signup-confirm" type="hidden" data-pwfield="1" data-ot="password" disabled placeholder="Confirm password" style="display:none;width:100%;background:#FAF5F0;border:1.5px solid #EFE5DB;border-radius:15px;padding:15px 16px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:600;color:#2A2018;outline:none;box-sizing:border-box;transition:border-color .2s,box-shadow .2s,background .2s;" onkeydown="if(event.key==='Enter')doSignUp()">
+
+      <!-- Continue with Google (customer only) — Google Identity Services renders here -->
+      <div id="gsi-button" style="display:flex;justify-content:center;margin-bottom:12px;min-height:44px;"></div>
+
+      <!-- Fallback redirect button — shown only if GIS can't load -->
+      <button type="button" id="google-btn" onclick="loginWithGoogleRedirect()" style="display:none;width:100%;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1.5px solid #E2D8CE;border-radius:14px;padding:12px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;transition:box-shadow .2s,background .2s;" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)';this.style.background='#FCFAF8'" onmouseout="this.style.boxShadow='none';this.style.background='#fff'">
+        <svg width="18" height="18" viewBox="0 0 18 18" style="flex-shrink:0;"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.41 5.41 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+        Sign in another way
+      </button>
+
+      <!-- Continue as Guest (customer only) -->
+      <button type="button" id="guest-btn" onclick="doGuestLogin()" style="width:100%;align-items:center;justify-content:center;gap:9px;background:#fff;color:#4A4A4A;border:1.5px solid #E6E4EA;border-radius:14px;padding:12px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;display:flex;transition:background .2s;" onmouseover="this.style.background='#FAF8F6'" onmouseout="this.style.background='#fff'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#E01F34" style="flex-shrink:0;"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6Z"/></svg>
+        Continue as Guest
+      </button>
+
+      <!-- Create Account (below Continue as Guest, per request) -->
+      <button type="button" id="create-acct-btn" onclick="switchAuthMode('signup')" style="width:100%;background:#fff;color:#D6122E;border:1.5px solid #F3C9CF;border-radius:14px;padding:12px;font-size:14.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s,border-color .2s;" onmouseover="this.style.background='#FFF4F5';this.style.borderColor='#EDA9B2'" onmouseout="this.style.background='#fff';this.style.borderColor='#F3C9CF'">Create Account</button>
+
+      <!-- Back to sign-in link (signup mode only) -->
+      <div id="login-signup-cta" onclick="switchAuthMode('signin')" style="display:none;text-align:center;margin-top:10px;font-size:13px;font-weight:700;color:#D6122E;cursor:pointer;"></div>
+
+      <div id="login-demo-hint" style="display:none;"></div>
+
+      <!-- Role login links (admin ↔ customer) -->
+      <div id="login-role-links" style="display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:16px;">
+        <!-- Merchant login link removed from the consumer login: merchants use the dedicated
+             green merchant login at /merchant (reached via the "For Businesses" links). -->
+        <div id="link-admin"    class="hh-rolelink" onclick="switchLoginTab('admin')"    style="display:none;font-size:12.5px;font-weight:700;color:#8A7B72;cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid rgba(180,140,110,.25);background:rgba(255,255,255,.5);">🛡 Admin login</div>
+        <div id="link-customer" class="hh-rolelink" onclick="switchLoginTab('customer')" style="display:none;font-size:12.5px;font-weight:700;color:#8A7B72;cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid rgba(180,140,110,.25);background:rgba(255,255,255,.5);">← Customer login</div>
+      </div>
     </div>
-
-    <div id="login-error" style="color:#E8192C;font-size:13px;font-weight:700;margin-bottom:10px;min-height:18px;text-align:center;"></div>
-    <div id="captcha-box" style="display:none;justify-content:center;margin-bottom:12px;"></div>
-
-    <button type="button" id="signin-btn" onclick="_loginMode==='signup'?doSignUp():doLogin()" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 16px 34px rgba(255,107,53,.5)'" onmouseout="this.style.transform='';this.style.boxShadow='0 10px 26px rgba(255,107,53,.4)'" style="width:100%;background:linear-gradient(135deg,#FF5A5F,#FF7A33 60%,#FF9E3D);color:white;border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:11px;box-shadow:0 10px 26px rgba(255,107,53,.4);transition:transform .15s,box-shadow .2s;">Sign In</button>
-
-    <!-- Forgot password (customer, sign-in mode only) -->
-    <div id="login-forgot-wrap" style="text-align:center;margin-bottom:14px;">
-      <a onclick="custForgotPassword()" style="font-size:13.5px;font-weight:700;color:#C2410C;cursor:pointer;">Forgot your password?</a>
-    </div>
-
-    <!-- OR divider (customer only) -->
-    <div id="login-or-div" style="display:flex;align-items:center;gap:10px;margin:2px 0 12px;">
-      <div style="flex:1;height:1px;background:#EDE3DA;"></div>
-      <div style="font-size:11px;font-weight:700;color:#6B5D54;">or</div>
-      <div style="flex:1;height:1px;background:#EDE3DA;"></div>
-    </div>
-
-    <!-- Continue with Google (customer only) — Google Identity Services renders here -->
-    <div id="gsi-button" style="display:flex;justify-content:center;margin-bottom:12px;min-height:44px;"></div>
-
-    <!-- Fallback redirect button — shown only if GIS can't load -->
-    <button type="button" id="google-btn" onclick="loginWithGoogleRedirect()" style="display:none;width:100%;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1.5px solid #E2D8CE;border-radius:16px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;transition:box-shadow .2s,background .2s;" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)';this.style.background='#FCFAF8'" onmouseout="this.style.boxShadow='none';this.style.background='#fff'">
-      <svg width="18" height="18" viewBox="0 0 18 18" style="flex-shrink:0;"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.41 5.41 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
-      Sign in another way
-    </button>
-
-    <button type="button" id="guest-btn" onclick="doGuestLogin()" style="width:100%;background:#F4ECE4;color:#6B5D54;border:1.5px solid #EFE2D6;border-radius:16px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;transition:background .2s;" onmouseover="this.style.background='#EADFD3'" onmouseout="this.style.background='#F4ECE4'">👤 Continue as Guest</button>
-
-    <!-- Removed "New to Appie Hour? Create an account" CTA — duplicated the Create Account tab. -->
-
-    <div id="login-demo-hint" style="display:none;"></div>
-  </div>
-
-
-  <!-- Role login links — in normal flow below the card (centered) so they never
-       overlap the signup CTA on a tall login form -->
-  <div id="login-role-links" style="display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:12px;">
-    <!-- Merchant login link removed from the consumer login: merchants use the dedicated
-         green merchant login at /merchant (reached via the "For Businesses" links). -->
-    <div id="link-admin"    class="hh-rolelink" onclick="switchLoginTab('admin')"    style="display:none;font-size:12.5px;font-weight:700;color:#8A7B72;cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid rgba(180,140,110,.25);background:rgba(255,255,255,.5);">🛡 Admin login</div>
-    <div id="link-customer" class="hh-rolelink" onclick="switchLoginTab('customer')" style="display:none;font-size:12.5px;font-weight:700;color:#8A7B72;cursor:pointer;padding:6px 12px;border-radius:20px;border:1px solid rgba(180,140,110,.25);background:rgba(255,255,255,.5);">← Customer login</div>
   </div>
 </div>
 
