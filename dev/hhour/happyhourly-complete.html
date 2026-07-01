@@ -3969,8 +3969,20 @@ function _loadGT(){
       </div>
       <div class="post-body">
 
+        <!-- EDIT MODE BANNER (shown only when editing an under-review submission) -->
+        <div id="uc-edit-banner" style="display:none;background:rgba(217,119,6,.08);border:1.5px solid rgba(217,119,6,.25);border-radius:14px;padding:12px 14px;margin-bottom:16px;align-items:center;gap:10px;justify-content:space-between;">
+          <div style="display:flex;gap:10px;align-items:center;min-width:0;">
+            <div style="font-size:20px;flex-shrink:0;">✏️</div>
+            <div style="min-width:0;">
+              <div style="font-size:13px;font-weight:800;color:#B45309;">Editing your submission</div>
+              <div style="font-size:11.5px;color:#B45309;font-weight:500;margin-top:2px;">Changes stay under review until an admin approves.</div>
+            </div>
+          </div>
+          <button onclick="ucCancelEdit()" style="flex-shrink:0;background:white;border:1.5px solid rgba(217,119,6,.3);color:#B45309;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>
+        </div>
+
         <!-- REVIEW PROCESS BANNER -->
-        <div style="background:rgba(37,99,235,.06);border:1.5px solid rgba(37,99,235,.15);border-radius:14px;padding:12px 14px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start;">
+        <div id="uc-review-banner" style="background:rgba(37,99,235,.06);border:1.5px solid rgba(37,99,235,.15);border-radius:14px;padding:12px 14px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start;">
           <div style="font-size:20px;flex-shrink:0;">📋</div>
           <div>
             <div style="font-size:13px;font-weight:800;color:#1D4ED8;margin-bottom:3px;">Deals go through admin review</div>
@@ -4112,7 +4124,7 @@ function _loadGT(){
           </div>
         </div>
 
-        <button onclick="submitDeal()" style="width:100%;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 16px rgba(232,25,44,.35);margin-bottom:10px;">🎉 Submit Deal</button>
+        <button id="uc-submit-btn" onclick="submitDeal()" style="width:100%;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 16px rgba(232,25,44,.35);margin-bottom:10px;">🎉 Submit Deal</button>
         <button onclick="goBack()" style="width:100%;background:white;color:#555;border:1.5px solid #E8E8EC;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:20px;">Cancel</button>
 
         <!-- MY SUBMISSIONS STATUS -->
@@ -5410,7 +5422,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701145204';
+var BUILD_VERSION = '20260701154454';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -13234,12 +13246,16 @@ function mcFilter(status, btn) {
     var rawImg = d.image_url || '';
     var imgSrc = rawImg.startsWith('[') ? (function(){ try{ return JSON.parse(rawImg)[0]||''; }catch(e){ return ''; } })() : rawImg;
     var localId = (d.id || 0) + 10000;
+    var isEditable = (d.status === 'pending' || d.status === 'verifying') && !!d.id;
     var clickFn = d.status === 'approved'
       ? 'openUCDeal(' + localId + ')'
-      : d.status === 'pending'
-        ? 'showToast(\'⏳ Your deal is still under review\')'
+      : isEditable
+        ? 'mcEditDeal(' + d.id + ')'
         : 'mcOpenRejectedDetail(' + d.id + ')';
     var isLast = idx === filtered.length - 1;
+    var trailing = isEditable
+      ? '<div style="flex-shrink:0;background:rgba(217,119,6,.1);color:#B45309;font-size:11px;font-weight:800;padding:6px 11px;border-radius:9px;">✏️ Edit</div>'
+      : '<div style="font-size:18px;color:#C7C7CC;flex-shrink:0;font-weight:300;">›</div>';
 
     return '<div onclick="' + clickFn + '" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:white;cursor:pointer;border-bottom:'+(isLast?'none':'1px solid #F0F0F4')+';active:background:#F5F5F7;" ontouchstart="this.style.background=\'#F5F5F7\'" ontouchend="this.style.background=\'white\'">'
       // Thumbnail
@@ -13255,8 +13271,8 @@ function mcFilter(status, btn) {
           +(ago ? '<span style="font-size:10px;color:#9A9AB0;font-weight:500;">'+ago+'</span>' : '')
         +'</div>'
       +'</div>'
-      // Chevron
-      +'<div style="font-size:18px;color:#C7C7CC;flex-shrink:0;font-weight:300;">›</div>'
+      // Trailing action — "✏️ Edit" for under-review deals, chevron otherwise
+      +trailing
     +'</div>';
   }).join('') + '</div>';
 }
@@ -13358,7 +13374,7 @@ function _submitDealInner(){
   if(!addr){showToast('Please enter an address 📍');return;}
   // Duplicate checker — venue NAME + ADDRESS together (chains share names across
   // addresses, so only the same name AT the same address is a real duplicate).
-  if(_isDupVenue(v, addr)){ showVenueDupError(v, 'deal'); return; }
+  if(!window._ucEditingId && _isDupVenue(v, addr)){ showVenueDupError(v, 'deal'); return; }
   if(!title){showToast('Please enter a deal title 📝');return;}
 
   var catEl=document.getElementById('uc-deal-cat');
@@ -13392,6 +13408,15 @@ function _submitDealInner(){
   var endDate=_ucEndIndefinite ? null : (document.getElementById('uc-deal-end-date')||{value:''}).value || null;
   var activeDays=ucGetActiveDays();
   var days=activeDays.length>0?activeDays.join(', '):'Daily';
+
+  // EDIT MODE — update the existing under-review submission instead of creating a new one.
+  if(window._ucEditingId){
+    _ucSaveEdit({ dbId:window._ucEditingId, v:v, title:title, d:d, addr:addr, website:website,
+                  hours:hours, days:days, curCode:curCode, priceRaw:priceRaw, wasRaw:wasRaw,
+                  isFreeSelected:isFreeSelected, catVal:catVal, emoji:emoji,
+                  priceDisp:price, wasDisp:was });
+    return;
+  }
 
   // Build submission object
   const submission = {
@@ -13469,6 +13494,28 @@ function _submitDealInner(){
   });
 
   // Reset post screen
+  _ucResetPostForm();
+
+  // Show success overlay on the post screen instead of navigating away
+  var ov = document.getElementById('post-success-ov');
+  if(ov){
+    // Update the credit badge to show the configured value
+    var crBadge = document.getElementById('post-success-cr-badge');
+    if(crBadge) crBadge.textContent = '+' + _ccGet('earnDealApproved', 15) + ' Credits when approved 🎁';
+    ov.style.display='flex'; setTimeout(function(){ ov.style.opacity='1'; },10);
+  }
+  renderAlerts('all');
+}
+
+// ── Edit an under-review community deal (customer side) ──────────────────────
+// Reuses the Share-a-Deal form in "edit mode": prefill fields, then submitDeal()
+// branches to _ucSaveEdit() which UPDATEs the row (owner RLS already allows this)
+// instead of inserting a new one. Only pending/verifying deals are editable.
+window._ucEditingId = window._ucEditingId || null;
+window._ucEditIntent = false;   // set by mcEditDeal so the goScreen hook keeps edit mode on 'post' entry
+
+// Reset the Share-a-Deal form to a clean "new deal" state (shared by submit + cancel).
+function _ucResetPostForm(){
   ['uc-venue','uc-addr','uc-website','uc-deal-title','uc-deal-desc','uc-deal-price','uc-deal-was','uc-deal-start-date','uc-deal-end-date'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.value='';
   });
@@ -13486,19 +13533,136 @@ function _submitDealInner(){
   var ucPricePrev=document.getElementById('uc-price-preview');if(ucPricePrev)ucPricePrev.style.display='none';
   _ucPhotos=[]; _ucDealPhotoDataUrl='';
   renderPhotoGrid('uc');
-  // Reset to defaults: start = not definite, end = definite
   _ucStartIndefinite=true; _ucEndIndefinite=false;
   ucInitIndefiniteDefaults();
+}
 
-  // Show success overlay on the post screen instead of navigating away
-  var ov = document.getElementById('post-success-ov');
-  if(ov){
-    // Update the credit badge to show the configured value
-    var crBadge = document.getElementById('post-success-cr-badge');
-    if(crBadge) crBadge.textContent = '+' + _ccGet('earnDealApproved', 15) + ' Credits when approved 🎁';
-    ov.style.display='flex'; setTimeout(function(){ ov.style.opacity='1'; },10);
+// Toggle the form between "create" and "edit" chrome (banner, title, button).
+function _ucSetEditMode(on){
+  if(!on) window._ucEditingId = null;
+  var banner = document.getElementById('uc-edit-banner');
+  var review = document.getElementById('uc-review-banner');
+  var btn    = document.getElementById('uc-submit-btn');
+  var title  = document.querySelector('#screen-post .post-htitle');
+  if(banner) banner.style.display = on ? 'flex' : 'none';
+  if(review) review.style.display = on ? 'none' : 'flex';
+  if(btn){ btn.disabled = false; btn.textContent = on ? '💾 Save Changes' : '🎉 Submit Deal'; }
+  if(title) title.textContent = on ? 'Edit Deal ✏️' : 'Share a Deal 📣';
+}
+
+// Prefill the Share-a-Deal form from a community_deals row.
+function _ucPrefillForm(deal){
+  function setv(id,val){ var el=document.getElementById(id); if(el) el.value = (val==null?'':val); }
+  setv('uc-venue', deal.venue_name||'');
+  setv('uc-addr', deal.address||'');
+  setv('uc-website', deal.website||'');
+  setv('uc-deal-title', deal.title||'');
+  setv('uc-deal-desc', deal.description||'');
+  setv('uc-deal-cat', deal.category||'bars');
+  setv('uc-deal-currency', deal.currency||'EUR');
+  setv('uc-deal-price', (deal.price!=null && deal.price!=='') ? deal.price : '');
+  setv('uc-deal-was', (deal.was_price!=null && deal.was_price!=='') ? deal.was_price : '');
+  // Hours "5PM – 9PM" → the two <input type=time> fields.
+  var hn = _parseHoursNums(deal.hours||'');
+  if(hn){
+    var toHHMM=function(dec){ var h=Math.floor(dec); var m=Math.round((dec-h)*60); if(m===60){h+=1;m=0;} return (h<10?'0':'')+h+':'+(m<10?'0':'')+m; };
+    setv('uc-deal-time-start', toHHMM(hn.from)); setv('uc-deal-time-end', toHHMM(hn.to));
   }
-  renderAlerts('all');
+  // Day chips
+  var daysStr = String(deal.days||'').toLowerCase();
+  var allDays = !daysStr || daysStr.indexOf('daily')!==-1 || daysStr.indexOf('every')!==-1;
+  var daySet = {}; daysStr.split(/[,\s]+/).forEach(function(x){ if(x) daySet[x.slice(0,3)]=1; });
+  document.querySelectorAll('#uc-day-chips .uc-day-chip').forEach(function(c){
+    var on = allDays || !!daySet[(c.dataset.day||'').slice(0,3).toLowerCase()];
+    c.classList.toggle('active', on);
+    c.style.background = on ? '#E8192C' : 'white';
+    c.style.color      = on ? 'white' : '#9A9AB0';
+    c.style.borderColor= on ? '#E8192C' : '#E8E8EC';
+  });
+  // Photos — keep existing image URL(s); user can replace. compressAndUpload
+  // passes plain URLs through untouched, so unchanged photos aren't re-uploaded.
+  var imgs = [], raw = deal.image_url || '';
+  if(typeof raw==='string' && raw.charAt(0)==='['){ try{ imgs = JSON.parse(raw)||[]; }catch(e){ imgs=[]; } }
+  else if(raw){ imgs=[raw]; }
+  _ucPhotos = imgs.filter(Boolean).slice(0,3);
+  if(typeof renderPhotoGrid==='function') renderPhotoGrid('uc');
+  try { if(typeof ucUpdateSchedulePreview==='function') ucUpdateSchedulePreview(); } catch(e){}
+  try { if(typeof ucUpdateCurrencyPreview==='function') ucUpdateCurrencyPreview(); } catch(e){}
+}
+
+// Called from the "My contributions" list on a pending/verifying deal.
+function mcEditDeal(dbId){
+  var deal = (_mcAllContribs||[]).find(function(d){ return String(d.id)===String(dbId); });
+  if(!deal){ showToast('Deal not found'); return; }
+  if(deal.id == null){ showToast('This deal is still saving — try again in a moment'); return; }
+  if(deal.status!=='pending' && deal.status!=='verifying'){ showToast('Only deals under review can be edited'); return; }
+  window._ucEditingId = deal.id;
+  window._ucEditIntent = true;   // tells the goScreen hook this 'post' entry is an edit (keep edit mode)
+  var snap = deal.id;            // guard against a second Edit tapped before this fires
+  goScreen('post');
+  setTimeout(function(){ if(window._ucEditingId===snap){ _ucPrefillForm(deal); _ucSetEditMode(true); } }, 90);
+}
+
+function ucCancelEdit(){
+  _ucResetPostForm();
+  _ucSetEditMode(false);
+  goScreen('mycontribs');
+}
+
+// Save an edit: UPDATE the row (owner RLS), keeping status untouched (stays under review).
+async function _ucSaveEdit(f){
+  var btn = document.getElementById('uc-submit-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    // Upload only NEW (data-URL) photos; keep already-hosted URLs as-is. Never persist
+    // a base64 data-URL — if an upload fails, compressAndUpload returns the data-URL
+    // back, so we drop it rather than bloat the DB with base64.
+    var photos = [];
+    for(var i=0;i<_ucPhotos.length && i<3;i++){
+      var p = _ucPhotos[i]; if(!p) continue;
+      if(typeof p==='string' && p.indexOf('data:')===0){ try{ p = await compressAndUpload(p, 800, 0.8, 'community'); }catch(e){} }
+      if(p && typeof p==='string' && p.indexOf('data:')!==0) photos.push(p);
+    }
+    var upd = {
+      venue_name:f.v, title:f.title, description:f.d, hours:f.hours, days:f.days,
+      price: f.isFreeSelected ? 0 : parseFloat(f.priceRaw||0),
+      was_price: f.wasRaw ? parseFloat(f.wasRaw) : null,
+      currency:f.curCode, emoji:f.emoji, address:f.addr||'',
+      category:f.catVal||'bars', website:f.website||null
+    };
+    // Only overwrite image_url when we have hosted URL(s); otherwise leave the deal's
+    // existing image untouched (don't wipe it because a re-upload failed).
+    if(photos.length) upd.image_url = photos.length>1 ? JSON.stringify(photos) : photos[0];
+    // Only update while still under review — if an admin approved/rejected it in the
+    // meantime, the filter matches 0 rows so a stale edit can't overwrite their decision.
+    var { data:updRows, error } = await db.from('community_deals')
+      .update(upd).eq('id', f.dbId).eq('user_id', currentUser.id)
+      .in('status', ['pending','verifying']).select();
+    if(error){ console.error('[_ucSaveEdit]', error.message); showToast('⚠️ Could not save changes — '+error.message); _ucSetEditMode(true); return; }
+    if(!updRows || !updRows.length){
+      // Row no longer matches (approved/rejected or gone) — nothing was changed.
+      showToast('⚠️ This deal is no longer under review — refreshing'); _ucSetEditMode(false);
+      goScreen('mycontribs'); setTimeout(function(){ if(typeof loadMyContribs==='function') loadMyContribs(); }, 60); return;
+    }
+    // Keep local caches in sync so the change shows immediately (before the next reload).
+    try { _mcAllContribs = (_mcAllContribs||[]).map(function(x){ return x.id===f.dbId ? Object.assign({}, x, upd) : x; }); } catch(e){}
+    try { pendingCommunityDeals = pendingCommunityDeals.map(function(x){
+      var xid = x._dbId || (x.id>9999 ? x.id-10000 : x.id);
+      if(xid!==f.dbId) return x;
+      var patch = {venue:f.v,name:f.v,deal:f.title,desc:f.d,hours:f.hours,days:f.days,
+        address:f.addr,website:f.website,cat:f.catVal,emoji:f.emoji,currency:f.curCode,
+        price:f.priceDisp,wasPrice:f.wasDisp,isFree:f.isFreeSelected};
+      if(photos.length){ patch.img=photos[0]||''; patch.img2=photos[1]||''; patch.img3=photos[2]||''; }
+      return Object.assign({}, x, patch);
+    }); } catch(e){}
+    showToast('✅ Changes saved — still under review');
+    _ucResetPostForm();
+    _ucSetEditMode(false);
+    goScreen('mycontribs');
+    setTimeout(function(){ if(typeof loadMyContribs==='function') loadMyContribs(); }, 60);
+  } catch(e){
+    console.error('[_ucSaveEdit]', e); showToast('⚠️ Could not save changes'); _ucSetEditMode(true);
+  }
 }
 
 function adminUpdateDealsBadge(){
@@ -29259,8 +29423,25 @@ function renderMySubmissions(){
 // Hook into goScreen for post screen
 var _gsOrigPost = goScreen;
 goScreen = function(name){
+  // Keep edit-mode state honest so a stale _ucEditingId can never overwrite the wrong deal:
+  //  • Entering 'post' via mcEditDeal sets _ucEditIntent → keep edit mode (prefill will run).
+  //  • Entering 'post' any OTHER way (FAB / "Share a Deal") while an edit is pending → this is a
+  //    FRESH deal, so drop edit mode + reset the form.
+  //  • Leaving 'post' while editing → drop edit mode too.
+  var _editEntry = false;
+  if(name === 'post'){
+    if(window._ucEditIntent){ window._ucEditIntent = false; _editEntry = true; }
+    else if(window._ucEditingId){ try{ _ucResetPostForm(); _ucSetEditMode(false); }catch(e){} }
+  } else if(window._ucEditingId){
+    try{ _ucResetPostForm(); _ucSetEditMode(false); }catch(e){}
+  }
   _gsOrigPost(name);
-  if(name === 'post'){ setTimeout(renderMySubmissions, 50); setTimeout(function(){ renderPhotoGrid('uc'); }, 50); }
+  if(name === 'post'){
+    setTimeout(renderMySubmissions, 50);
+    // Skip the empty-grid render when entering edit mode — _ucPrefillForm renders the
+    // existing photos, avoiding an empty→populated flicker.
+    if(!_editEntry) setTimeout(function(){ renderPhotoGrid('uc'); }, 50);
+  }
   if(name === 'settings' || name === 'profile') setTimeout(stSyncToggles, 30);
 };
 
