@@ -5407,7 +5407,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701142839';
+var BUILD_VERSION = '20260701143315';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -10132,7 +10132,7 @@ function openDeal(deal){
       var _lcReq  = deal.id;   // guard against the user navigating to another deal mid-fetch
       var _lcRender = function(at, count){
         if(curV !== _lcReq || !at || !count) return;
-        var w=''; try{ w=new Date(at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ w=String(at); }
+        var w=''; try{ w=new Date(at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }catch(e){ w=String(at); }
         _lcEl.textContent='Last confirmed '+w;
         _lcEl.style.display='block';
       };
@@ -20338,7 +20338,7 @@ async function confirmDealActive(dealId){
     if(curV === dealId){
       var _el = document.getElementById('vd-last-confirmed');
       if(_el){
-        var _w=''; try{ _w=new Date(nowIso).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){}
+        var _w=''; try{ _w=new Date(nowIso).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }catch(e){}
         _el.textContent = _w ? ('Last confirmed '+_w) : 'Last confirmed just now';
         _el.style.display='block';
       }
