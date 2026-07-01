@@ -5433,7 +5433,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701235059';
+var BUILD_VERSION = '20260702000054';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5989,6 +5989,24 @@ function fmtPriceDisplay(p) {
   var n = parseFloat(s);
   if (isNaN(n)) return '';
   return '€' + n.toFixed(2);
+}
+// Currency code → symbol (mirrors the Share-a-Deal picker).
+var _CUR_SYM = {EUR:'€',USD:'$',GBP:'£',CAD:'CA$',AUD:'A$',CHF:'CHF',JPY:'¥',SEK:'kr',NOK:'kr',DKK:'kr',
+  MXN:'MX$',BRL:'R$',SGD:'S$',AED:'د.إ',THB:'฿',VND:'₫',PHP:'₱',MYR:'RM',IDR:'Rp',INR:'₹',KRW:'₩',CNY:'¥',
+  PKR:'₨',BDT:'৳',NZD:'NZ$',HKD:'HK$',TWD:'NT$',ILS:'₪',TRY:'₺',ZAR:'R',NGN:'₦',PLN:'zł',CZK:'Kč',HUF:'Ft',
+  RON:'lei',ARS:'ARS',CLP:'CLP',COP:'COP',PEN:'S/',SAR:'SAR',QAR:'QAR',EGP:'E£',KES:'KSh',GHS:'₵'};
+// Price label WITH the deal's currency (community deals store a bare number + a currency
+// code; verified prices already carry a symbol, so those pass through unchanged).
+function _dealPriceLabel(deal){
+  if(!deal) return '';
+  var p = deal.price;
+  if(p == null || p === '') return '';
+  var s = String(p).trim();
+  if(deal.isFree || s.toLowerCase() === 'free') return 'Free';
+  if(/[^\d.,\s]/.test(s)) return s;             // already has a symbol/letters → leave it
+  var cc = (deal.currency || 'EUR').toUpperCase();
+  var sym = _CUR_SYM[cc] || (cc + ' ');
+  return sym + s;
 }
 function parsePrice(str) {
   if (!str) return NaN;
@@ -29890,7 +29908,19 @@ function _initMapClusterer(){
   _gmapCluster = null;
   try {
     if(typeof L !== 'undefined' && L.markerClusterGroup && _gmapObj){
-      _gmapCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 55, spiderfyOnMaxZoom: true });
+      _gmapCluster = L.markerClusterGroup({
+        chunkedLoading: true, maxClusterRadius: 55, spiderfyOnMaxZoom: true,
+        // Multiple pins grouped together → show a gray "•••" pin (Agoda-style), matching
+        // the price-pin shape. Tapping it zooms in to reveal the individual price pins.
+        iconCreateFunction: function(cluster){
+          var col = '#6B6B76';
+          var html = '<div style="position:relative;transform:translate(-50%,-100%);width:max-content;">'
+            + '<div style="background:'+col+';color:#fff;padding:6px 13px;border-radius:14px;font-family:Inter,sans-serif;font-weight:900;font-size:12px;line-height:1;letter-spacing:2px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid #fff;">•••</div>'
+            + '<div style="width:0;height:0;margin:-1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid '+col+';filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));"></div>'
+            + '</div>';
+          return L.divIcon({ className:'hh-cluster-pin', html: html, iconSize:[0,0], iconAnchor:[0,0] });
+        }
+      });
       _gmapObj.addLayer(_gmapCluster);
     }
   } catch(e){ _gmapCluster = null; console.warn('[map] clusterer init failed', e); }
@@ -29954,7 +29984,7 @@ function _mapVenueCard(deal){
   var isV = deal.verified === true;
   var name = deal.name || deal.venue || 'Venue';
   var sub  = isWatch ? (deal.desc || '⚽ Match') : (deal.deal || deal.desc || '');
-  var price = isWatch ? '' : (deal.price || '');
+  var price = isWatch ? '' : _dealPriceLabel(deal);
   var meta = isWatch ? '' : [deal.dist||'', deal.hours||''].filter(Boolean).join(' · ');
   var raw = deal.img || '';
   var img = (typeof raw==='string' && raw.charAt(0)==='[') ? (function(){ try{ return JSON.parse(raw)[0]||''; }catch(e){ return ''; } })() : raw;
@@ -30006,7 +30036,7 @@ function _placeDealPin(deal, lat, lng) {
   try {
     var isVerified = deal.verified === true;
     var pinColor = isVerified ? '#2563EB' : '#E8192C';   // verified = blue, community = red
-    var marker = L.marker([lat, lng], { icon: _pricePinIcon(pinColor, deal.price || 'Deal'), riseOnHover: true });
+    var marker = L.marker([lat, lng], { icon: _pricePinIcon(pinColor, _dealPriceLabel(deal) || 'Deal'), riseOnHover: true });
     marker._dealVerified = isVerified;
     marker._deal = deal;   // powers the "venues in view" list under the map
     var infoHtml = '<div style="font-family:Inter,sans-serif;max-width:240px;">' +
