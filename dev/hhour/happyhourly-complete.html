@@ -3632,14 +3632,14 @@ function _loadGT(){
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Get Directions
           </button>
           <div style="display:flex;gap:10px;margin-top:12px;">
-            <button onclick="confirmDealActive(curV)" style="flex:1;background:white;color:var(--green);border:1.5px solid #E4E4EA;border-radius:12px;padding:11px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s, background .15s;" onmouseover="this.style.borderColor='rgba(18,161,80,.4)';this.style.background='rgba(18,161,80,.04)'" onmouseout="this.style.borderColor='#E4E4EA';this.style.background='white'">
-              👍 Still active
+            <button onclick="confirmDealActive(curV)" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:white;color:var(--green);border:1.5px solid #E4E4EA;border-radius:12px;padding:11px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s, background .15s;" onmouseover="this.style.borderColor='rgba(18,161,80,.4)';this.style.background='rgba(18,161,80,.04)'" onmouseout="this.style.borderColor='#E4E4EA';this.style.background='white'">
+              <span>👍 Still active</span>
+              <span id="vd-last-confirmed" style="display:none;font-size:10px;font-weight:600;color:#12A150;opacity:.8;line-height:1.2;"></span>
             </button>
             <button onclick="reportDealExpired(curV)" style="flex:1;background:white;color:var(--red);border:1.5px solid #E4E4EA;border-radius:12px;padding:11px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s, background .15s;" onmouseover="this.style.borderColor='rgba(232,25,44,.4)';this.style.background='rgba(232,25,44,.04)'" onmouseout="this.style.borderColor='#E4E4EA';this.style.background='white'">
               🚩 Report expired
             </button>
           </div>
-          <div id="vd-last-confirmed" style="display:none;align-items:center;justify-content:center;gap:7px;margin-top:10px;background:rgba(18,161,80,.07);border:1px solid rgba(18,161,80,.2);border-radius:12px;padding:9px 13px;font-size:12px;font-weight:700;color:#12A150;line-height:1.4;text-align:center;"></div>
           <div style="text-align:center;font-size:11px;color:var(--t3);font-weight:500;margin-top:12px;">Help the community — confirm if this deal is still running</div>
         </div>
       </div>
@@ -5407,7 +5407,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701142132';
+var BUILD_VERSION = '20260701142839';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -10133,8 +10133,8 @@ function openDeal(deal){
       var _lcRender = function(at, count){
         if(curV !== _lcReq || !at || !count) return;
         var w=''; try{ w=new Date(at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ w=String(at); }
-        _lcEl.innerHTML='<span style="font-size:15px;">👍</span><span>Last confirmed active '+esc(w)+' · '+count+' confirmation'+(count>1?'s':'')+'</span>';
-        _lcEl.style.display='flex';
+        _lcEl.textContent='Last confirmed '+w;
+        _lcEl.style.display='block';
       };
       var _lcCached = (window._dealLastConfirmed||{})[_lcDbId];
       if(_lcCached && _lcCached.at){
@@ -20338,8 +20338,9 @@ async function confirmDealActive(dealId){
     if(curV === dealId){
       var _el = document.getElementById('vd-last-confirmed');
       if(_el){
-        _el.innerHTML='<span style="font-size:15px;">👍</span><span>Last confirmed active just now · '+_rec.count+' confirmation'+(_rec.count>1?'s':'')+'</span>';
-        _el.style.display='flex';
+        var _w=''; try{ _w=new Date(nowIso).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){}
+        _el.textContent = _w ? ('Last confirmed '+_w) : 'Last confirmed just now';
+        _el.style.display='block';
       }
     }
   } catch(e){}
