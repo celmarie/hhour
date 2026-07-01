@@ -5429,7 +5429,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701182032';
+var BUILD_VERSION = '20260701182559';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -23646,13 +23646,11 @@ async function aSendNotification(){
 // /api/notify → notifications INSERT → trigger → /api/push → this device.
 async function aTestPush(){
   if(!currentUser){ showToast('Sign in first'); return; }
-  // The push only lands HERE if this device is subscribed — check first so the
-  // test isn't misleading.
-  try {
-    var sub = (typeof _pushGetSub==='function') ? await _pushGetSub() : null;
-    var ok = (typeof Notification!=='undefined' && Notification.permission==='granted' && !!sub);
-    if(!ok){ showToast('🔔 First enable “Push notifications” in Settings on THIS device, then test.'); return; }
-  } catch(e){}
+  // Sends to EVERY device signed into this account (so you can trigger it from your
+  // computer and receive it on your phone). Note whether THIS device is subscribed
+  // just for a clearer message.
+  var hereSubscribed = false;
+  try { hereSubscribed = (typeof Notification!=='undefined' && Notification.permission==='granted' && !!(await _pushGetSub())); } catch(e){}
   var btn = document.querySelector('[onclick="aTestPush()"]');
   if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
   try {
@@ -23664,7 +23662,7 @@ async function aTestPush(){
     });
     var j = await r.json().catch(function(){ return {}; });
     if(!r.ok){ showToast('⚠️ '+(j.error||'Test failed')); }
-    else { showToast('✅ Test sent — you should get a push within a few seconds'); }
+    else { showToast(hereSubscribed ? '✅ Test sent — watch this device' : '✅ Test sent to your account — check any device (e.g. your phone) where you enabled push under THIS account'); }
   } catch(e){ console.warn('[aTestPush]', e); showToast('⚠️ Test failed'); }
   if(btn){ btn.disabled=false; btn.textContent='🧪 Send test push to me'; }
 }
