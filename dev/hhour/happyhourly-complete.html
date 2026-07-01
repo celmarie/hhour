@@ -5429,7 +5429,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701183447';
+var BUILD_VERSION = '20260701205011';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6998,17 +6998,26 @@ function _addrPosition(d, inputEl) {
 
 var _addrValidSuggestions = {}; // Store valid suggestions per input
 
+var _addrTimer = null;   // debounce timer for autocomplete requests
+var _addrSeq = 0;        // request sequence — ignore stale (out-of-order) responses
 function addrInput(inputId) {
   var inputEl = document.getElementById(inputId);
-  var q = inputEl ? inputEl.value : '';
+  var q = inputEl ? inputEl.value.trim() : '';
   _addrDropInputId = inputId;
   var d = document.getElementById('addr-drop');
-  if (!d || !q || q.length < 2) { _addrHideDrop(); return; }
+  if (!d || !q || q.length < 2) { if(_addrTimer){ clearTimeout(_addrTimer); _addrTimer=null; } _addrHideDrop(); return; }
 
   var svc = _addrGetSvc();
   if (!svc) { _loadGMapsAPI(function(){ addrInput(inputId); }); return; }
 
-  svc.getPlacePredictions({ input: q }, function(preds, status) {
+  // Debounce: wait ~200ms after typing pauses so we fire ONE request per query
+  // instead of one per keystroke (the burst was causing the laggy, flickering list).
+  if (_addrTimer) clearTimeout(_addrTimer);
+  var seq = ++_addrSeq;
+  _addrTimer = setTimeout(function(){
+   svc.getPlacePredictions({ input: q }, function(preds, status) {
+    if (seq !== _addrSeq) return;               // a newer keystroke superseded this response
+    if (_addrDropInputId !== inputId) return;   // user moved to another field
     if (!preds || status !== google.maps.places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
 
     // Store valid suggestions for this input
@@ -7034,7 +7043,8 @@ function addrInput(inputId) {
     }).join('');
     _addrPosition(d, inputEl);
     d.style.display = 'block';
-  });
+   });
+  }, 200);
 }
 
 function addrValidate(inputId) {
