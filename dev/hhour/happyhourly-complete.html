@@ -3631,6 +3631,7 @@ function _loadGT(){
           <button class="buy-btn" style="background:linear-gradient(135deg,#16161E,#33333F);display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 6px 18px rgba(20,20,30,.25);" onclick="openDirections()">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Get Directions
           </button>
+          <div id="vd-last-confirmed" style="display:none;align-items:center;gap:8px;margin-top:12px;background:rgba(18,161,80,.07);border:1px solid rgba(18,161,80,.2);border-radius:12px;padding:10px 13px;font-size:12px;font-weight:700;color:#12A150;line-height:1.4;"></div>
           <div style="display:flex;gap:10px;margin-top:12px;">
             <button onclick="confirmDealActive(curV)" style="flex:1;background:white;color:var(--green);border:1.5px solid #E4E4EA;border-radius:12px;padding:11px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s, background .15s;" onmouseover="this.style.borderColor='rgba(18,161,80,.4)';this.style.background='rgba(18,161,80,.04)'" onmouseout="this.style.borderColor='#E4E4EA';this.style.background='white'">
               👍 Still active
@@ -5406,7 +5407,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701032231';
+var BUILD_VERSION = '20260701132208';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -10118,6 +10119,21 @@ function openDeal(deal){
   // Show buy section only for verified merchant deals
   document.getElementById('vd-merchant-section').style.display=isMerchant?'block':'none';
   document.getElementById('vd-community-section').style.display=isMerchant?'none':'block';
+
+  // "Last confirmed active …" — the deal's record of community confirmations
+  // (👍 Still active). Populated from the admin data feed; hidden when there's none.
+  var _lcEl = document.getElementById('vd-last-confirmed');
+  if(_lcEl){
+    var _lcDbId = deal._dbId || (deal.id>9999 ? deal.id-10000 : deal.id);
+    var _lc = (window._dealLastConfirmed||{})[_lcDbId];
+    if(!isMerchant && _lc && _lc.at){
+      var _lcWhen=''; try{ _lcWhen=new Date(_lc.at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ _lcWhen=String(_lc.at); }
+      _lcEl.innerHTML='<span style="font-size:15px;">👍</span><span>Last confirmed active '+esc(_lcWhen)+' · '+_lc.count+' confirmation'+(_lc.count>1?'s':'')+'</span>';
+      _lcEl.style.display='flex';
+    } else {
+      _lcEl.style.display='none';
+    }
+  }
 
   // Hotel deals: date-range (check-in/check-out) booking instead of quantity
   if(typeof vdRenderHotelSection==='function') vdRenderHotelSection(deal);
@@ -15065,7 +15081,7 @@ async function loadAdminData(){
     // "Still active" confirmations (status='info') — counter-signal for expired reports
     // AND its own admin section. Pull detail columns so we can list who confirmed.
     var _pActiveVotes = withTimeout(
-      db.from('deal_reports').select('deal_id,deal_kind,deal_name,venue_name,reported_by,reported_at').eq('status','info').order('reported_at',{ascending:false}),
+      db.from('deal_reports').select('*').eq('status','info').order('reported_at',{ascending:false}),
       5000
     ).catch(function(){ return { data: [] }; });
 
@@ -15353,10 +15369,18 @@ async function loadAdminData(){
     // list (for the admin "Still-Active Confirmations" section).
     try {
       var { data: avRows } = await _pActiveVotes;
-      window._dealActiveVotes = {};
-      var _avg = {};
+      window._dealActiveVotes = {};      // total confirmations per deal (counter-signal badge)
+      window._dealLastConfirmed = {};    // permanent per-deal record: {at, count} across ALL confirmations
+      var _avg = {};                     // admin queue — UNACKNOWLEDGED confirmations only
       (avRows||[]).forEach(function(r){
+        // Permanent record from ALL info rows (acknowledged or not).
         window._dealActiveVotes[r.deal_id] = (window._dealActiveVotes[r.deal_id]||0) + 1;
+        var lc = window._dealLastConfirmed[r.deal_id] || { at:null, count:0 };
+        lc.count++;
+        if(r.reported_at && (!lc.at || r.reported_at > lc.at)) lc.at = r.reported_at;
+        window._dealLastConfirmed[r.deal_id] = lc;
+        // Admin queue: acknowledged confirmations have been handled — skip them.
+        if(r.acknowledged_at) return;
         var k = String(r.deal_id);
         if(!_avg[k]) _avg[k] = { dbId:r.deal_id, kind:r.deal_kind||'community', name:r.deal_name||'Deal', venue:r.venue_name||'', count:0, who:[], lastAt:r.reported_at||null };
         _avg[k].count++;
@@ -15364,7 +15388,7 @@ async function loadAdminData(){
         if(r.reported_at && (!_avg[k].lastAt || r.reported_at > _avg[k].lastAt)) _avg[k].lastAt = r.reported_at;
       });
       window._adminActiveVotes = Object.keys(_avg).map(function(k){ return _avg[k]; }).sort(function(a,b){ return b.count - a.count; });
-    } catch(e){ window._dealActiveVotes = {}; window._adminActiveVotes = []; }
+    } catch(e){ window._dealActiveVotes = {}; window._adminActiveVotes = []; window._dealLastConfirmed = {}; }
 
     // Deal mistake reports
     try {
@@ -18852,6 +18876,7 @@ function adminPage(page,btn){
           var lastAt=''; try{ if(g.lastAt) lastAt=new Date(g.lastAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){}
           var who=(g.who||[]).slice(0,3).join(', ')+((g.who||[]).length>3?' +'+(g.who.length-3)+' more':'');
           var localId = g.kind==='verified' ? g.dbId : g.dbId+10000;
+          var kindSafe = (g.kind==='verified') ? 'verified' : 'community'; // normalize — never inject raw DB value into onclick
           return '<div style="padding:12px 16px;border-bottom:1px solid #F2F2F5;display:flex;align-items:center;gap:10px;">'
             +'<div style="width:40px;height:40px;border-radius:11px;background:rgba(18,161,80,.08);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👍</div>'
             +'<div style="flex:1;min-width:0;">'
@@ -18861,7 +18886,10 @@ function adminPage(page,btn){
               +'</div>'
               +'<div style="font-size:11px;color:#9A9AB0;margin-top:3px;">'+esc(g.venue)+' · '+(g.kind==='verified'?'✓ Merchant deal':'👥 Community deal')+' · by '+esc(who)+(lastAt?' · last '+esc(lastAt):'')+'</div>'
             +'</div>'
-            +'<button onclick="adminPreviewDeal('+localId+',\''+g.kind+'\')" style="background:#F5F5F7;color:#1A1A1A;border:1.5px solid #E8E8EC;border-radius:9px;padding:6px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;">👁️ View</button>'
+            +'<div style="display:flex;gap:6px;flex-shrink:0;">'
+              +'<button onclick="adminAckActiveVotes('+g.dbId+',\''+kindSafe+'\')" title="Acknowledge — record on the deal &amp; clear from this queue" style="background:#12A150;color:#fff;border:none;border-radius:9px;padding:6px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✓ OK</button>'
+              +'<button onclick="adminPreviewDeal('+localId+',\''+kindSafe+'\')" style="background:#F5F5F7;color:#1A1A1A;border:1.5px solid #E8E8EC;border-radius:9px;padding:6px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">👁️ View</button>'
+            +'</div>'
           +'</div>';
         }).join('')
       +'</div>';
@@ -19879,6 +19907,29 @@ function adminPreviewDeal(id, source){
   var adminEl = document.getElementById('admin-root');
   if(adminEl) adminEl.style.display = 'none';
   openDeal(deal);
+}
+
+// Acknowledge a deal's "Still-active" confirmations. Non-destructive: the info rows
+// are kept (so the deal keeps its "last confirmed active …" record) and just flagged
+// acknowledged_at, which drops the card out of this queue until a NEW confirmation
+// arrives. Needs deal_reports_ack.sql (adds acknowledged_at + admin UPDATE policy).
+async function adminAckActiveVotes(dbId, kind){
+  try {
+    var upd = { acknowledged_at: new Date().toISOString() };
+    var uid = (currentUser && currentUser.id) || null;
+    if(uid) upd.acknowledged_by = uid;
+    var q = db.from('deal_reports').update(upd)
+      .eq('status','info').eq('deal_id', dbId).is('acknowledged_at', null);
+    if(kind) q = q.eq('deal_kind', kind);
+    var { error } = await q;
+    if(error){ console.error('[adminAckActiveVotes]', error.message); showToast('⚠️ Could not acknowledge — '+error.message); return; }
+    // Drop it from the in-memory queue so the re-render doesn't show it again.
+    window._adminActiveVotes = (window._adminActiveVotes||[]).filter(function(g){
+      return !(String(g.dbId)===String(dbId) && g.kind===kind);
+    });
+    showToast('👍 Confirmation acknowledged — recorded on the deal');
+    setTimeout(function(){ if(typeof adminPage==='function') adminPage('deals', null); }, 50);
+  } catch(e){ console.error('[adminAckActiveVotes]', e); showToast('⚠️ Could not acknowledge'); }
 }
 
 // Live-search filter for the admin "Live Community Deals" list (client-side, no re-render).
