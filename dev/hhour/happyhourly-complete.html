@@ -5429,7 +5429,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701170347';
+var BUILD_VERSION = '20260701172605';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6599,9 +6599,9 @@ async function pushEnable(){
     // (client-side upsert can't reassign an endpoint owned by the previous user).
     var _s = await db.auth.getSession();
     var _t = _s && _s.data && _s.data.session && _s.data.session.access_token;
-    var r = await fetch('/api/save-push-subscription', {
+    var r = await fetch('/api/push', {
       method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+(_t||'') },
-      body: JSON.stringify({ endpoint: j.endpoint, p256dh: keys.p256dh, auth: keys.auth, user_agent: (navigator.userAgent||'').slice(0,200) })
+      body: JSON.stringify({ action:'subscribe', endpoint: j.endpoint, p256dh: keys.p256dh, auth: keys.auth, user_agent: (navigator.userAgent||'').slice(0,200) })
     });
     var jr = await r.json().catch(function(){ return {}; });
     if(!r.ok){ console.warn('[pushEnable] save failed', jr.error); showToast('⚠️ Could not save your subscription — '+(jr.error||'try again')); return; }
@@ -23611,26 +23611,10 @@ async function aSendNotification(){
     }
   } catch(e){ errMsg = e.message; }
 
-  // Also deliver an OS-level push to subscribed (Home-Screen / installed) devices,
-  // so users get it even when the app is closed. Fire-and-forget — the in-app send
-  // above already covers open apps.
-  if(!errMsg || sent){
-    try {
-      var _pushIds = (typeof targeted!=='undefined' && targeted && targeted.length) ? targeted.map(function(p){ return p.id; }) : null;
-      var _ps = await db.auth.getSession();
-      var _pt = _ps && _ps.data && _ps.data.session && _ps.data.session.access_token;
-      if(_pt){
-        fetch('/api/send-push', {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+_pt },
-          // No icon → the service worker uses the app icon (an emoji isn't a valid icon URL).
-          body: JSON.stringify({ title:title, body:body, url:'/', role:(_pushIds?null:roleFilter), user_ids:_pushIds })
-        }).then(function(r){ return r.json(); })
-          .then(function(j){ if(j && typeof j.sent==='number' && j.sent>0) showToast('📲 Push delivered to '+j.sent+' device'+(j.sent!==1?'s':'')); })
-          .catch(function(){});
-      }
-    } catch(e){ console.warn('[aSendNotification] push send failed', e); }
-  }
+  // NOTE: OS push is delivered automatically by the notifications-table trigger
+  // (api/push, webhook mode) for EVERY inserted notification row — including the
+  // per-user rows this broadcast creates — so we intentionally do NOT fire a
+  // separate push here (that would double-push).
 
   if(btn){ btn.disabled=false; btn.textContent='🔔 Send Now'; }
 
