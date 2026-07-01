@@ -5429,7 +5429,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701172605';
+var BUILD_VERSION = '20260701173122';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -23299,6 +23299,8 @@ function aRenderNotifications(){
       +'<button onclick="aSendNotification()" style="flex:1;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🔔 Send Now</button>'
       +'<button onclick="aScheduleNotification()" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">⏰ Schedule</button>'
     +'</div>'
+    // Verify OS push end-to-end (insert → trigger → /api/push → this device).
+    +'<button onclick="aTestPush()" style="width:100%;margin-top:10px;background:white;color:#12A150;border:1.5px solid rgba(18,161,80,.3);border-radius:12px;padding:12px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🧪 Send test push to me</button>'
     +'</div></div>';
 
   var tplBtns=tplKeys.map(function(k){
@@ -23626,6 +23628,33 @@ async function aSendNotification(){
     var nb=document.getElementById('notif-body');  if(nb) nb.value='';
     var ns=document.getElementById('notif-type');  if(ns) ns.value='';
   }
+}
+
+// End-to-end OS-push test: sends a notification to the admin's OWN account via
+// /api/notify → notifications INSERT → trigger → /api/push → this device.
+async function aTestPush(){
+  if(!currentUser){ showToast('Sign in first'); return; }
+  // The push only lands HERE if this device is subscribed — check first so the
+  // test isn't misleading.
+  try {
+    var sub = (typeof _pushGetSub==='function') ? await _pushGetSub() : null;
+    var ok = (typeof Notification!=='undefined' && Notification.permission==='granted' && !!sub);
+    if(!ok){ showToast('🔔 First enable “Push notifications” in Settings on THIS device, then test.'); return; }
+  } catch(e){}
+  var btn = document.querySelector('[onclick="aTestPush()"]');
+  if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
+  try {
+    var s = await db.auth.getSession();
+    var t = s && s.data && s.data.session && s.data.session.access_token;
+    var r = await fetch('/api/notify', {
+      method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+(t||'') },
+      body: JSON.stringify({ user_id: currentUser.id, title:'🔔 Test push', message:'If you see this on your lock screen, push is working!', type:'system', icon:'🔔' })
+    });
+    var j = await r.json().catch(function(){ return {}; });
+    if(!r.ok){ showToast('⚠️ '+(j.error||'Test failed')); }
+    else { showToast('✅ Test sent — you should get a push within a few seconds'); }
+  } catch(e){ console.warn('[aTestPush]', e); showToast('⚠️ Test failed'); }
+  if(btn){ btn.disabled=false; btn.textContent='🧪 Send test push to me'; }
 }
 
 function aScheduleNotification(){
