@@ -861,7 +861,7 @@ textarea.finput{resize:none;height:80px;}
 .me-main{flex:1;width:0;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:#F0F2F5;}
 
 /* Mobile topbar */
-.me-topbar{display:flex !important;align-items:center;justify-content:space-between;padding:16px 20px;background:linear-gradient(135deg,#0f0f12,#1a1a1f);flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08);}
+.me-topbar{display:flex !important;align-items:center;justify-content:space-between;padding:calc(16px + env(safe-area-inset-top,0px)) 20px 16px;background:linear-gradient(135deg,#0f0f12,#1a1a1f);flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.08);}
 
 /* Mobile nav strip */
 .me-hnav{display:flex !important;overflow-x:auto;scrollbar-width:none;background:white;border-bottom:1.5px solid #E8E8EC;flex-shrink:0;}
@@ -5429,7 +5429,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701205011';
+var BUILD_VERSION = '20260701210510';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
