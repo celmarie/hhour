@@ -5433,7 +5433,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702010518';
+var BUILD_VERSION = '20260702011128';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14714,9 +14714,9 @@ function initGsiButton(gsiId, fbId, width){
     c.innerHTML = '';
     google.accounts.id.renderButton(c, { theme:'outline', size:'large', shape:'pill', text:'continue_with', width: width || 336, logo_alignment:'center' });
     c.style.display = 'flex';
-    // Desktop popup works → hide the classic button. Mobile: keep it VISIBLE as a labeled
-    // backup, so if the redirect URI isn't registered yet nobody is locked out.
-    var fb = document.getElementById(fbId); if(fb) fb.style.display = isMobile ? 'flex' : 'none';
+    // The GIS button rendered → hide the classic redirect button (it was a duplicate).
+    // It's only revealed by the _waitGsi timeout below if GIS never loads at all.
+    var fb = document.getElementById(fbId); if(fb) fb.style.display = 'none';
     return true;
   }catch(e){ console.warn('[gsi] init failed', e); return false; }
 }
