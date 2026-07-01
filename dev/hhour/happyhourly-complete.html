@@ -5433,7 +5433,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701232310';
+var BUILD_VERSION = '20260701233618';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -29983,7 +29983,17 @@ function _mapClearMarkers(){
   _gmapMarkers = [];
 }
 
-// Place one deal (or watch spot) as a lightweight Leaflet circleMarker with a popup.
+// Agoda-style price pin: a colored pill (with a downward pointer) showing the price,
+// anchored so the pointer tip sits on the coordinate. divIcon markers cluster fine.
+function _pricePinIcon(color, label){
+  var html = '<div style="position:relative;transform:translate(-50%,-100%);width:max-content;">'
+    + '<div style="background:'+color+';color:#fff;padding:3px 8px;border-radius:13px;font-family:Inter,sans-serif;font-weight:800;font-size:12px;line-height:1.35;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid #fff;text-align:center;">'+esc(String(label||''))+'</div>'
+    + '<div style="width:0;height:0;margin:-1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid '+color+';filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));"></div>'
+    + '</div>';
+  return L.divIcon({ className:'hh-price-pin', html: html, iconSize:[0,0], iconAnchor:[0,0] });
+}
+
+// Place one deal (or watch spot) as a Leaflet price-pin marker with a popup.
 // Shared by refreshDealMapMarkers and the initial build.
 function _placeDealPin(deal, lat, lng) {
   if (!isFinite(lat) || !isFinite(lng) || !_gmapObj) return;
@@ -29992,7 +30002,7 @@ function _placeDealPin(deal, lat, lng) {
   try {
     var isVerified = deal.verified === true;
     var pinColor = isVerified ? '#2563EB' : '#E8192C';   // verified = blue, community = red
-    var marker = L.circleMarker([lat, lng], { radius: 9, color: '#ffffff', weight: 2, fillColor: pinColor, fillOpacity: 1 });
+    var marker = L.marker([lat, lng], { icon: _pricePinIcon(pinColor, deal.price || 'Deal'), riseOnHover: true });
     marker._dealVerified = isVerified;
     marker._deal = deal;   // powers the "venues in view" list under the map
     var infoHtml = '<div style="font-family:Inter,sans-serif;max-width:240px;">' +
@@ -30041,7 +30051,7 @@ function refreshDealMapMarkers() {
 function _placeWatchMarker(s, lat, lng) {
   if (!_gmapObj || !isFinite(lat) || !isFinite(lng)) return;
   try {
-    var marker = L.circleMarker([lat, lng], { radius: 9, color: '#ffffff', weight: 2, fillColor: '#7B2FBE', fillOpacity: 1 });   // football/watch = purple
+    var marker = L.marker([lat, lng], { icon: _pricePinIcon('#7B2FBE', '⚽'), riseOnHover: true });   // football/watch = purple
     marker._dealVerified = false;
     marker._isWatch = true;
     var _ms = _watchMatchesOf(s);
