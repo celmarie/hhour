@@ -3631,7 +3631,6 @@ function _loadGT(){
           <button class="buy-btn" style="background:linear-gradient(135deg,#16161E,#33333F);display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 6px 18px rgba(20,20,30,.25);" onclick="openDirections()">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Get Directions
           </button>
-          <div id="vd-last-confirmed" style="display:none;align-items:center;gap:8px;margin-top:12px;background:rgba(18,161,80,.07);border:1px solid rgba(18,161,80,.2);border-radius:12px;padding:10px 13px;font-size:12px;font-weight:700;color:#12A150;line-height:1.4;"></div>
           <div style="display:flex;gap:10px;margin-top:12px;">
             <button onclick="confirmDealActive(curV)" style="flex:1;background:white;color:var(--green);border:1.5px solid #E4E4EA;border-radius:12px;padding:11px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s, background .15s;" onmouseover="this.style.borderColor='rgba(18,161,80,.4)';this.style.background='rgba(18,161,80,.04)'" onmouseout="this.style.borderColor='#E4E4EA';this.style.background='white'">
               👍 Still active
@@ -3640,6 +3639,7 @@ function _loadGT(){
               🚩 Report expired
             </button>
           </div>
+          <div id="vd-last-confirmed" style="display:none;align-items:center;justify-content:center;gap:7px;margin-top:10px;background:rgba(18,161,80,.07);border:1px solid rgba(18,161,80,.2);border-radius:12px;padding:9px 13px;font-size:12px;font-weight:700;color:#12A150;line-height:1.4;text-align:center;"></div>
           <div style="text-align:center;font-size:11px;color:var(--t3);font-weight:500;margin-top:12px;">Help the community — confirm if this deal is still running</div>
         </div>
       </div>
@@ -5407,7 +5407,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701133510';
+var BUILD_VERSION = '20260701134742';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
