@@ -5392,7 +5392,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701004152';
+var BUILD_VERSION = '20260701022701';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -29424,11 +29424,15 @@ function _markerPassesFilter(marker){
   if(marker._dealVerified) return !!mapFilters.verified;
   return !!mapFilters.community;
 }
+var _clusterTimer = null;
 function _mapPlaceMarker(marker){
   _gmapMarkers.push(marker);
-  var show = _markerPassesFilter(marker);
-  if(_gmapCluster){ if(show) { try { _gmapCluster.addMarker(marker); } catch(e){ marker.setMap(_gmapObj); } } }
-  else { marker.setMap(show ? _gmapObj : null); }
+  if(!_gmapCluster){ marker.setMap(_markerPassesFilter(marker) ? _gmapObj : null); return; }
+  // Batch: markers arrive one-by-one as geocoding resolves; rebuild the cluster ONCE
+  // after they settle instead of re-clustering on every single add (which churned CPU/
+  // memory and could crash the load).
+  clearTimeout(_clusterTimer);
+  _clusterTimer = setTimeout(_mapSyncClusters, 350);
 }
 function _mapSyncClusters(){
   if(_gmapCluster){
@@ -29552,7 +29556,7 @@ function _placeWatchMarker(s, lat, lng) {
 // Cap how many deal pins the map builds. Hundreds of markers + the Maps SDK can
 // exhaust the WebKit per-tab memory on low-end phones and crash the map. Keep the
 // nearest ~80 deals (by distance) plus all Where-to-Watch pins.
-var MAP_MAX_PINS = 80;
+var MAP_MAX_PINS = 35;   // lowered from 80 — fewer live geocodes + markers = far less memory on low-end iOS
 // Accurate "N deals" for the map header — DEALS only (never the Where-to-Watch
 // football pins). Uses the same server-side total the home shows when available,
 // else the count of loaded verified + community deals.
