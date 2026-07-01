@@ -5433,7 +5433,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701233618';
+var BUILD_VERSION = '20260701235059';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -29960,15 +29960,19 @@ function _mapVenueCard(deal){
   var img = (typeof raw==='string' && raw.charAt(0)==='[') ? (function(){ try{ return JSON.parse(raw)[0]||''; }catch(e){ return ''; } })() : raw;
   var emoji = deal.emoji || (isWatch ? '⚽' : '📍');
   var onclick = isWatch ? "goScreen('watch')" : ("openDealById('" + deal.id + "','" + (isV?'v':'uc') + "')");
+  // Football/match rows are dark-purple (matching the map pin) so they're never confused
+  // with the red-priced deal rows.
+  var thumbBg = isWatch ? '#7B2FBE' : '#F0F0F4';
   var thumb = (img && typeof img==='string')
     ? '<img src="'+esc(img)+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.parentNode.textContent=\''+(isWatch?'⚽':'📍')+'\'">'
     : '<span style="font-size:24px;">'+esc(emoji)+'</span>';
   return '<div onclick="'+onclick+'" ontouchstart="this.style.background=\'#F7F7F9\'" ontouchend="this.style.background=\'#fff\'" style="display:flex;gap:11px;padding:9px 13px;border-bottom:1px solid #F2F2F5;cursor:pointer;align-items:center;background:#fff;">'
-    +'<div style="width:60px;height:60px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#F0F0F4;display:flex;align-items:center;justify-content:center;">'+thumb+'</div>'
+    +'<div style="width:60px;height:60px;border-radius:10px;overflow:hidden;flex-shrink:0;background:'+thumbBg+';display:flex;align-items:center;justify-content:center;">'+thumb+'</div>'
     +'<div style="flex:1;min-width:0;">'
       +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(name)+'</div>'
-      +(sub?'<div style="font-size:11.5px;color:#666;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">'+esc(sub)+'</div>':'')
+      +(sub?'<div style="font-size:11.5px;color:'+(isWatch?'#7B2FBE':'#666')+';font-weight:'+(isWatch?'700':'500')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">'+esc(sub)+'</div>':'')
       +'<div style="display:flex;align-items:center;gap:7px;margin-top:3px;">'
+        +(isWatch?'<span style="font-size:10px;font-weight:800;color:#7B2FBE;background:rgba(123,47,190,.12);padding:2px 7px;border-radius:10px;">⚽ Football</span>':'')
         +(price?'<span style="font-size:13px;font-weight:800;color:#E8192C;">'+esc(price)+'</span>':'')
         +(meta?'<span style="font-size:10px;color:#9A9AB0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(meta)+'</span>':'')
       +'</div>'
