@@ -3,7 +3,7 @@
    cache the app already maintains (last-loaded deals), so users can browse what
    they last saw while offline. Private/dynamic data (Supabase REST/auth, our API)
    is NEVER cached — only the shell, libraries, fonts and public deal photos. */
-var CACHE = 'hh-offline-v2';
+var CACHE = 'hh-offline-v3';
 var SHELL = ['/', '/happyhourly-complete.html', '/version.json'];
 
 self.addEventListener('install', function(e){
@@ -88,4 +88,43 @@ self.addEventListener('fetch', function(e){
 
   // Everything else (e.g. maps) → network, fall back to cache if we have it
   e.respondWith(fetch(req).catch(function(){ return caches.match(req); }));
+});
+
+/* ── Web Push (OS-level notifications) ──────────────────────────────────────
+   Fired when api/send-push.js delivers a payload via VAPID/web-push. Shows a
+   system notification even when the app is closed (iOS 16.4+ Home-Screen PWAs,
+   Android, desktop). notificationclick focuses/opens the app at data.url. */
+var HH_ICON = 'https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-icon.png?v=4';
+
+self.addEventListener('push', function(e){
+  var data = {};
+  try { data = e.data ? e.data.json() : {}; }
+  catch(_){ try { data = { title: 'Appie Hour', body: e.data && e.data.text() }; } catch(__){ data = {}; } }
+  var title = data.title || 'Appie Hour';
+  var opts = {
+    body: data.body || '',
+    icon: data.icon || HH_ICON,
+    badge: data.badge || HH_ICON,
+    tag: data.tag || undefined,               // same tag collapses duplicates
+    renotify: !!data.tag,
+    data: { url: data.url || '/' }
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
+});
+
+self.addEventListener('notificationclick', function(e){
+  e.notification.close();
+  var target = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list){
+      for(var i=0;i<list.length;i++){
+        var c = list[i];
+        if(c.url.indexOf(self.location.origin) === 0 && 'focus' in c){
+          if('navigate' in c){ try { c.navigate(target); } catch(err){ console.warn('[sw notificationclick] navigate failed', err); } }
+          return c.focus();
+        }
+      }
+      if(self.clients.openWindow) return self.clients.openWindow(target);
+    })
+  );
 });
