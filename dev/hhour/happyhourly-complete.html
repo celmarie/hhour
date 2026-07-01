@@ -5431,7 +5431,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701220757';
+var BUILD_VERSION = '20260701222122';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6949,26 +6949,20 @@ function _addrHideDrop() {
 }
 
 function _addrPosition(d, inputEl) {
-  // Hoist the dropdown to <body> so no transformed/overflow ancestor (e.g. .screen has
-  // transform:translateX, which makes position:fixed resolve against the SCROLLED screen
-  // instead of the viewport → dropdown flew to the top). As a direct body child, fixed is
-  // truly viewport-relative and getBoundingClientRect coords line up.
-  if (d.parentNode !== document.body) document.body.appendChild(d);
-  // #addr-drop is position:fixed, so getBoundingClientRect() is already in the right
-  // coordinate space — place the dropdown directly BELOW the input.
-  var r  = inputEl.getBoundingClientRect();
-  var vw = document.documentElement.clientWidth || window.innerWidth;
-  var pad = 8;
-  var width = r.width;
-  var left = Math.max(pad, Math.min(r.left, vw - width - pad));
-  d.style.left         = left + 'px';
-  d.style.width        = width + 'px';
-  d.style.right        = 'auto';
-  d.style.top          = r.bottom + 'px';   // just under the field
-  d.style.bottom       = 'auto';
-  d.style.borderRadius = '0 0 12px 12px';
-  d.style.overflowY    = 'auto';
+  // Put the dropdown in NORMAL FLOW right after the input (not position:fixed). In-flow
+  // content expands its container, so an ancestor's overflow:hidden can't clip it, and it
+  // needs zero viewport math — which is unreliable with position:fixed + the iOS keyboard
+  // (that's what kept throwing it above the field). It simply sits directly below the box
+  // and moves/scrolls with the form.
+  if (inputEl.nextElementSibling !== d) inputEl.insertAdjacentElement('afterend', d);
+  d.style.position     = 'static';
+  d.style.top = ''; d.style.left = ''; d.style.right = ''; d.style.bottom = '';
+  d.style.width        = '100%';
+  d.style.boxSizing    = 'border-box';
+  d.style.marginTop    = '4px';
   d.style.maxHeight    = '240px';           // ~3 rows; scrolls if needed
+  d.style.overflowY    = 'auto';
+  d.style.borderRadius = '12px';
 }
 
 var _addrValidSuggestions = {}; // Store valid suggestions per input
