@@ -5431,7 +5431,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701214840';
+var BUILD_VERSION = '20260701220757';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6949,10 +6949,13 @@ function _addrHideDrop() {
 }
 
 function _addrPosition(d, inputEl) {
+  // Hoist the dropdown to <body> so no transformed/overflow ancestor (e.g. .screen has
+  // transform:translateX, which makes position:fixed resolve against the SCROLLED screen
+  // instead of the viewport → dropdown flew to the top). As a direct body child, fixed is
+  // truly viewport-relative and getBoundingClientRect coords line up.
+  if (d.parentNode !== document.body) document.body.appendChild(d);
   // #addr-drop is position:fixed, so getBoundingClientRect() is already in the right
-  // coordinate space — place the dropdown directly BELOW the input. (The old code
-  // subtracted visualViewport.offsetTop, which on iOS with the keyboard open threw the
-  // dropdown up to the top of the screen.)
+  // coordinate space — place the dropdown directly BELOW the input.
   var r  = inputEl.getBoundingClientRect();
   var vw = document.documentElement.clientWidth || window.innerWidth;
   var pad = 8;
