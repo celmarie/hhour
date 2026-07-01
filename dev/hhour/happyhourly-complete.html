@@ -5319,7 +5319,7 @@ function _loadGT(){
         <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px;">API Key Required</div>
         <div style="font-size:12px;color:var(--t2);line-height:1.6;">Add your Google Maps key to <code>GMAPS_KEY</code> in the script and reload.</div>
       </div>
-      <div id="deal-map" style="flex:1 1 0;width:100%;min-height:180px;"></div>
+      <div id="deal-map" style="flex:3 1 0;width:100%;min-height:180px;"></div>
       <!-- Venues within the current map view — like Agoda's map+list. Scrollable, compact cards. -->
       <div id="map-venue-list" style="flex:1 1 0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-top:1px solid var(--border);"></div>
       <div id="map-offline" style="display:none;flex:1;width:100%;min-height:0;overflow-y:auto;background:var(--bg);box-sizing:border-box;"></div>
@@ -5433,7 +5433,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702000054';
+var BUILD_VERSION = '20260702001047';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
