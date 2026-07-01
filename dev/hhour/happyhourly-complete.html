@@ -5431,7 +5431,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701213153';
+var BUILD_VERSION = '20260701213940';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -7000,9 +7000,8 @@ function _addrPosition(d, inputEl) {
 
 var _addrValidSuggestions = {}; // Store valid suggestions per input
 
-var _addrPredTimer = null;   // OWN timer (NOT the _addrTimer used by the map preview — reusing
-                             // that name made the two features clobber each other's timers).
-var _addrSeq = 0;            // render only the latest response → no out-of-order flicker.
+var _addrPredTimer = null;   // dedicated timer (NOT _addrTimer, which the map preview uses)
+var _addrSeq = 0;            // render only the latest response → no out-of-order flicker
 function addrInput(inputId) {
   var inputEl = document.getElementById(inputId);
   var q = inputEl ? inputEl.value.trim() : '';
@@ -7010,24 +7009,54 @@ function addrInput(inputId) {
   var d = document.getElementById('addr-drop');
   if (!d || !q || q.length < 2) { if(_addrPredTimer){ clearTimeout(_addrPredTimer); _addrPredTimer=null; } _addrHideDrop(); return; }
 
-  var svc = _addrGetSvc();
-  if (!svc) { _loadGMapsAPI(function(){ addrInput(inputId); }); return; }
-
-  // Light debounce: coalesce keystrokes so we don't fire a Google request AND rebuild the
-  // dropdown on every letter (that per-keystroke pile-up was janking/crashing on mobile).
+  // Light debounce so a burst of keystrokes fires ONE lookup (prevents the mobile jank).
   if (_addrPredTimer) clearTimeout(_addrPredTimer);
   var seq = ++_addrSeq;
-  _addrPredTimer = setTimeout(function(){
-    svc.getPlacePredictions({ input: q }, function(preds, status) {
-      if (seq !== _addrSeq || _addrDropInputId !== inputId) return;   // ignore stale/out-of-order
-      if (!preds || status !== google.maps.places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
-      _addrRender(inputId, preds.map(function(p){
-        return { description: p.description,
-                 main: (p.structured_formatting||{}).main_text || p.description.split(',')[0],
-                 sec:  (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim() };
-      }), d, inputEl);
-    });
-  }, 140);
+  _addrPredTimer = setTimeout(function(){ _addrFetch(inputId, q, seq, d, inputEl); }, 120);
+}
+
+// Suggestions come from Photon (keyless OpenStreetMap typeahead — fast, no Google Maps
+// API to load first, so results appear as soon as you type). If Photon returns nothing
+// or errors, fall back to Google predictions — but only if its API is ALREADY loaded
+// (we never block on that load, which was the old source of lag).
+function _addrFetch(inputId, q, seq, d, inputEl) {
+  fetch('https://photon.komoot.io/api/?limit=8&lang=en&q=' + encodeURIComponent(q))
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+    .then(function(json){
+      if (seq !== _addrSeq || _addrDropInputId !== inputId) return;   // superseded / left field
+      var items = _addrPhotonItems(json);
+      if (items.length) _addrRender(inputId, items, d, inputEl);
+      else _addrGoogleFallback(inputId, q, seq, d, inputEl);
+    })
+    .catch(function(){ _addrGoogleFallback(inputId, q, seq, d, inputEl); });
+}
+function _addrPhotonItems(json) {
+  return ((json && json.features) || []).map(function(f){
+    var p = f.properties || {};
+    var line1 = [p.housenumber, p.street].filter(Boolean).join(' ');
+    var main = p.name || line1 || p.city || p.country || '';
+    var bits = [];
+    if (p.name && line1) bits.push(line1);
+    if (p.city) bits.push(p.city);
+    if (p.state && p.state !== p.city) bits.push(p.state);
+    if (p.country) bits.push(p.country);
+    var sec = bits.join(', ');
+    return { description: [main, sec].filter(Boolean).join(sec ? ', ' : ''), main: main, sec: sec };
+  }).filter(function(x){ return x.main; });
+}
+function _addrGoogleFallback(inputId, q, seq, d, inputEl) {
+  if (seq !== _addrSeq || _addrDropInputId !== inputId) return;
+  var svc = _addrGetSvc();
+  if (!svc) { _addrHideDrop(); return; }   // Google not loaded — don't block, just show nothing
+  svc.getPlacePredictions({ input: q }, function(preds, status){
+    if (seq !== _addrSeq || _addrDropInputId !== inputId) return;
+    if (!preds || status !== google.maps.places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
+    _addrRender(inputId, preds.map(function(p){
+      return { description: p.description,
+               main: (p.structured_formatting||{}).main_text || p.description.split(',')[0],
+               sec:  (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim() };
+    }), d, inputEl);
+  });
 }
 
 // Render normalized suggestions ({description, main, sec}) into the dropdown.
