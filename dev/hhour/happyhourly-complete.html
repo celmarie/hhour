@@ -5431,7 +5431,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701222122';
+var BUILD_VERSION = '20260701230123';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14674,27 +14674,29 @@ async function handleGoogleCredential(resp){
 // Render Google's official button into #gsi-button. Returns true on success.
 function initGsiButton(gsiId, fbId, width){
   gsiId = gsiId || 'gsi-button'; fbId = fbId || 'google-btn';
-  // On mobile (esp. iOS Safari) Google's GIS popup (ux_mode:'popup') flow hangs,
-  // so use the full-page redirect (signInWithOAuth) instead — reliable on mobile.
-  var isMobile = (window.matchMedia && window.matchMedia('(max-width:899px)').matches)
-              || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
-  if(isMobile){
-    var rb = document.getElementById(fbId); if(rb) rb.style.display = 'flex';
-    var gb = document.getElementById(gsiId);  if(gb) gb.style.display = 'none';
-    return true;   // stop polling — the redirect button is the mobile path
-  }
   if(!(window.google && google.accounts && google.accounts.id)) return false;
   var c = document.getElementById(gsiId);
   if(!c) return false;
+  var isMobile = (window.matchMedia && window.matchMedia('(max-width:899px)').matches)
+              || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
   try{
     if(!_gsiReady){
-      google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential, auto_select:false, ux_mode:'popup' });
+      if(isMobile){
+        // Mobile: the popup flow hangs on iOS, so use GIS REDIRECT mode. The login runs
+        // on OUR domain (login_uri = /api/gauth) → Google shows "Appie Hour" instead of
+        // the supabase.co host. /api/gauth bounces back with #_gid → signInWithIdToken.
+        google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, ux_mode:'redirect', login_uri: location.origin + '/api/gauth', auto_select:false });
+      } else {
+        google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential, auto_select:false, ux_mode:'popup' });
+      }
       _gsiReady = true;
     }
     c.innerHTML = '';
     google.accounts.id.renderButton(c, { theme:'outline', size:'large', shape:'pill', text:'continue_with', width: width || 336, logo_alignment:'center' });
     c.style.display = 'flex';
-    var fb = document.getElementById(fbId); if(fb) fb.style.display = 'none'; // hide redirect fallback
+    // Desktop popup works → hide the classic button. Mobile: keep it VISIBLE as a labeled
+    // backup, so if the redirect URI isn't registered yet nobody is locked out.
+    var fb = document.getElementById(fbId); if(fb) fb.style.display = isMobile ? 'flex' : 'none';
     return true;
   }catch(e){ console.warn('[gsi] init failed', e); return false; }
 }
@@ -31203,7 +31205,7 @@ function _setupDealMap() {
     <!-- Fallback redirect button — shown only if GIS can't load -->
     <button type="button" id="google-btn" onclick="loginWithGoogleRedirect()" style="display:none;width:100%;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1.5px solid #E2D8CE;border-radius:16px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;transition:box-shadow .2s,background .2s;" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)';this.style.background='#FCFAF8'" onmouseout="this.style.boxShadow='none';this.style.background='#fff'">
       <svg width="18" height="18" viewBox="0 0 18 18" style="flex-shrink:0;"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.41 5.41 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
-      Continue with Google
+      Sign in another way
     </button>
 
     <button type="button" id="guest-btn" onclick="doGuestLogin()" style="width:100%;background:#F4ECE4;color:#6B5D54;border:1.5px solid #EFE2D6;border-radius:16px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;transition:background .2s;" onmouseover="this.style.background='#EADFD3'" onmouseout="this.style.background='#F4ECE4'">👤 Continue as Guest</button>
@@ -31286,6 +31288,27 @@ function _setupDealMap() {
 (function(){
   try{
     var s = location.search || '', h = location.hash || '';
+    // Google REDIRECT-mode sign-in bounced back from /api/gauth with the ID token in the
+    // fragment → finish sign-in on our domain (so the chooser showed "Appie Hour").
+    var gm = h.match(/[#&]_gid=([^&]+)/);
+    if(gm){
+      var lsg = document.getElementById('login-screen'); if(lsg) lsg.style.display = 'none';
+      var spg = document.getElementById('role-splash');  if(spg) spg.style.display = 'flex';
+      var tok = decodeURIComponent(gm[1]);
+      try { history.replaceState(null, '', location.pathname + (location.search||'')); } catch(e){}   // strip token from URL/history
+      (async function(){
+        try{
+          var r = await db.auth.signInWithIdToken({ provider:'google', token: tok });
+          if(r && r.error){ console.warn('[gauth] sign-in failed:', r.error.message); if(typeof showLoginScreen==='function') showLoginScreen(); var e1=document.getElementById('login-error'); if(e1) e1.textContent='Google sign-in failed — please try again.'; return; }
+          if(r && r.data && r.data.user){ try{ _authInitialized = true; }catch(e){} await handleAuthSession(r.data.user); }
+        }catch(err){ console.warn('[gauth] exception', err); if(typeof showLoginScreen==='function') showLoginScreen(); }
+      })();
+      return;
+    }
+    if(/[?&]gauth_error=/.test(s)){
+      try { history.replaceState(null, '', location.pathname); } catch(e){}
+      var eg=document.getElementById('login-error'); if(eg) eg.textContent='Google sign-in didn’t complete — please try again or use another method.';
+    }
     if(/[?&](code|error)=/.test(s) || /(access_token|error)=/.test(h)){
       var ls = document.getElementById('login-screen'); if(ls) ls.style.display = 'none';
       var sp = document.getElementById('role-splash');  if(sp) sp.style.display = 'flex';
