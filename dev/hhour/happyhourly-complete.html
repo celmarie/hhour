@@ -5319,7 +5319,9 @@ function _loadGT(){
         <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:6px;">API Key Required</div>
         <div style="font-size:12px;color:var(--t2);line-height:1.6;">Add your Google Maps key to <code>GMAPS_KEY</code> in the script and reload.</div>
       </div>
-      <div id="deal-map" style="flex:1;width:100%;min-height:0;"></div>
+      <div id="deal-map" style="flex:1 1 0;width:100%;min-height:180px;"></div>
+      <!-- Venues within the current map view — like Agoda's map+list. Scrollable, compact cards. -->
+      <div id="map-venue-list" style="flex:1 1 0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-top:1px solid var(--border);"></div>
       <div id="map-offline" style="display:none;flex:1;width:100%;min-height:0;overflow-y:auto;background:var(--bg);box-sizing:border-box;"></div>
     </div>
 
@@ -5431,7 +5433,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701230123';
+var BUILD_VERSION = '20260701232310';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -29910,15 +29912,69 @@ function _mapSyncClusters(){
   if(!_gmapObj) return;
   var show = _gmapMarkers.filter(_markerPassesFilter);
   if(_gmapCluster){
-    try { _gmapCluster.clearLayers(); _gmapCluster.addLayers(show); return; } catch(e){}
+    try { _gmapCluster.clearLayers(); _gmapCluster.addLayers(show); } catch(e){}
+  } else {
+    // Fallback (no cluster lib): add/remove markers directly on the map.
+    _gmapMarkers.forEach(function(m){
+      try {
+        if(_markerPassesFilter(m)){ if(!_gmapObj.hasLayer(m)) m.addTo(_gmapObj); }
+        else if(_gmapObj.hasLayer(m)) _gmapObj.removeLayer(m);
+      } catch(e){}
+    });
   }
-  // Fallback (no cluster lib): add/remove markers directly on the map.
-  _gmapMarkers.forEach(function(m){
-    try {
-      if(_markerPassesFilter(m)){ if(!_gmapObj.hasLayer(m)) m.addTo(_gmapObj); }
-      else if(_gmapObj.hasLayer(m)) _gmapObj.removeLayer(m);
-    } catch(e){}
+  try { _renderMapVenueList(); } catch(e){}
+}
+
+// ── Venues-in-view list (under the map) ──────────────────────────────────────
+// Lists the deals/spots whose pins fall inside the CURRENT map viewport and pass the
+// active filters, sorted nearest-first. Refreshed on pan/zoom and on filter changes.
+function _renderMapVenueList(){
+  var el = document.getElementById('map-venue-list');
+  if(!el || !_gmapObj) return;
+  var b, c;
+  try { b = _gmapObj.getBounds(); c = _gmapObj.getCenter(); } catch(e){ return; }
+  var items = [];
+  (_gmapMarkers||[]).forEach(function(m){
+    if(!m || !m._deal || !_markerPassesFilter(m)) return;
+    var ll; try { ll = m.getLatLng(); } catch(e){ return; }
+    if(!b.contains(ll)) return;
+    items.push({ deal: m._deal, d: (c ? c.distanceTo(ll) : 0) });
   });
+  items.sort(function(a,z){ return a.d - z.d; });
+  if(!items.length){
+    el.innerHTML = '<div style="padding:26px 16px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;line-height:1.5;">No venues in this area.<br>Zoom out or drag the map to explore.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="padding:9px 14px 5px;font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;background:#fff;z-index:1;border-bottom:1px solid #F2F2F5;">'
+      + items.length + ' venue' + (items.length>1?'s':'') + ' in view</div>'
+    + items.map(function(x){ return _mapVenueCard(x.deal); }).join('');
+}
+function _mapVenueCard(deal){
+  var isWatch = !!deal._isWatch;
+  var isV = deal.verified === true;
+  var name = deal.name || deal.venue || 'Venue';
+  var sub  = isWatch ? (deal.desc || '⚽ Match') : (deal.deal || deal.desc || '');
+  var price = isWatch ? '' : (deal.price || '');
+  var meta = isWatch ? '' : [deal.dist||'', deal.hours||''].filter(Boolean).join(' · ');
+  var raw = deal.img || '';
+  var img = (typeof raw==='string' && raw.charAt(0)==='[') ? (function(){ try{ return JSON.parse(raw)[0]||''; }catch(e){ return ''; } })() : raw;
+  var emoji = deal.emoji || (isWatch ? '⚽' : '📍');
+  var onclick = isWatch ? "goScreen('watch')" : ("openDealById('" + deal.id + "','" + (isV?'v':'uc') + "')");
+  var thumb = (img && typeof img==='string')
+    ? '<img src="'+esc(img)+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.parentNode.textContent=\''+(isWatch?'⚽':'📍')+'\'">'
+    : '<span style="font-size:24px;">'+esc(emoji)+'</span>';
+  return '<div onclick="'+onclick+'" ontouchstart="this.style.background=\'#F7F7F9\'" ontouchend="this.style.background=\'#fff\'" style="display:flex;gap:11px;padding:9px 13px;border-bottom:1px solid #F2F2F5;cursor:pointer;align-items:center;background:#fff;">'
+    +'<div style="width:60px;height:60px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#F0F0F4;display:flex;align-items:center;justify-content:center;">'+thumb+'</div>'
+    +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(name)+'</div>'
+      +(sub?'<div style="font-size:11.5px;color:#666;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">'+esc(sub)+'</div>':'')
+      +'<div style="display:flex;align-items:center;gap:7px;margin-top:3px;">'
+        +(price?'<span style="font-size:13px;font-weight:800;color:#E8192C;">'+esc(price)+'</span>':'')
+        +(meta?'<span style="font-size:10px;color:#9A9AB0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(meta)+'</span>':'')
+      +'</div>'
+    +'</div>'
+    +'<div style="font-size:17px;color:#C7C7CC;flex-shrink:0;">›</div>'
+  +'</div>';
 }
 function _mapClearMarkers(){
   clearTimeout(_clusterTimer);
@@ -29938,6 +29994,7 @@ function _placeDealPin(deal, lat, lng) {
     var pinColor = isVerified ? '#2563EB' : '#E8192C';   // verified = blue, community = red
     var marker = L.circleMarker([lat, lng], { radius: 9, color: '#ffffff', weight: 2, fillColor: pinColor, fillOpacity: 1 });
     marker._dealVerified = isVerified;
+    marker._deal = deal;   // powers the "venues in view" list under the map
     var infoHtml = '<div style="font-family:Inter,sans-serif;max-width:240px;">' +
       '<div style="font-weight:800;font-size:14px;color:#1A1A1A;">' + esc(deal.name||'') + '</div>' +
       (addr ? '<div style="font-size:11px;color:#888;margin:2px 0;">📍 ' + esc(addr) + '</div>' : '') +
@@ -29989,6 +30046,7 @@ function _placeWatchMarker(s, lat, lng) {
     marker._isWatch = true;
     var _ms = _watchMatchesOf(s);
     var _title = _ms.length>1 ? (_ms.length+' matches') : ((_ms[0]&&_ms[0].label)||s.match_label||'Match');
+    marker._deal = { _isWatch: true, name: (s.venue_name || 'Match'), desc: '⚽ ' + _title, id: s.id };
     var when = (_ms.length===1 && _ms[0])
       ? ((_ms[0].dateStr?_watchFmtDate(_ms[0].dateStr):'') + ((_ms[0].dateStr&&_ms[0].timeStr)?' · ':'') + (_ms[0].timeStr?(_ms[0].timeStr+(_ms[0].tz?' '+_ms[0].tz:'')):''))
       : _ms.map(function(m){ return _watchEsc(m.label); }).join(', ');
@@ -30219,7 +30277,7 @@ function _setupDealMap() {
 
   function build(center) {
     document.getElementById('map-loading').style.display = 'none';
-    if (_gmapObj) { _gmapObj.setView([center.lat, center.lng]); return; }
+    if (_gmapObj) { _gmapObj.setView([center.lat, center.lng]); setTimeout(function(){ try{ _gmapObj.invalidateSize(); _renderMapVenueList(); }catch(e){} }, 60); return; }
     if (typeof L === 'undefined' || !L.map) { console.warn('[_setupDealMap] Leaflet not ready'); return; }
 
     // Leaflet + OpenStreetMap raster tiles (canvas-rendered markers) — light on iOS,
@@ -30230,6 +30288,8 @@ function _setupDealMap() {
       maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
     }).addTo(_gmapObj);
     _initMapClusterer();
+    // Refresh the "venues in view" list whenever the map is panned/zoomed.
+    try { _gmapObj.on('moveend', _renderMapVenueList); } catch(e){}
 
     // User location dot (kept directly on the map, not clustered)
     try { L.circleMarker([center.lat, center.lng], { radius: 7, color: '#ffffff', weight: 2, fillColor: '#4285F4', fillOpacity: 1 }).addTo(_gmapObj).bindPopup('You are here'); } catch(e){}
