@@ -6,8 +6,10 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<script src="https://js.stripe.com/v3/"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- defer: neither is needed at boot (Stripe → checkout, qrcode → voucher view), so
+     they no longer block first render on mobile. -->
+<script defer src="https://js.stripe.com/v3/"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- tz-lookup: offline coordinate→IANA-timezone lookup (~73KB). Defines window.tzlookup(lat,lng).
      Lets deal/coupon/event times follow the VENUE's timezone, not the viewer's. SW-cached → offline. -->
 <script defer src="https://cdn.jsdelivr.net/npm/tz-lookup@6.1.25/tz.js"></script>
@@ -5429,7 +5431,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701210510';
+var BUILD_VERSION = '20260701211100';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
