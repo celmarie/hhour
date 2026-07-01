@@ -5431,7 +5431,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701211638';
+var BUILD_VERSION = '20260701212606';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -7000,52 +7000,22 @@ function _addrPosition(d, inputEl) {
 
 var _addrValidSuggestions = {}; // Store valid suggestions per input
 
-var _addrTimer = null;   // debounce timer for autocomplete requests
-var _addrSeq = 0;        // request sequence — ignore stale (out-of-order) responses
-var _addrNewApiBroken = false;  // set once if the new Places API isn't enabled → use legacy
+var _addrSeq = 0;   // request sequence — render only the latest response (kills flicker,
+                    // adds NO delay). No debounce, no new-API attempt: fire immediately.
 function addrInput(inputId) {
   var inputEl = document.getElementById(inputId);
   var q = inputEl ? inputEl.value.trim() : '';
   _addrDropInputId = inputId;
   var d = document.getElementById('addr-drop');
-  if (!d || !q || q.length < 2) { if(_addrTimer){ clearTimeout(_addrTimer); _addrTimer=null; } _addrHideDrop(); return; }
+  if (!d || !q || q.length < 2) { _addrHideDrop(); return; }
 
   var svc = _addrGetSvc();
   if (!svc) { _loadGMapsAPI(function(){ addrInput(inputId); }); return; }
 
-  // Debounce ~130ms so we fire ONE request per query (not per keystroke).
-  if (_addrTimer) clearTimeout(_addrTimer);
+  var places = google.maps.places;
   var seq = ++_addrSeq;
-  _addrTimer = setTimeout(function(){ _addrRun(inputId, q, seq, d, inputEl); }, 130);
-}
-
-// Fetch suggestions: prefer the NEW (faster) Places Autocomplete API; fall back to the
-// legacy AutocompleteService if the new one isn't available/enabled on the key.
-async function _addrRun(inputId, q, seq, d, inputEl) {
-  var places = (typeof google!=='undefined' && google.maps) ? google.maps.places : null;
-  if (!places) return;
-  if (places.AutocompleteSuggestion && !_addrNewApiBroken) {
-    try {
-      var res = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({ input: q });
-      if (seq !== _addrSeq || _addrDropInputId !== inputId) return;   // superseded / left the field
-      var raw = (res && res.suggestions) || [];
-      var items = raw.map(function(s){
-        var p = s && s.placePrediction; if(!p) return null;
-        var full = (p.text && p.text.text) || '';
-        return { description: full, main: (p.mainText && p.mainText.text) || full.split(',')[0], sec: (p.secondaryText && p.secondaryText.text) || '' };
-      }).filter(function(x){ return x && x.description; });
-      if (items.length) { _addrRender(inputId, items, d, inputEl); return; }
-      if (!raw.length)  { _addrHideDrop(); return; }   // genuinely no results
-      // results existed but mapping yielded nothing → fall through to legacy (defensive)
-    } catch(e) {
-      _addrNewApiBroken = true;   // new API not enabled → use legacy for the rest of the session
-      console.warn('[addr] new Places API unavailable, using legacy:', e && e.message);
-    }
-  }
-  // Legacy fallback
-  var svc = _addrGetSvc(); if(!svc) return;
   svc.getPlacePredictions({ input: q }, function(preds, status) {
-    if (seq !== _addrSeq || _addrDropInputId !== inputId) return;
+    if (seq !== _addrSeq || _addrDropInputId !== inputId) return;   // ignore stale/out-of-order
     if (!preds || status !== places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
     _addrRender(inputId, preds.map(function(p){
       return { description: p.description,
