@@ -5407,7 +5407,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701132208';
+var BUILD_VERSION = '20260701133510';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -15371,6 +15371,11 @@ async function loadAdminData(){
       var { data: avRows } = await _pActiveVotes;
       window._dealActiveVotes = {};      // total confirmations per deal (counter-signal badge)
       window._dealLastConfirmed = {};    // permanent per-deal record: {at, count} across ALL confirmations
+      // Flat click log for the discreet admin report — one entry per "👍 Still active" tap,
+      // newest first (avRows is ordered reported_at desc).
+      window._activeVoteLog = (avRows||[]).map(function(r){
+        return { who:r.reported_by||'Customer', deal:r.deal_name||'Deal', venue:r.venue_name||'', at:r.reported_at||null, kind:r.deal_kind||'community', ack:!!r.acknowledged_at };
+      });
       var _avg = {};                     // admin queue — UNACKNOWLEDGED confirmations only
       (avRows||[]).forEach(function(r){
         // Permanent record from ALL info rows (acknowledged or not).
@@ -15388,7 +15393,7 @@ async function loadAdminData(){
         if(r.reported_at && (!_avg[k].lastAt || r.reported_at > _avg[k].lastAt)) _avg[k].lastAt = r.reported_at;
       });
       window._adminActiveVotes = Object.keys(_avg).map(function(k){ return _avg[k]; }).sort(function(a,b){ return b.count - a.count; });
-    } catch(e){ window._dealActiveVotes = {}; window._adminActiveVotes = []; window._dealLastConfirmed = {}; }
+    } catch(e){ window._dealActiveVotes = {}; window._adminActiveVotes = []; window._dealLastConfirmed = {}; window._activeVoteLog = []; }
 
     // Deal mistake reports
     try {
@@ -18892,6 +18897,33 @@ function adminPage(page,btn){
             +'</div>'
           +'</div>';
         }).join('')
+      +'</div>';
+    }
+
+    // ── STILL-ACTIVE CLICK LOG (discreet report — one line per 👍 tap) ──────────
+    var _avLog = (window._activeVoteLog||[]);
+    if(_avLog.length){
+      var _AV_CAP = 300;
+      var _avShown = _avLog.slice(0, _AV_CAP);
+      dHtml += '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:12px;">'
+        +'<button onclick="admToggleSection(\'adm-active-log\',\'adm-active-log-chev\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:none;background:none;cursor:pointer;font-family:Inter,sans-serif;">'
+          +'<div style="display:flex;align-items:center;gap:8px;">'
+            +'<span style="font-size:13px;font-weight:800;color:#1A1A1A;">👍 Still-active click log</span>'
+            +'<span style="background:#F0F0F4;color:#9A9AB0;font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;">'+_avLog.length+'</span>'
+          +'</div>'
+          +'<span id="adm-active-log-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
+        +'</button>'
+        +'<div id="adm-active-log" style="border-top:1px solid #F0F0F4;">'
+          +_avShown.map(function(v){
+            var when=''; try{ if(v.at) when=new Date(v.at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){}
+            return '<div style="display:flex;align-items:baseline;gap:8px;padding:9px 16px;border-bottom:1px solid #F6F6F8;font-size:12px;line-height:1.4;">'
+              +'<span style="color:#9A9AB0;font-weight:600;white-space:nowrap;flex-shrink:0;">'+esc(when||'—')+'</span>'
+              +'<span style="color:#1A1A1A;font-weight:700;flex-shrink:0;">'+esc(v.who||'Customer')+'</span>'
+              +'<span style="color:#9A9AB0;min-width:0;">'+esc(v.deal||'Deal')+(v.venue?' · '+esc(v.venue):'')+'</span>'
+            +'</div>';
+          }).join('')
+          +(_avLog.length>_AV_CAP ? '<div style="padding:9px 16px;font-size:11px;color:#9A9AB0;font-weight:600;text-align:center;">Showing latest '+_AV_CAP+' of '+_avLog.length+'</div>' : '')
+        +'</div>'
       +'</div>';
     }
 
