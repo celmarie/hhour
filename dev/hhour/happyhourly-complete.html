@@ -5431,7 +5431,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701211100';
+var BUILD_VERSION = '20260701211638';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -7002,6 +7002,7 @@ var _addrValidSuggestions = {}; // Store valid suggestions per input
 
 var _addrTimer = null;   // debounce timer for autocomplete requests
 var _addrSeq = 0;        // request sequence — ignore stale (out-of-order) responses
+var _addrNewApiBroken = false;  // set once if the new Places API isn't enabled → use legacy
 function addrInput(inputId) {
   var inputEl = document.getElementById(inputId);
   var q = inputEl ? inputEl.value.trim() : '';
@@ -7012,41 +7013,71 @@ function addrInput(inputId) {
   var svc = _addrGetSvc();
   if (!svc) { _loadGMapsAPI(function(){ addrInput(inputId); }); return; }
 
-  // Debounce: wait ~200ms after typing pauses so we fire ONE request per query
-  // instead of one per keystroke (the burst was causing the laggy, flickering list).
+  // Debounce ~130ms so we fire ONE request per query (not per keystroke).
   if (_addrTimer) clearTimeout(_addrTimer);
   var seq = ++_addrSeq;
-  _addrTimer = setTimeout(function(){
-   svc.getPlacePredictions({ input: q }, function(preds, status) {
-    if (seq !== _addrSeq) return;               // a newer keystroke superseded this response
-    if (_addrDropInputId !== inputId) return;   // user moved to another field
-    if (!preds || status !== google.maps.places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
+  _addrTimer = setTimeout(function(){ _addrRun(inputId, q, seq, d, inputEl); }, 130);
+}
 
-    // Store valid suggestions for this input
-    _addrValidSuggestions[inputId] = preds.map(function(p){ return p.description; });
+// Fetch suggestions: prefer the NEW (faster) Places Autocomplete API; fall back to the
+// legacy AutocompleteService if the new one isn't available/enabled on the key.
+async function _addrRun(inputId, q, seq, d, inputEl) {
+  var places = (typeof google!=='undefined' && google.maps) ? google.maps.places : null;
+  if (!places) return;
+  if (places.AutocompleteSuggestion && !_addrNewApiBroken) {
+    try {
+      var res = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({ input: q });
+      if (seq !== _addrSeq || _addrDropInputId !== inputId) return;   // superseded / left the field
+      var raw = (res && res.suggestions) || [];
+      var items = raw.map(function(s){
+        var p = s && s.placePrediction; if(!p) return null;
+        var full = (p.text && p.text.text) || '';
+        return { description: full, main: (p.mainText && p.mainText.text) || full.split(',')[0], sec: (p.secondaryText && p.secondaryText.text) || '' };
+      }).filter(function(x){ return x && x.description; });
+      if (items.length) { _addrRender(inputId, items, d, inputEl); return; }
+      if (!raw.length)  { _addrHideDrop(); return; }   // genuinely no results
+      // results existed but mapping yielded nothing → fall through to legacy (defensive)
+    } catch(e) {
+      _addrNewApiBroken = true;   // new API not enabled → use legacy for the rest of the session
+      console.warn('[addr] new Places API unavailable, using legacy:', e && e.message);
+    }
+  }
+  // Legacy fallback
+  var svc = _addrGetSvc(); if(!svc) return;
+  svc.getPlacePredictions({ input: q }, function(preds, status) {
+    if (seq !== _addrSeq || _addrDropInputId !== inputId) return;
+    if (!preds || status !== places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
+    _addrRender(inputId, preds.map(function(p){
+      return { description: p.description,
+               main: (p.structured_formatting||{}).main_text || p.description.split(',')[0],
+               sec:  (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim() };
+    }), d, inputEl);
+  });
+}
 
-    var pin = '<svg width="16" height="20" viewBox="0 0 24 24" fill="#9E9E9E" style="flex-shrink:0;margin-top:1px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
-    d.innerHTML = preds.slice(0,8).map(function(p,i){
-      var main = (p.structured_formatting||{}).main_text || p.description.split(',')[0];
-      var sec  = (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim();
-      var esc  = p.description.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      var mainEsc = main.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      var secEsc = (sec||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      var clickHandler = (inputId === 'uc-venue') ? "ucAddrPick('"+secEsc+"','"+mainEsc+"')" : (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'edit-m-address') ? "adminAddrPick('"+esc+"')" : (inputId === 'watch-venue') ? "watchVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'awe-venue') ? "aweVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
-      return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'" ontouchend="'+clickHandler+'"'
-        +' style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;cursor:pointer;background:#fff;'
-        +'border-top:'+(i?'1px solid #F0F0F0':'none')+'"'
-        +' onmouseover="this.style.background=\'#F5F5F5\'" onmouseout="this.style.background=\'#fff\'">'
-        +pin
-        +'<div style="min-width:0;flex:1">'
-        +'<div style="font-size:14px;font-weight:500;color:#111;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+main+'</div>'
-        +(sec?'<div style="font-size:12px;color:#777;margin-top:3px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sec+'</div>':'')
-        +'</div></div>';
-    }).join('');
-    _addrPosition(d, inputEl);
-    d.style.display = 'block';
-   });
-  }, 200);
+// Render normalized suggestions ({description, main, sec}) into the dropdown.
+function _addrRender(inputId, items, d, inputEl) {
+  _addrValidSuggestions[inputId] = items.map(function(p){ return p.description; });
+  var pin = '<svg width="16" height="20" viewBox="0 0 24 24" fill="#9E9E9E" style="flex-shrink:0;margin-top:1px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
+  d.innerHTML = items.slice(0,8).map(function(p,i){
+    var main = p.main || (p.description||'').split(',')[0];
+    var sec  = p.sec || '';
+    var esc  = (p.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var mainEsc = main.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var secEsc = (sec||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var clickHandler = (inputId === 'uc-venue') ? "ucAddrPick('"+secEsc+"','"+mainEsc+"')" : (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'edit-m-address') ? "adminAddrPick('"+esc+"')" : (inputId === 'watch-venue') ? "watchVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'awe-venue') ? "aweVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
+    return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'" ontouchend="'+clickHandler+'"'
+      +' style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;cursor:pointer;background:#fff;'
+      +'border-top:'+(i?'1px solid #F0F0F0':'none')+'"'
+      +' onmouseover="this.style.background=\'#F5F5F5\'" onmouseout="this.style.background=\'#fff\'">'
+      +pin
+      +'<div style="min-width:0;flex:1">'
+      +'<div style="font-size:14px;font-weight:500;color:#111;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+main+'</div>'
+      +(sec?'<div style="font-size:12px;color:#777;margin-top:3px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sec+'</div>':'')
+      +'</div></div>';
+  }).join('');
+  _addrPosition(d, inputEl);
+  d.style.display = 'block';
 }
 
 function addrValidate(inputId) {
