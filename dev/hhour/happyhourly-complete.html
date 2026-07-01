@@ -5272,8 +5272,8 @@ function _loadGT(){
       <div style="padding:12px 16px;background:white;border-bottom:1px solid var(--border);flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
           <button id="filter-verified" onclick="toggleMapFilter('verified')" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #2563EB;background:white;color:#2563EB;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"><div style="width:10px;height:10px;border-radius:50%;background:#2563EB;"></div>Verified</button>
-          <button id="filter-community" onclick="toggleMapFilter('community')" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #22C55E;background:white;color:#22C55E;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"><div style="width:10px;height:10px;border-radius:50%;background:#22C55E;"></div>Community</button>
-          <button id="filter-football" onclick="toggleMapFilter('football')" style="display:none;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #F59E0B;background:white;color:#F59E0B;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"><span style="font-size:13px;line-height:1;">⚽</span>Football</button>
+          <button id="filter-community" onclick="toggleMapFilter('community')" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #E8192C;background:white;color:#E8192C;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"><div style="width:10px;height:10px;border-radius:50%;background:#E8192C;"></div>Community</button>
+          <button id="filter-football" onclick="toggleMapFilter('football')" style="display:none;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:2px solid #7B2FBE;background:white;color:#7B2FBE;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;"><span style="font-size:13px;line-height:1;">⚽</span>Football</button>
           <div style="margin-left:auto;font-size:10px;color:var(--t3);font-weight:600;white-space:nowrap;">Tap pin to view</div>
         </div>
       </div>
@@ -5397,7 +5397,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701025033';
+var BUILD_VERSION = '20260701030014';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -29463,7 +29463,7 @@ function _placeDealPin(deal, lat, lng) {
   var addr = deal.address || '';
   try {
     var isVerified = deal.verified === true;
-    var pinColor = isVerified ? '#2563EB' : '#22C55E';
+    var pinColor = isVerified ? '#2563EB' : '#E8192C';   // verified = blue, community = red
     var marker = L.circleMarker([lat, lng], { radius: 9, color: '#ffffff', weight: 2, fillColor: pinColor, fillOpacity: 1 });
     marker._dealVerified = isVerified;
     var infoHtml = '<div style="font-family:Inter,sans-serif;max-width:240px;">' +
@@ -29512,7 +29512,7 @@ function refreshDealMapMarkers() {
 function _placeWatchMarker(s, lat, lng) {
   if (!_gmapObj || !isFinite(lat) || !isFinite(lng)) return;
   try {
-    var marker = L.circleMarker([lat, lng], { radius: 9, color: '#12A150', weight: 3, fillColor: '#FFFFFF', fillOpacity: 1 });
+    var marker = L.circleMarker([lat, lng], { radius: 9, color: '#ffffff', weight: 2, fillColor: '#7B2FBE', fillOpacity: 1 });   // football/watch = purple
     marker._dealVerified = false;
     marker._isWatch = true;
     var _ms = _watchMatchesOf(s);
@@ -29685,7 +29685,7 @@ function initDealMap() {
 
 // Map filter state
 let mapFilters = { verified: true, community: true, football: true };
-var _mapFilterColors = { verified: '#2563EB', community: '#22C55E', football: '#F59E0B' };
+var _mapFilterColors = { verified: '#2563EB', community: '#E8192C', football: '#7B2FBE' };
 
 function toggleMapFilter(type) {
   mapFilters[type] = !mapFilters[type];
@@ -29735,14 +29735,14 @@ function _setupDealMap() {
     verBtn.style.color = mapFilters.verified ? 'white' : '#2563EB';
   }
   if (comBtn) {
-    comBtn.style.background = mapFilters.community ? '#22C55E' : 'white';
-    comBtn.style.color = mapFilters.community ? 'white' : '#22C55E';
+    comBtn.style.background = mapFilters.community ? '#E8192C' : 'white';
+    comBtn.style.color = mapFilters.community ? 'white' : '#E8192C';
   }
   // Football filter only exists when "Where to Watch" is live (it has pins to toggle).
   if (fbBtn) {
     fbBtn.style.display = _watchFeatureOn ? 'flex' : 'none';
-    fbBtn.style.background = mapFilters.football ? '#F59E0B' : 'white';
-    fbBtn.style.color = mapFilters.football ? 'white' : '#F59E0B';
+    fbBtn.style.background = mapFilters.football ? '#7B2FBE' : 'white';
+    fbBtn.style.color = mapFilters.football ? 'white' : '#7B2FBE';
   }
 
   function build(center) {
