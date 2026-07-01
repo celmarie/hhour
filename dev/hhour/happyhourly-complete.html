@@ -11,10 +11,15 @@
 <!-- tz-lookup: offline coordinate→IANA-timezone lookup (~73KB). Defines window.tzlookup(lat,lng).
      Lets deal/coupon/event times follow the VENUE's timezone, not the viewer's. SW-cached → offline. -->
 <script defer src="https://cdn.jsdelivr.net/npm/tz-lookup@6.1.25/tz.js"></script>
-<!-- Marker clustering for the deal map: at low zoom, nearby pins merge into a few cluster
-     bubbles instead of rendering all of them — prevents the iOS memory crash on zoom-out
-     and removes the need for any zoom limit. Exposes window.markerClusterer. SW-cached. -->
-<script defer src="https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
+<!-- Deal map = Leaflet + OpenStreetMap (raster tiles, no WebGL) — far lighter on iOS than
+     the Google Maps JS SDK, so it can zoom out fully without the WebKit memory crash.
+     Leaflet.markercluster merges nearby pins into cluster bubbles at low zoom. SW-cached.
+     (Google Maps JS is still lazy-loaded elsewhere, but only for address geocoding.) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <!-- Vercel Web Analytics (cookieless, privacy-friendly — counts all visitors, pages,
      referrers; tracks SPA route changes via the History API). Requires Web Analytics
      to be ENABLED in the Vercel project dashboard (Analytics tab → Enable). -->
@@ -5392,7 +5397,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260701022701';
+var BUILD_VERSION = '20260701025033';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -29138,17 +29143,15 @@ window.addEventListener('resize', function(){
 // ══ GOOGLE MAPS ══════════════════════════════════════════════════════════════
 
 var _gmapInited = false;
-var _gmapObj = null;
-var _gmapMarkers = [];
-// ONE shared InfoWindow for the whole map. Creating a separate InfoWindow per pin
-// (×200+ deals) was a major memory hog that could crash the map on low-end phones.
-var _gmapInfoWin = null;
-function _gmapOpenInfo(marker, html){
-  try {
-    if(!_gmapInfoWin) _gmapInfoWin = new google.maps.InfoWindow();
-    _gmapInfoWin.setContent(html);
-    _gmapInfoWin.open(_gmapObj, marker);
-  } catch(e){}
+var _gmapObj = null;        // the Leaflet map (name kept for compatibility with existing checks)
+var _gmapMarkers = [];      // array of Leaflet circleMarkers
+var _gmapCluster = null;    // Leaflet.markercluster group
+// Leaflet binds a popup per marker (bindPopup); this helper stays for any legacy callers.
+function _gmapOpenInfo(marker, html){ try { if(marker && marker.openPopup) marker.openPopup(); } catch(e){} }
+function _ensureLeaflet(cb){
+  if(typeof L !== 'undefined' && L.map){ cb(); return; }
+  var tries = 0;
+  (function w(){ if(typeof L !== 'undefined' && L.map){ cb(); return; } if(tries++ > 60) return; setTimeout(w, 100); })();
 }
 var _gmapMarkersAt = 0;            // when pins were last placed (map cache freshness)
 var MAP_STALE_MS = 5 * 60 * 1000;  // re-fetch/re-place only after 5 min, not every visit
@@ -29405,17 +29408,16 @@ function initHomeMap(lat, lng) {
   if (el && src && !el.src) el.src = src;
 }
 
-// ── Deal-map marker clustering ───────────────────────────────────────────────
-// Pins are created WITHOUT a map and handed to _mapPlaceMarker. When the clusterer
-// library is loaded, it groups them into cluster bubbles at low zoom (so zooming all
-// the way out renders a handful of bubbles, not 80 pins → no iOS memory crash). If the
-// library isn't available, it falls back to placing markers directly (old behavior).
-var _gmapCluster = null;
+// ── Deal-map marker clustering (Leaflet) ─────────────────────────────────────
+// Pins are lightweight Leaflet circleMarkers (canvas-rendered) handed to
+// _mapPlaceMarker. Leaflet.markercluster groups them into cluster bubbles at low zoom,
+// so zooming all the way out renders a handful of bubbles — no iOS memory crash.
 function _initMapClusterer(){
   _gmapCluster = null;
   try {
-    if(window.markerClusterer && markerClusterer.MarkerClusterer && _gmapObj){
-      _gmapCluster = new markerClusterer.MarkerClusterer({ map: _gmapObj });
+    if(typeof L !== 'undefined' && L.markerClusterGroup && _gmapObj){
+      _gmapCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 55, spiderfyOnMaxZoom: true });
+      _gmapObj.addLayer(_gmapCluster);
     }
   } catch(e){ _gmapCluster = null; console.warn('[map] clusterer init failed', e); }
 }
@@ -29427,23 +29429,58 @@ function _markerPassesFilter(marker){
 var _clusterTimer = null;
 function _mapPlaceMarker(marker){
   _gmapMarkers.push(marker);
-  if(!_gmapCluster){ marker.setMap(_markerPassesFilter(marker) ? _gmapObj : null); return; }
-  // Batch: markers arrive one-by-one as geocoding resolves; rebuild the cluster ONCE
-  // after they settle instead of re-clustering on every single add (which churned CPU/
-  // memory and could crash the load).
+  // Markers arrive one-by-one as geocoding resolves → rebuild the shown set ONCE after
+  // they settle (debounced) instead of re-clustering on every add.
   clearTimeout(_clusterTimer);
-  _clusterTimer = setTimeout(_mapSyncClusters, 350);
+  _clusterTimer = setTimeout(_mapSyncClusters, 300);
 }
 function _mapSyncClusters(){
+  if(!_gmapObj) return;
+  var show = _gmapMarkers.filter(_markerPassesFilter);
   if(_gmapCluster){
-    try { _gmapCluster.clearMarkers(); _gmapCluster.addMarkers(_gmapMarkers.filter(_markerPassesFilter)); return; } catch(e){}
+    try { _gmapCluster.clearLayers(); _gmapCluster.addLayers(show); return; } catch(e){}
   }
-  _gmapMarkers.forEach(function(m){ try { m.setMap(_markerPassesFilter(m) ? _gmapObj : null); } catch(e){} });
+  // Fallback (no cluster lib): add/remove markers directly on the map.
+  _gmapMarkers.forEach(function(m){
+    try {
+      if(_markerPassesFilter(m)){ if(!_gmapObj.hasLayer(m)) m.addTo(_gmapObj); }
+      else if(_gmapObj.hasLayer(m)) _gmapObj.removeLayer(m);
+    } catch(e){}
+  });
 }
 function _mapClearMarkers(){
-  if(_gmapCluster){ try { _gmapCluster.clearMarkers(); } catch(e){} }
-  (_gmapMarkers||[]).forEach(function(m){ try { m.setMap(null); } catch(e){} });
+  clearTimeout(_clusterTimer);
+  if(_gmapCluster){ try { _gmapCluster.clearLayers(); } catch(e){} }
+  (_gmapMarkers||[]).forEach(function(m){ try { if(_gmapObj && _gmapObj.hasLayer(m)) _gmapObj.removeLayer(m); } catch(e){} });
   _gmapMarkers = [];
+}
+
+// Place one deal (or watch spot) as a lightweight Leaflet circleMarker with a popup.
+// Shared by refreshDealMapMarkers and the initial build.
+function _placeDealPin(deal, lat, lng) {
+  if (!isFinite(lat) || !isFinite(lng) || !_gmapObj) return;
+  if (deal._isWatch) { _placeWatchMarker(deal._spot, lat, lng); return; }
+  var addr = deal.address || '';
+  try {
+    var isVerified = deal.verified === true;
+    var pinColor = isVerified ? '#2563EB' : '#22C55E';
+    var marker = L.circleMarker([lat, lng], { radius: 9, color: '#ffffff', weight: 2, fillColor: pinColor, fillOpacity: 1 });
+    marker._dealVerified = isVerified;
+    var infoHtml = '<div style="font-family:Inter,sans-serif;max-width:240px;">' +
+      '<div style="font-weight:800;font-size:14px;color:#1A1A1A;">' + esc(deal.name||'') + '</div>' +
+      (addr ? '<div style="font-size:11px;color:#888;margin:2px 0;">📍 ' + esc(addr) + '</div>' : '') +
+      '<div style="font-size:12px;color:#555;margin:3px 0;">' + esc(deal.deal||deal.desc||'') + '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">' +
+        '<span style="font-size:14px;font-weight:800;color:#E8192C;">' + esc(deal.price||'') + '</span>' +
+        '<span style="font-size:11px;color:#888;">' + esc(deal.hours||'') + (deal.days ? ' · ' + esc(deal.days) : '') + '</span>' +
+      '</div>' +
+      '<div style="margin-top:10px;display:flex;gap:6px;">' +
+        '<button onclick="openDealById(\'' + deal.id + '\',\'' + (isVerified?'v':'uc') + '\')" style="flex:1;background:#E8192C;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">View Deal</button>' +
+        '<button onclick="window.open(\'https://maps.google.com/?q=' + encodeURIComponent(addr || deal.name) + '\',\'_blank\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
+      '</div></div>';
+    marker.bindPopup(infoHtml, { maxWidth: 260 });
+    _mapPlaceMarker(marker);
+  } catch(e) { console.error('[_placeDealPin]', deal.name, e); }
 }
 
 function refreshDealMapMarkers() {
@@ -29457,11 +29494,6 @@ function refreshDealMapMarkers() {
   // Remove all existing markers
   _mapClearMarkers();
 
-  // Get current map center
-  var center = _gmapObj.getCenter();
-  var lat = center.lat();
-  var lng = center.lng();
-
   // Reload deals and add markers - use all approved deals from database
   var verifiedDeals = (typeof vouchers !== 'undefined' ? vouchers : []).filter(function(v){
     return v.verified !== false;
@@ -29473,57 +29505,14 @@ function refreshDealMapMarkers() {
   var cnt = document.getElementById('map-deal-count');
   if (cnt) cnt.textContent = _mapDealCount() + ' deals';
 
-  function placePin(deal, dlat, dlng) {
-    if (deal._isWatch) { _placeWatchMarker(deal._spot, dlat, dlng); return; }
-    var addr = deal.address || '';
-    try {
-      var isVerified = deal.verified === true;
-      var pinColor = isVerified ? '#2563EB' : '#22C55E';
-      var marker = new google.maps.Marker({
-        position: { lat: dlat, lng: dlng }, title: deal.name,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 18, fillColor: pinColor, fillOpacity: 1, strokeColor: 'white', strokeWeight: 2.5, labelOrigin: new google.maps.Point(0, 0) },
-        label: { text: deal.off ? deal.off.replace(' OFF','') : '🍺', color: 'white', fontSize: '9px', fontWeight: '800' }
-      });
-      marker._dealVerified = isVerified;
-      var infoHtml = '<div style="font-family:Inter,sans-serif;max-width:240px;padding:4px 0;">' +
-        '<div style="font-weight:800;font-size:14px;color:#1A1A1A;">' + esc(deal.name||'') + '</div>' +
-        (addr ? '<div style="font-size:11px;color:#888;margin:2px 0;">📍 ' + addr + '</div>' : '') +
-        '<div style="font-size:12px;color:#555;margin:3px 0;">' + esc(deal.deal||deal.desc||'') + '</div>' +
-        '<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">' +
-          '<span style="font-size:14px;font-weight:800;color:#E8192C;">' + (deal.price||'') + '</span>' +
-          '<span style="font-size:11px;color:#888;">' + (deal.hours||'') + '</span>' +
-        '</div>' +
-        '<div style="margin-top:10px;display:flex;gap:6px;">' +
-          '<button onclick="openDealById(\'' + deal.id + '\',\'' + (isVerified?'v':'uc') + '\')" style="flex:1;background:#E8192C;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;">View Deal</button>' +
-          '<button onclick="window.open(\'https://maps.google.com/?q=' + encodeURIComponent(addr) + '\',\'_blank\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;">🗺️ Go</button>' +
-        '</div></div>';
-      marker.addListener('click', function() { _gmapOpenInfo(marker, infoHtml); });
-      _mapPlaceMarker(marker);
-    } catch(e) { console.error('[refreshDealMapMarkers]', deal.name, e); }
-  }
-  _mapSyncClusters();   // ensure cluster reflects any markers placed synchronously
-
-  _geocodePlaceDeals(allDeals, placePin);
+  _geocodePlaceDeals(allDeals, _placeDealPin);
 }
 
 // Place a soccer-ball ⚽ marker for a "Where to Watch" spot on the deal map.
 function _placeWatchMarker(s, lat, lng) {
   if (!_gmapObj || !isFinite(lat) || !isFinite(lng)) return;
   try {
-    var marker = new google.maps.Marker({
-      position: { lat: lat, lng: lng },
-      title: (s.venue_name || '') + ' — ' + (s.match_label || ''),
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 16,
-        fillColor: '#FFFFFF',
-        fillOpacity: 1,
-        strokeColor: '#12A150',
-        strokeWeight: 2.5,
-        labelOrigin: new google.maps.Point(0, 0)
-      },
-      label: { text: '⚽', fontSize: '17px' }
-    });
+    var marker = L.circleMarker([lat, lng], { radius: 9, color: '#12A150', weight: 3, fillColor: '#FFFFFF', fillOpacity: 1 });
     marker._dealVerified = false;
     marker._isWatch = true;
     var _ms = _watchMatchesOf(s);
@@ -29544,7 +29533,7 @@ function _placeWatchMarker(s, lat, lng) {
           '<button onclick="watchGoDirections(\'' + s.id + '\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
         '</div>' +
       '</div>';
-    marker.addListener('click', function() { _gmapOpenInfo(marker, infoHtml); });
+    marker.bindPopup(infoHtml, { maxWidth: 260 });
     _mapPlaceMarker(marker);
   } catch(e) { console.error('[_placeWatchMarker]', e); }
 }
@@ -29650,7 +29639,7 @@ window.addEventListener('online', function(){
   var s=document.getElementById('screen-map'); if(!s || !s.classList.contains('active')) return;
   var o=document.getElementById('map-offline'); if(o) o.style.display='none';
   var m=document.getElementById('deal-map'); if(m) m.style.display='';
-  try { if(typeof _gmapObj!=='undefined' && _gmapObj && window.google) google.maps.event.trigger(_gmapObj,'resize'); } catch(e){}
+  try { if(typeof _gmapObj!=='undefined' && _gmapObj && _gmapObj.invalidateSize) _gmapObj.invalidateSize(); } catch(e){}
   if(typeof initDealMap==='function') initDealMap();
 });
 
@@ -29691,7 +29680,7 @@ function initDealMap() {
   if (_gmapInited && _gmapObj) { refreshDealMapMarkers(); return; }
   _gmapInited = true;
   _gmapMarkersAt = Date.now();
-  _loadGMapsAPI(_setupDealMap);
+  _ensureLeaflet(_setupDealMap);   // Leaflet map (Google API is lazy-loaded only for geocoding)
 }
 
 // Map filter state
@@ -29758,86 +29747,28 @@ function _setupDealMap() {
 
   function build(center) {
     document.getElementById('map-loading').style.display = 'none';
-    if (_gmapObj) { _gmapObj.setCenter(center); return; }
+    if (_gmapObj) { _gmapObj.setView([center.lat, center.lng]); return; }
+    if (typeof L === 'undefined' || !L.map) { console.warn('[_setupDealMap] Leaflet not ready'); return; }
 
-    _gmapObj = new google.maps.Map(document.getElementById('deal-map'), {
-      center: center, zoom: 14,
-      // No zoom limit — pins are clustered (see _mapPlaceMarker), so zooming all the way
-      // out renders just a few cluster bubbles instead of every pin (no iOS memory crash).
-      disableDefaultUI: true, zoomControl: true,
-      styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
-    });
+    // Leaflet + OpenStreetMap raster tiles (canvas-rendered markers) — light on iOS,
+    // no zoom limit, no WebKit memory crash on zoom-out.
+    _gmapObj = L.map('deal-map', { zoomControl: true, attributionControl: true, preferCanvas: true })
+      .setView([center.lat, center.lng], 14);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(_gmapObj);
     _initMapClusterer();
-    // (Don't build the home-screen map iframe here — it's a second Maps instance that
-    //  needlessly doubles memory on the map screen; the home map loads on the home.)
 
-    // Use all deals loaded from database (already approved/active from DB query)
-    console.log('[_setupDealMap] vouchers count:', (vouchers || []).length, 'ucDeals count:', (ucDeals || []).length);
+    // User location dot (kept directly on the map, not clustered)
+    try { L.circleMarker([center.lat, center.lng], { radius: 7, color: '#ffffff', weight: 2, fillColor: '#4285F4', fillOpacity: 1 }).addTo(_gmapObj).bindPopup('You are here'); } catch(e){}
 
-    var verifiedDeals = (typeof vouchers !== 'undefined' ? vouchers : []).filter(function(v){
-      return v.verified !== false;
-    });
-    var communityDeals = (typeof ucDeals !== 'undefined' ? ucDeals : []).filter(function(d){
-      return d.id;  // Just check it has an ID, all approved deals should already be here
-    });
+    var verifiedDeals = (typeof vouchers !== 'undefined' ? vouchers : []).filter(function(v){ return v.verified !== false; });
+    var communityDeals = (typeof ucDeals !== 'undefined' ? ucDeals : []).filter(function(d){ return d.id; });
     var allDeals = _mapCapDeals([...verifiedDeals, ...communityDeals, ..._watchMapItems()]);
-    console.log('[_setupDealMap] after filter - allDeals count:', allDeals.length);
-
     var cnt = document.getElementById('map-deal-count');
     if (cnt) cnt.textContent = _mapDealCount() + ' deals';
 
-    function _placeDealPin(deal, lat, lng) {
-      if (!isFinite(lat) || !isFinite(lng)) return;
-      if (deal._isWatch) { _placeWatchMarker(deal._spot, lat, lng); return; }
-      try {
-        var isVerified = deal.verified === true;
-        var pinColor = isVerified ? '#2563EB' : '#22C55E';
-        var marker = new google.maps.Marker({
-          position: { lat: lat, lng: lng },
-          title: deal.name,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 18,
-            fillColor: pinColor,
-            fillOpacity: 1,
-            strokeColor: 'white',
-            strokeWeight: 2.5,
-            labelOrigin: new google.maps.Point(0, 0)
-          },
-          label: { text: deal.off ? deal.off.replace(' OFF','') : '🍺', color: 'white', fontSize: '9px', fontWeight: '800' }
-        });
-        marker._dealVerified = isVerified;
-        var infoHtml =
-          '<div style="font-family:Inter,sans-serif;max-width:240px;padding:4px 0;">' +
-            '<div style="font-weight:800;font-size:14px;color:#1A1A1A;">' + (deal.name || '') + '</div>' +
-            (deal.address ? '<div style="font-size:11px;color:#888;margin:2px 0;">📍 ' + deal.address + '</div>' : '') +
-            '<div style="font-size:12px;color:#555;margin:3px 0;">' + (deal.deal || deal.desc || '') + '</div>' +
-            '<div style="display:flex;align-items:center;gap:6px;margin-top:2px;">' +
-              '<span style="font-size:14px;font-weight:800;color:#E8192C;">' + (deal.price || '') + '</span>' +
-              '<span style="font-size:11px;color:#888;">' + (deal.hours || '') + (deal.days ? ' · ' + deal.days : '') + '</span>' +
-            '</div>' +
-            '<div style="margin-top:10px;display:flex;gap:6px;">' +
-              '<button onclick="openDealById(\'' + deal.id + '\',\'' + (isVerified ? 'v' : 'uc') + '\')" ' +
-                'style="flex:1;background:#E8192C;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">View Deal</button>' +
-              '<button onclick="window.open(\'https://maps.google.com/?q=' + encodeURIComponent(deal.address || deal.name) + '\',\'_blank\')" ' +
-                'style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
-            '</div>' +
-          '</div>';
-        marker.addListener('click', function() { _gmapOpenInfo(marker, infoHtml); });
-        _mapPlaceMarker(marker);
-      } catch(e) {
-        console.error('[_placeDealPin] error for', deal.name, e);
-      }
-    }
-
-    console.log('[_setupDealMap] Geocoding', allDeals.length, 'deals for map');
-    _geocodePlaceDeals(allDeals, _placeDealPin);
-
-    // User location dot
-    new google.maps.Marker({
-      position: center, map: _gmapObj, title: 'You are here',
-      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: '#4285F4', fillOpacity: 1, strokeColor: 'white', strokeWeight: 2 }
-    });
+    _geocodePlaceDeals(allDeals, _placeDealPin);   // shared top-level Leaflet placer
   }
 
   var _mapBuilt = false;
