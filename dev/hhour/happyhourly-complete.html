@@ -4288,6 +4288,15 @@ function _loadGT(){
                   <option value="SEK">kr SEK - Sweden</option>
                   <option value="NOK">kr NOK - Norway</option>
                   <option value="DKK">kr DKK - Denmark</option>
+                  <option value="PLN">zł PLN - Poland</option>
+                  <option value="CZK">Kč CZK - Czechia</option>
+                  <option value="HUF">Ft HUF - Hungary</option>
+                  <option value="RON">lei RON - Romania</option>
+                  <option value="TRY">₺ TRY - Türkiye</option>
+                  <option value="ILS">₪ ILS - Israel</option>
+                  <option value="ZAR">R ZAR - South Africa</option>
+                  <option value="NZD">NZ$ NZD - New Zealand</option>
+                  <option value="HKD">HK$ HKD - Hong Kong</option>
                   <option value="MXN">MX$ MXN - Mexico</option>
                   <option value="BRL">R$ BRL - Brazil</option>
                   <option value="AED">د.إ AED - UAE</option>
@@ -5437,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702113843';
+var BUILD_VERSION = '20260702115242';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -6087,8 +6096,8 @@ function dbDealToLocal(row) {
     emoji: row.emoji || '🍺',
     imgClass: row.img_class || 'ci1',
     img:  (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[0]||''; }catch(e){} } return u; })(),
-    img2: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[1]||''; }catch(e){} } return ''; })(),
-    img3: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return ''; })(),
+    img2: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[1]||''; }catch(e){} } return row.image_url_2||''; })(),
+    img3: (function(){ var u=row.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return row.image_url_3||''; })(),
     name: v.name || row.venue_name || 'Venue',
     address: row.address || v.address || 'Carrer de Sòria 11, Ciutat Vella, 08003 Barcelona',
     website: row.website || '',
@@ -7071,7 +7080,7 @@ function _addrRender(inputId, items, d, inputEl) {
     var esc  = (p.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var mainEsc = main.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var secEsc = (sec||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    var clickHandler = (inputId === 'uc-venue') ? "ucAddrPick('"+secEsc+"','"+mainEsc+"')" : (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'edit-m-address') ? "adminAddrPick('"+esc+"')" : (inputId === 'watch-venue') ? "watchVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'awe-venue') ? "aweVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
+    var clickHandler = (inputId === 'uc-venue') ? "ucAddrPick('"+secEsc+"','"+mainEsc+"')" : (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'edit-m-address') ? "adminAddrPick('"+esc+"')" : (inputId === 'watch-venue') ? "watchVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'awe-venue') ? "aweVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'adm-edit-venue') ? "admEditVenuePick('"+mainEsc+"','"+esc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
     return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'" ontouchend="'+clickHandler+'"'
       +' style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;cursor:pointer;background:#fff;'
       +'border-top:'+(i?'1px solid #F0F0F0':'none')+'"'
@@ -7162,6 +7171,14 @@ function adminAddrPick(address) {
   if (typeof google !== 'undefined' && google.maps) {
     suggestCurrencyFromAddress(address);
   }
+}
+
+// Admin edit-deal "Venue name" pick → fill the name + auto-fill the address field.
+function admEditVenuePick(name, addr) {
+  var v = document.getElementById('adm-edit-venue'); if (v) v.value = name;
+  var a = document.getElementById('adm-edit-address'); if (a && addr) a.value = addr;
+  _addrHideDrop();
+  if (typeof adminRefreshPreview === 'function') adminRefreshPreview();
 }
 
 document.addEventListener('click', function(e) {
@@ -15517,8 +15534,8 @@ async function loadAdminData(){
           status: r.status||'pending',
           submittedAt: dbAgo(r.created_at), ago: dbAgo(r.created_at),
           img: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[0]||''; }catch(e){} } return u; })(),
-          img2: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[1]||''; }catch(e){} } return ''; })(),
-          img3: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return ''; })(),
+          img2: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[1]||''; }catch(e){} } return r.image_url_2||''; })(),
+          img3: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return r.image_url_3||''; })(),
           _createdAt: r.created_at || '',
           _updatedAt: r.updated_at || r.created_at || '',
           timeFrom: (r.time_from != null ? r.time_from : (_parseHoursNums(r.hours)||{from:17}).from), timeTo: (r.time_to != null ? r.time_to : (_parseHoursNums(r.hours)||{to:22}).to),
@@ -30958,6 +30975,15 @@ function _setupDealMap() {
                 <option value="SEK">kr SEK - Sweden</option>
                 <option value="NOK">kr NOK - Norway</option>
                 <option value="DKK">kr DKK - Denmark</option>
+                <option value="PLN">zł PLN - Poland</option>
+                <option value="CZK">Kč CZK - Czechia</option>
+                <option value="HUF">Ft HUF - Hungary</option>
+                <option value="RON">lei RON - Romania</option>
+                <option value="TRY">₺ TRY - Türkiye</option>
+                <option value="ILS">₪ ILS - Israel</option>
+                <option value="ZAR">R ZAR - South Africa</option>
+                <option value="NZD">NZ$ NZD - New Zealand</option>
+                <option value="HKD">HK$ HKD - Hong Kong</option>
                 <option value="MXN">MX$ MXN - Mexico</option>
                 <option value="BRL">R$ BRL - Brazil</option>
                 <option value="AED">د.إ AED - UAE</option>
@@ -31681,7 +31707,7 @@ function _setupDealMap() {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Venue Name</label>
-              <input id="adm-edit-venue" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" oninput="adminRefreshPreview()" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+              <input id="adm-edit-venue" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" oninput="adminRefreshPreview();addrInput('adm-edit-venue')" onfocus="this.style.borderColor='#E8192C';addrInput('adm-edit-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
             </div>
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Category</label>
@@ -31724,6 +31750,15 @@ function _setupDealMap() {
               <option value="SEK">kr SEK - Sweden</option>
               <option value="NOK">kr NOK - Norway</option>
               <option value="DKK">kr DKK - Denmark</option>
+              <option value="PLN">zł PLN - Poland</option>
+              <option value="CZK">Kč CZK - Czechia</option>
+              <option value="HUF">Ft HUF - Hungary</option>
+              <option value="RON">lei RON - Romania</option>
+              <option value="TRY">₺ TRY - Türkiye</option>
+              <option value="ILS">₪ ILS - Israel</option>
+              <option value="ZAR">R ZAR - South Africa</option>
+              <option value="NZD">NZ$ NZD - New Zealand</option>
+              <option value="HKD">HK$ HKD - Hong Kong</option>
               <option value="MXN">MX$ MXN - Mexico</option>
               <option value="BRL">R$ BRL - Brazil</option>
               <option value="AED">د.إ AED - UAE</option>
