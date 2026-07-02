@@ -5449,7 +5449,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703014102';
+var BUILD_VERSION = '20260703015038';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -17117,7 +17117,11 @@ async function adminOpenBizApplication(idx){
   modal.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;';
   modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
   var ago = fullApp.created_at ? dbAgo(fullApp.created_at) : '';
-  var mapsUrl = 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((fullApp.address||'')+(fullApp.city?', '+esc(fullApp.city):''));
+  // Fall back to the venue name when the address is empty; with NO query at all,
+  // Google Maps opens a useless blank page — so mapsUrl stays '' and we render
+  // plain text instead of a link.
+  var _mapsQ = (((fullApp.address||'')+(fullApp.city?', '+fullApp.city:'')).trim()) || (fullApp.name||'').trim();
+  var mapsUrl = _mapsQ ? 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(_mapsQ) : '';
 
   // Build document viewer HTML
   var docHtml = '';
@@ -17176,10 +17180,12 @@ async function adminOpenBizApplication(idx){
           +'<div><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:3px;">EMAIL</div><a href="mailto:'+(fullApp.ownerEmail||'')+'" style="font-size:12px;font-weight:600;color:#3B82F6;word-break:break-all;text-decoration:none;">'+(fullApp.ownerEmail||'—')+'</a></div>'
           +'<div style="grid-column:1/-1;">'
             +'<div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:3px;">ADDRESS</div>'
-            +'<a href="'+mapsUrl+'" target="_blank" style="font-size:13px;font-weight:700;color:#3B82F6;text-decoration:none;display:flex;align-items:center;gap:5px;">'
-              +'📍 '+esc(fullApp.address||'—')+(fullApp.city?', '+esc(fullApp.city):'')
-              +'<span style="font-size:10px;color:#3B82F6;border:1px solid #BFDBFE;background:#EFF6FF;border-radius:4px;padding:1px 5px;">Maps →</span>'
-            +'</a>'
+            +(mapsUrl
+              ? '<a href="'+mapsUrl+'" target="_blank" style="font-size:13px;font-weight:700;color:#3B82F6;text-decoration:none;display:flex;align-items:center;gap:5px;">'
+                +'📍 '+esc(fullApp.address||'—')+(fullApp.city?', '+esc(fullApp.city):'')
+                +'<span style="font-size:10px;color:#3B82F6;border:1px solid #BFDBFE;background:#EFF6FF;border-radius:4px;padding:1px 5px;">Maps →</span>'
+              +'</a>'
+              : '<div style="font-size:13px;font-weight:700;color:#9A9AB0;">📍 No address on file</div>')
           +'</div>'
           +(fullApp.web ? '<div style="grid-column:1/-1;"><div style="font-size:10px;font-weight:700;color:#9A9AB0;margin-bottom:3px;">WEBSITE</div><a href="'+fullApp.web+'" target="_blank" style="font-size:13px;font-weight:600;color:#3B82F6;text-decoration:none;">'+fullApp.web+' ↗</a></div>' : '')
         +'</div>'
@@ -28588,11 +28594,11 @@ function comOpenDetail(id){
       // Event time is in the venue's local timezone — flag it when it differs from the viewer's.
       +(function(){ var _l=_venueTzLabel({address:(m.location||'')}); return _l?'<div style="font-size:11.5px;font-weight:700;color:#6B6B76;background:#F5F5F7;border-radius:9px;padding:7px 11px;margin-bottom:14px;">🕒 Time shown in <strong>'+esc(_l)+'</strong></div>':''; })()
       // Location — clickable Google Maps link
-      +'<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(m.location)+'" target="_blank" style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:14px;text-decoration:none;">'
+      +(m.location ? '<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(m.location)+'" target="_blank" style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:14px;text-decoration:none;">'
         +'<div style="font-size:20px;">📍</div>'
         +'<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:var(--text);">'+esc(m.location)+'</div><div style="font-size:11px;color:#3B82F6;margin-top:1px;font-weight:600;">Open in Google Maps →</div></div>'
         +'<div style="font-size:18px;">🗺️</div>'
-      +'</a>'
+      +'</a>' : '')
       // Capacity bar
       +'<div style="margin-bottom:14px;">'
         +'<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px;"><span>'+m.going+' attending</span><span>'+m.capacity+' spots total</span></div>'
