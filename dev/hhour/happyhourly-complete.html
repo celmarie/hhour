@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703011748';
+var BUILD_VERSION = '20260703012650';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -12645,8 +12645,10 @@ function mePageNew(page, btn){
       content = meRenderSettings();
       // Bank + accepted-payment sections load async after innerHTML is set.
       setTimeout(function(){
+        if(typeof _meCollapsifySettings==='function') _meCollapsifySettings();   // cards collapsed by default
         if(typeof meLoadBankDetails==='function') meLoadBankDetails();
         if(typeof meLoadAcceptedPayment==='function') meLoadAcceptedPayment();
+        if(typeof meLoadCompanyProfile==='function') meLoadCompanyProfile();
         if(typeof _captchaInit==='function') _captchaInit('captcha-box-mepw');   // for change-password re-auth
       }, 0);
       break;
@@ -16940,6 +16942,12 @@ function adminOpenMerchant(idx) {
       +'</div>'
     +'</div>'
 
+    // Company profile contacts (the merchant edits these in their Settings)
+    +_adminSectionTitle('📇 Contact & Links')
+    +'<div id="adm-mp-contact" style="margin:0 20px;background:white;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);">'
+      +'<div style="padding:14px 16px;font-size:12px;color:#9A9AB0;font-weight:600;">Loading…</div>'
+    +'</div>'
+
     // Documents
     +_adminSectionTitle('📄 Documents')
     +'<div style="margin:0 20px;background:white;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05);">'
@@ -17030,6 +17038,36 @@ function adminOpenMerchant(idx) {
     +'</div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
+
+  // Fill "Contact & Links" from the venue row (complete company profile).
+  (async function(){
+    var box=document.getElementById('adm-mp-contact'); if(!box) return;
+    function rows(v){
+      var fmt=function(s){ return s ? esc(s) : '<span style="color:#C7C7CC;">—</span>'; };
+      var joined=''; try{ if(v.created_at) joined=new Date(v.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }catch(e){}
+      var row=function(k,val){ return '<div style="display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid #F5F5F8;"><span style="font-size:13px;color:#9A9AB0;font-weight:600;flex-shrink:0;">'+k+'</span><span style="font-size:13px;font-weight:700;color:#1A1A1A;text-align:right;word-break:break-word;">'+val+'</span></div>'; };
+      box.innerHTML =
+          row('📞 Phone', fmt(v.phone))
+        + row('✉️ Contact email', fmt(v.contact_email))
+        + row('🔗 Social media', v.social_url ? '<a href="'+esc(v.social_url)+'" target="_blank" rel="noopener" style="color:#2563EB;">'+esc(v.social_url)+'</a>' : '<span style="color:#C7C7CC;">—</span>')
+        + row('🌐 Website', v.website ? '<a href="'+esc(v.website)+'" target="_blank" rel="noopener" style="color:#2563EB;">'+esc(v.website)+'</a>' : '<span style="color:#C7C7CC;">—</span>')
+        + row('💳 Onsite payment', fmt(v.accepted_payment))
+        + row('📅 Joined', fmt(joined));
+    }
+    if(!m._venueId){ box.innerHTML='<div style="padding:14px 16px;font-size:12px;color:#9A9AB0;font-weight:600;">No venue record yet (application not approved).</div>'; return; }
+    try{
+      var r=await db.from('venues').select('phone,contact_email,social_url,website,accepted_payment,created_at').eq('id', m._venueId).maybeSingle();
+      if(r.error) throw r.error;
+      rows(r.data||{});
+    }catch(e){
+      // Contact columns not installed yet → still show what exists.
+      try{
+        var r2=await db.from('venues').select('website,accepted_payment,created_at').eq('id', m._venueId).maybeSingle();
+        rows((r2&&r2.data)||{});
+        box.insertAdjacentHTML('afterbegin','<div style="padding:10px 16px;font-size:11px;color:#B45309;background:#FFFBEB;border-bottom:1px solid #FDE68A;font-weight:700;">Run merchant_profile.sql in Supabase to enable phone/email/social fields.</div>');
+      }catch(_){ box.innerHTML='<div style="padding:14px 16px;font-size:12px;color:#dc2626;font-weight:600;">Could not load contact details.</div>'; }
+    }
+  })();
 }
 
 async function adminOpenBizApplication(idx){
@@ -26053,6 +26091,26 @@ function meRenderSettings(){
     + '<div id="me-bank-display" style="padding:18px;"><div style="font-size:13px;color:#9A9AB0;font-weight:600;text-align:center;padding:20px 0;">Loading bank details…</div></div>'
   + '</div>';
 
+  // Company profile — merchants edit their public contact details. Name + address
+  // are LOCKED (identity/verification data — only Appie Hour support changes them).
+  var profile = '<div class="me-card">'
+    + '<div class="me-card-header"><span class="me-card-title">🏢 Company Profile</span></div>'
+    + '<div style="padding:18px;">'
+      + '<div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px;">'
+        + '<div style="'+fld+'"><div style="'+lbl+'">Company name 🔒</div><div id="me-cp-name" style="font-size:13px;font-weight:800;color:#1A1A1A;">'+(venue||'—')+'</div></div>'
+        + '<div style="'+fld+'"><div style="'+lbl+'">Address 🔒</div><div id="me-cp-address" style="font-size:13px;font-weight:700;color:#1A1A1A;">Loading…</div></div>'
+      + '</div>'
+      + '<div style="font-size:11px;color:#9A9AB0;font-weight:600;margin-bottom:14px;font-family:Inter,sans-serif;">Company name and address are verified details — contact Appie Hour support to change them.</div>'
+      + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">'
+        + '<div><label style="'+lbl+'display:block;">📞 Phone number</label><input id="me-cp-phone" type="tel" placeholder="e.g. +34 600 123 456" style="'+inp+'"></div>'
+        + '<div><label style="'+lbl+'display:block;">✉️ Public contact email</label><input id="me-cp-email" type="email" placeholder="e.g. hello@yourvenue.com" style="'+inp+'"></div>'
+        + '<div><label style="'+lbl+'display:block;">🔗 Social media link</label><input id="me-cp-social" type="url" placeholder="e.g. instagram.com/yourvenue" style="'+inp+'"></div>'
+      + '</div>'
+      + '<div id="me-cp-status" style="font-size:11px;color:#9A9AB0;text-align:center;margin-bottom:10px;font-family:Inter,sans-serif;min-height:14px;"></div>'
+      + '<button id="me-cp-save" onclick="meSaveCompanyProfile()" style="width:100%;background:#12A150;color:white;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">💾 Save Company Profile</button>'
+    + '</div>'
+  + '</div>';
+
   // Accepted onsite payment — shown to customers who choose "Pay at venue".
   var accpay = '<div class="me-card">'
     + '<div class="me-card-header"><span class="me-card-title">💳 Onsite Payment</span></div>'
@@ -26067,7 +26125,75 @@ function meRenderSettings(){
     + '</div>'
   + '</div>';
 
-  return '<div style="display:flex;flex-direction:column;gap:20px;">'+account + accpay + pw + bank+'</div>';
+  return '<div id="me-settings-root" style="display:flex;flex-direction:column;gap:20px;">'+account + profile + accpay + pw + bank+'</div>';
+}
+
+// Make every settings card collapsible (collapsed by default): tap the header to
+// open. Content stays in the DOM, so the async loaders keep working while hidden.
+function _meCollapsifySettings(){
+  var root=document.getElementById('me-settings-root'); if(!root) return;
+  root.querySelectorAll('.me-card').forEach(function(card){
+    var hdr=card.querySelector('.me-card-header');
+    if(!hdr || card._collapsified) return;
+    card._collapsified=true;
+    var wrap=document.createElement('div');
+    wrap.style.display='none';
+    while(hdr.nextSibling){ wrap.appendChild(hdr.nextSibling); }
+    card.appendChild(wrap);
+    var chev=document.createElement('span');
+    chev.textContent='›';
+    chev.style.cssText='font-size:18px;font-weight:800;color:#9A9AB0;transition:transform .2s;flex-shrink:0;';
+    hdr.appendChild(chev);
+    hdr.style.cursor='pointer';
+    hdr.onclick=function(){
+      var open = wrap.style.display!=='none';
+      wrap.style.display = open ? 'none' : '';
+      chev.style.transform = open ? '' : 'rotate(90deg)';
+    };
+  });
+}
+
+// Load the company profile fields (name/address read-only + editable contacts).
+async function meLoadCompanyProfile(){
+  if(!meVenueId) return;
+  function _cpFill(v){
+    var nm=document.getElementById('me-cp-name');    if(nm && v.name) nm.textContent=v.name;
+    var ad=document.getElementById('me-cp-address'); if(ad) ad.textContent=v.address||'—';
+    ['phone','contact_email','social_url'].forEach(function(k,i){
+      var el=document.getElementById(['me-cp-phone','me-cp-email','me-cp-social'][i]);
+      if(el && v[k]!=null) el.value=v[k]||'';
+    });
+  }
+  try{
+    var r = await db.from('venues').select('name,address,phone,contact_email,social_url').eq('id', meVenueId).maybeSingle();
+    if(r.error) throw r.error;
+    _cpFill(r.data||{});
+  }catch(e){
+    // Columns not added yet → still show the locked name/address, and say what to run.
+    try{ var r2=await db.from('venues').select('name,address').eq('id', meVenueId).maybeSingle(); _cpFill((r2&&r2.data)||{}); }catch(_){}
+    var st=document.getElementById('me-cp-status');
+    if(st) st.textContent = /column|schema cache/i.test((e&&e.message)||'') ? 'One-time setup needed: run merchant_profile.sql in Supabase.' : ((e&&e.message)||'Could not load profile');
+  }
+}
+async function meSaveCompanyProfile(){
+  if(!meVenueId){ showToast('⚠️ No venue linked to this account'); return; }
+  var phone=((document.getElementById('me-cp-phone')||{}).value||'').trim();
+  var em=((document.getElementById('me-cp-email')||{}).value||'').trim();
+  var so=((document.getElementById('me-cp-social')||{}).value||'').trim();
+  if(em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){ showToast('⚠️ That contact email doesn’t look right'); return; }
+  if(so && !/^https?:\/\//i.test(so)) so='https://'+so;
+  var btn=document.getElementById('me-cp-save');
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  try{
+    var { error } = await db.from('venues').update({ phone: phone||null, contact_email: em||null, social_url: so||null }).eq('id', meVenueId);
+    if(error) throw error;
+    var st=document.getElementById('me-cp-status'); if(st) st.textContent='';
+    showToast('✅ Company profile updated');
+  }catch(e){
+    var m=(e&&e.message)||'';
+    showToast('⚠️ '+(/column|schema cache/i.test(m) ? 'Run merchant_profile.sql in Supabase first' : (m||'Could not save')));
+  }
+  if(btn){ btn.disabled=false; btn.textContent='💾 Save Company Profile'; }
 }
 
 function _meAccpayChip(val,icon,label){
