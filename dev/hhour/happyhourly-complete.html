@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702175800';
+var BUILD_VERSION = '20260702182631';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -7459,6 +7459,10 @@ function openSharedDeal(){
 }
 
 let curScreen='deals', prevScreen='deals', curV=0, qty=1, curVKind='verified';
+var _navSettleUntil = 0;            // brief lock: ignore Back for a moment after navigating,
+                                    // so a fast second/ghost tap can't bounce a just-opened
+                                    // deal straight back to the map.
+var _lastDealOpen = { id:null, at:0 };  // debounce openDeal against rapid repeat taps
 
 // CLOCK
 // Defer all DOM-dependent startup calls until the DOM is ready
@@ -10113,6 +10117,10 @@ function _fsKeyHandler(e){
 
 function openDeal(deal){
   if(!deal)return;
+  // Debounce rapid repeat taps on the same deal (double-tap on a map pin/card) so it
+  // doesn't re-render + re-push history and churn the back stack.
+  if(_lastDealOpen.id===deal.id && (Date.now()-_lastDealOpen.at)<700) return;
+  _lastDealOpen = { id: deal.id, at: Date.now() };
   if(isDealExpired(deal)){ showToast('⌛ This deal has expired and is no longer available'); return; }
   curV=deal.id; qty=1;
   curVKind = deal.verified ? 'verified' : 'community';
@@ -13900,8 +13908,9 @@ function goScreen(name){
   if(!next)return;
   if(old) old.classList.remove('active');
   next.classList.add('active');
-  prevScreen=curScreen;
+  if(name!==curScreen) prevScreen=curScreen;   // don't let a double-open overwrite the real previous screen
   curScreen=name;
+  _navSettleUntil = Date.now() + 400;          // ignore an accidental Back for 400ms (ghost/second tap)
   if(name==='mycontribs'){ _mcSegment='deals'; setTimeout(function(){ mcSetSegment('deals'); loadMyContribs(); },50); }
   if(name==='community') setTimeout(comInitTab,50);
   if(name==='watch') setTimeout(function(){ initAddressAutocomplete(); watchInitList(); },50);
@@ -13980,6 +13989,7 @@ function syncWebChrome(name){
 }
 var _admPreviewMode = false;
 function goBack(){
+  if(Date.now() < _navSettleUntil) return;   // a Back this soon after navigating is a stray/ghost tap — ignore it
   if(_admPreviewMode){
     _admPreviewMode = false;
     var adminEl = document.getElementById('admin-root');
