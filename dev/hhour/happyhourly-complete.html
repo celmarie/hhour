@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702183637';
+var BUILD_VERSION = '20260702185814';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -7464,6 +7464,30 @@ var _navSettleUntil = 0;            // brief lock: ignore Back for a moment afte
                                     // deal straight back to the map.
 var _lastDealOpen = { id:null, at:0 };  // debounce openDeal against rapid repeat taps
 
+// ── App-wide crash safety net ────────────────────────────────────────────────
+// Catch any uncaught error / rejected promise so one bad value can't white-screen
+// the app or bounce it back to the home. Logs the real error (for us) and shows a
+// calm toast (for the user) instead of a hard crash. Deduped so it never spams.
+(function(){
+  var _lastErrAt = 0;
+  function _reportErr(where, err){
+    try { console.error('[caught '+where+']', err); } catch(e){}
+    var now = Date.now();
+    if(now - _lastErrAt > 4000){
+      _lastErrAt = now;
+      try { if(typeof showToast==='function') showToast('⚠️ Something glitched — please try again'); } catch(e){}
+    }
+  }
+  window.addEventListener('error', function(e){
+    // Ignore resource-load failures (broken <img>/<script src> — not app crashes).
+    if(e && e.target && e.target !== window && e.target.tagName) return;
+    if(e && (e.message || e.error)) _reportErr('error', (e.error && e.error.stack) || e.message);
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    var r = e && e.reason; _reportErr('promise', (r && (r.stack || r.message)) || r || 'rejection');
+  });
+})();
+
 // CLOCK
 // Defer all DOM-dependent startup calls until the DOM is ready
 document.addEventListener('DOMContentLoaded', async function(){
@@ -9031,6 +9055,7 @@ function refreshDeckCountdowns(){
   function nowFor(tz){ var k = tz||'_local'; if(nowCache[k]===undefined) nowCache[k] = _tzNow(tz); return nowCache[k]; }
   var uTz = _userTzName();
   document.querySelectorAll('.deck-cd').forEach(function(el){
+   try {
     var tz   = _tzForAddr(el.dataset.addr || '');   // the VENUE's timezone (null → viewer-local)
     var t    = nowFor(tz);
     var h    = t.h;
@@ -9058,6 +9083,7 @@ function refreshDeckCountdowns(){
         : '<span style="color:#9A9AB0;font-weight:700;">Not available</span>';
     }
     el.innerHTML = html;
+   } catch(e){ /* one bad card must never break the 1s tick for all the others */ }
   });
 }
 
@@ -14005,8 +14031,10 @@ function openSearch(){document.getElementById('soverlay').classList.add('open');
 function closeSearch(){document.getElementById('soverlay').classList.remove('open');}
 function doSearch(q){
   const res=document.getElementById('sres');
+  if(!res) return;
+  try {
   if(!q){res.innerHTML='<div style="text-align:center;color:var(--t3);font-size:14px;padding:32px 0;">Start typing to search...</div>';return;}
-  const all=[...vouchers,...ucDeals];
+  const all=[...(Array.isArray(vouchers)?vouchers:[]),...(Array.isArray(ucDeals)?ucDeals:[])].filter(Boolean);
   const m=all.filter(d=>dealSearchText(d).includes(q.toLowerCase()))
     .sort((a,b)=>{
       const ka=a.verified?0:1, kb=b.verified?0:1;
@@ -14016,6 +14044,7 @@ function doSearch(q){
   if(!m.length){res.innerHTML=`<div style="text-align:center;color:var(--t3);font-size:14px;padding:32px 0;">No results for "${q}"</div>`;return;}
   const ucIdSet=new Set(ucDeals.map(x=>String(x.id)));
   res.innerHTML=m.map(d=>{
+   try {
     const isUC=ucIdSet.has(String(d.id));
     const openFn=isUC?`openUCDeal('${d.id}')`:`openVoucher('${d.id}')`;
     const thumbInner=d.img
@@ -14052,8 +14081,14 @@ function doSearch(q){
           ${offLbl&&offLbl!=='DEAL'?`<span style="background:var(--redl);color:var(--red);font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;">${offLbl}</span>`:''}
         </div>
       </div>
-    </div>`;}).join('');
+    </div>`;
+   } catch(_e){ return ''; }   // skip a single malformed deal, keep the rest of the results
+  }).join('');
   startDeckCountdowns();
+  } catch(e){
+    console.error('[doSearch]', e);
+    try { res.innerHTML='<div style="text-align:center;color:var(--t3);font-size:14px;padding:32px 0;">Search hiccuped — try a different word.</div>'; } catch(_){}
+  }
 }
 
 function openMerchant(){openMerchantDash();}
