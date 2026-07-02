@@ -2955,6 +2955,10 @@ function _loadGT(){
   <input id="wl-email" type="hidden" data-pwfield="1" data-ot="email" placeholder="Email address" autocomplete="email" style="width:100%;box-sizing:border-box;background:#F7F7F9;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px 14px;font-family:'Inter',sans-serif;font-size:14.5px;color:#1A1A1A;outline:none;margin-bottom:10px;" onkeydown="if(event.key==='Enter')webLoginSubmit()">
   <input id="wl-pass" type="hidden" data-pwfield="1" data-ot="password" disabled placeholder="Password" style="width:100%;box-sizing:border-box;background:#F7F7F9;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px 14px;font-family:'Inter',sans-serif;font-size:14.5px;color:#1A1A1A;outline:none;" onkeydown="if(event.key==='Enter')webLoginSubmit()">
   <div id="captcha-box-weblogin" style="display:none;justify-content:center;margin:12px 0 0;"></div>
+  <label id="wl-terms-row" style="display:flex;align-items:flex-start;gap:8px;margin:4px 2px 12px;font-size:12px;font-weight:600;color:#6B5D54;line-height:1.5;cursor:pointer;">
+    <input type="checkbox" id="wl-terms" style="width:16px;height:16px;margin-top:1px;accent-color:#FF5836;cursor:pointer;flex-shrink:0;">
+    <span>I agree to the <span onclick="event.preventDefault();event.stopPropagation();loginViewLegal('terms')" style="color:#FF5836;font-weight:800;">Terms &amp; Conditions</span> and <span onclick="event.preventDefault();event.stopPropagation();loginViewLegal('privacy')" style="color:#FF5836;font-weight:800;">Privacy Policy</span></span>
+  </label>
   <div id="wl-error" style="color:#E8192C;font-size:12.5px;font-weight:700;min-height:16px;margin:6px 2px;"></div>
   <button type="button" onclick="webLoginSubmit()" style="width:100%;background:linear-gradient(135deg,#FF5A5F,#FF7A33 60%,#FF9E3D);color:#fff;border:none;border-radius:14px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">Continue</button>
   <div style="text-align:center;margin-top:13px;font-size:13px;color:#555;">New to Appie Hour? <span onclick="webLoginGoSignup()" style="color:#C2410C;font-weight:800;cursor:pointer;">Create an account</span></div>
@@ -5433,7 +5437,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702031913';
+var BUILD_VERSION = '20260702113843';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5669,6 +5673,7 @@ function showLoginScreen(){
   if(ls){ ls.style.display = 'flex'; ls.style.opacity = '1'; }
   _lockLoginInputs(false);   // login is needed now → re-enable the fields
   try { _guardPasswordFields(); } catch(e){}        // restore real input types now that login is visible
+  try { _syncTermsGate(); } catch(e){}              // reflect the T&C checkbox state (gates Google redirect)
   try { _captchaInit('captcha-box'); } catch(e){}   // ensure CAPTCHA is ready (boot preload is now deferred)
   updateGuestVisibility();
   updateLogoutBtnLabel();
@@ -5721,6 +5726,7 @@ async function webLoginSubmit(){
   var em = ((document.getElementById('wl-email')||{}).value||'').trim();
   var pw = (document.getElementById('wl-pass')||{}).value||'';
   var err = document.getElementById('wl-error');
+  if(!_loginTermsCheck('wl-terms', err)){ return; }
   if(!em || !pw){ if(err) err.textContent = 'Please enter email and password'; return; }
   if(err) err.textContent = 'Signing in…';
   try {
@@ -14525,7 +14531,48 @@ function switchAuthMode(mode){
   _updateSignupCta();
 }
 
+// ── Terms & Conditions gate ───────────────────────────────────────────────
+// A ticked "I agree" box is required before any sign-in / sign-up / Google.
+function _loginTermsCheck(cbId, errEl){
+  var cb = document.getElementById(cbId);
+  if(!cb) return true;                                        // no box on this form
+  var row = document.getElementById(cbId + '-row') || cb.parentElement;
+  if(row && row.getClientRects().length === 0) return true;  // box hidden (e.g. admin) → not required
+  if(cb.checked) return true;
+  if(errEl) errEl.textContent = 'Please accept the Terms & Conditions to continue.';
+  try { (row||cb).animate([{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'translateX(-3px)'},{transform:'translateX(0)'}], {duration:260}); } catch(e){}
+  return false;
+}
+// Which T&C box applies to a Google sign-in that's in progress.
+function _googleTermsOk(){
+  var web = document.getElementById('web-login-pop');
+  if(web && web.style.display !== 'none') return _loginTermsCheck('wl-terms', document.getElementById('wl-error'));
+  return _loginTermsCheck('login-terms', (typeof _activeLoginErrEl==='function' ? _activeLoginErrEl() : document.getElementById('login-error')));
+}
+// Persist acceptance so the Google REDIRECT flow (which leaves the page) can be gated
+// on return (see the #_gid boot handler).
+function _syncTermsGate(){
+  try { var cb = document.getElementById('login-terms'); if(cb) sessionStorage.setItem('hh_terms_login', cb.checked ? '1' : '0'); } catch(e){}
+}
+// Open Terms / Privacy ABOVE the login overlay (goScreen would open behind it).
+function loginViewLegal(which){
+  var isTerms = which === 'terms';
+  var title = isTerms ? 'Terms &amp; Conditions' : 'Privacy Policy';
+  var body = ((typeof adminContent!=='undefined' && adminContent) ? (isTerms ? adminContent.termsGeneral : adminContent.privacyPolicy) : '') || 'Loading…';
+  var old = document.getElementById('login-legal-ov'); if(old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = 'login-legal-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:#fff;display:flex;flex-direction:column;font-family:Inter,sans-serif;';
+  ov.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 13px;border-bottom:1px solid #F1E7DF;flex-shrink:0;">'
+    + '<button type="button" onclick="var o=document.getElementById(\'login-legal-ov\');if(o)o.remove();" style="background:#F5F2EF;border:none;border-radius:10px;width:36px;height:36px;font-size:22px;line-height:1;cursor:pointer;color:#333;">&lsaquo;</button>'
+    + '<div style="font-size:17px;font-weight:800;color:#1A1A1A;">' + title + '</div></div>'
+    + '<div id="login-legal-body" style="padding:18px 20px calc(env(safe-area-inset-bottom,0px) + 32px);overflow-y:auto;-webkit-overflow-scrolling:touch;white-space:pre-wrap;font-size:13.5px;color:#555;font-weight:500;line-height:1.75;"></div>';
+  document.body.appendChild(ov);
+  var b = document.getElementById('login-legal-body'); if(b) b.textContent = body;
+}
+
 async function doSignUp(){
+  if(!_loginTermsCheck('login-terms', document.getElementById('login-error'))){ return; }
   var first = (document.getElementById('signup-first') || {}).value || '';
   var last  = (document.getElementById('signup-last') || {}).value || '';
   var dob = (document.getElementById('signup-dob') || {}).value || '';
@@ -14657,6 +14704,7 @@ function switchLoginTab(role){
   // Guest + Google are customer-only. Sign-up is for customer + merchant (admins
   // are created by an existing admin, so the admin login is sign-in only).
   var gb=document.getElementById('guest-btn');     if(gb) gb.style.display = role==='customer'?'block':'none';
+  var ltr=document.getElementById('login-terms-row'); if(ltr) ltr.style.display = role==='customer'?'flex':'none';   // T&C gate is customer-only
   var god=document.getElementById('login-or-div'); if(god) god.style.display = role==='customer'?'flex':'none';
   var gsi=document.getElementById('gsi-button');   if(gsi) gsi.style.display = role==='customer'?'flex':'none';
   var ggb=document.getElementById('google-btn');   if(ggb && role!=='customer') ggb.style.display='none';
@@ -14693,6 +14741,7 @@ async function handleGoogleCredential(resp){
   var errEl = _activeLoginErrEl(); if(errEl) errEl.textContent = '';
   try{
     if(!resp || !resp.credential) return;   // user dismissed the chooser
+    if(!_googleTermsOk()){ return; }         // must accept Terms & Conditions first
     var { data, error } = await db.auth.signInWithIdToken({ provider:'google', token: resp.credential });
     if(error){ if(errEl) errEl.textContent = error.message; return; }
     if(data && data.user){
@@ -14762,6 +14811,7 @@ function initGsiButton(gsiId, fbId, width){
 async function loginWithGoogleRedirect(){
   var errEl = document.getElementById('login-error');
   if(errEl) errEl.textContent = '';
+  if(!_googleTermsOk()){ return; }           // must accept Terms & Conditions first
   try{
     var redirectTo = window.location.origin + window.location.pathname;
     // prompt=select_account → always show Google's account chooser instead of
@@ -14914,6 +14964,7 @@ function priceRuleError(priceRaw, wasRaw){
 async function doLogin(captchaId){
   try {
     console.log('doLogin called');
+    if(!_loginTermsCheck('login-terms', document.getElementById('login-error'))){ return; }
     var u = (document.getElementById('login-user').value || '').trim();
     var p = (document.getElementById('login-pass').value || '').trim();
     var errEl = document.getElementById('login-error');
@@ -31257,12 +31308,12 @@ function _setupDealMap() {
   /* Form inputs on the white panel: solid light fill + visible border
      (defeats the translucent-glass input rules defined earlier). */
   #login-screen #lg-right input:not([type=checkbox]){
-    background:#F5F5F7 !important; border:1.5px solid #E6E4EA !important; color:#1A1A1A !important;
+    background:#FFF5F0 !important; border:1.5px solid #FBDDD0 !important; color:#1A1A1A !important;
     -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
   }
-  #login-screen #lg-right input:not([type=checkbox])::placeholder{ color:#A79C92 !important; }
+  #login-screen #lg-right input:not([type=checkbox])::placeholder{ color:#C09A88 !important; }
   #login-screen #lg-right input:not([type=checkbox]):focus{
-    border-color:#E01F34 !important; box-shadow:0 0 0 3px rgba(224,31,52,.14) !important; background:#fff !important;
+    border-color:#FF5836 !important; box-shadow:0 0 0 3px rgba(255,88,54,.16) !important; background:#fff !important;
   }
   /* Neutralise the old warm-glass card chrome — the form now floats on white. */
   #login-screen #lg-right #hh-login-card{
@@ -31282,19 +31333,27 @@ function _setupDealMap() {
 </style>
 <div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:none;flex-direction:column;font-family:'Inter',sans-serif;overflow:hidden;background:#fff;">
 
-  <!-- ══ TOP: red brand hero ══ -->
-  <div id="lg-hero" style="position:relative;flex-shrink:0;display:flex;flex-direction:column;align-items:center;text-align:center;color:#fff;background:linear-gradient(160deg,#F5273C 0%,#DA132F 55%,#B00C27 100%);padding:calc(env(safe-area-inset-top,0px) + 42px) 26px 36px;border-radius:0 0 32px 32px;box-shadow:0 12px 30px rgba(176,12,39,.28);overflow:hidden;">
+  <!-- ══ TOP: sunset brand hero (fun + lively) ══ -->
+  <div id="lg-hero" style="position:relative;flex-shrink:0;display:flex;flex-direction:column;align-items:center;text-align:center;color:#fff;background:linear-gradient(140deg,#FF4D6D 0%,#FF5836 48%,#FF9F1C 100%);padding:calc(env(safe-area-inset-top,0px) + 42px) 26px 40px;border-radius:0 0 34px 34px;box-shadow:0 16px 36px rgba(255,88,54,.36);overflow:hidden;">
+    <!-- playful floating drinks (kept to the corners, clear of the text) -->
+    <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;">
+      <span style="position:absolute;top:16px;left:16px;font-size:31px;transform:rotate(-16deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,.16));">🍹</span>
+      <span style="position:absolute;top:50px;right:16px;font-size:27px;transform:rotate(14deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,.16));">🍸</span>
+      <span style="position:absolute;bottom:16px;left:18px;font-size:26px;transform:rotate(11deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,.16));">🍺</span>
+      <span style="position:absolute;bottom:18px;right:20px;font-size:29px;transform:rotate(-13deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,.16));">🍷</span>
+      <span style="position:absolute;top:20px;right:94px;font-size:18px;transform:rotate(18deg);opacity:.9;">🍊</span>
+    </div>
     <!-- soft top highlight for depth -->
-    <div aria-hidden="true" style="position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:300px;height:190px;background:radial-gradient(ellipse,rgba(255,255,255,.22),transparent 70%);pointer-events:none;"></div>
+    <div aria-hidden="true" style="position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:300px;height:190px;background:radial-gradient(ellipse,rgba(255,255,255,.3),transparent 70%);pointer-events:none;"></div>
     <!-- frosted pin badge -->
-    <div style="position:relative;width:76px;height:76px;border-radius:22px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 12px 28px rgba(0,0,0,.22);">
-      <svg width="34" height="43" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div style="position:relative;width:80px;height:80px;border-radius:24px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 16px 32px rgba(0,0,0,.2);">
+      <svg width="37" height="47" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M29 2C14.6 2 3 13.4 3 27.4 3 45.6 29 72 29 72s26-26.4 26-44.6C55 13.4 43.4 2 29 2Z" fill="#fff"/>
-        <path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#E01F34"/>
+        <path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#FF5836"/>
       </svg>
     </div>
-    <div id="lg-brand-name" style="position:relative;font-size:27px;font-weight:900;letter-spacing:-.5px;line-height:1;margin-bottom:10px;">Appie Hour</div>
-    <div id="lg-tagline" style="position:relative;font-size:14.5px;font-weight:500;line-height:1.5;opacity:.94;max-width:300px;">Find &amp; share the best happy hours near you.</div>
+    <div id="lg-brand-name" style="position:relative;font-size:28px;font-weight:900;letter-spacing:-.5px;line-height:1;margin-bottom:10px;text-shadow:0 2px 12px rgba(0,0,0,.14);">Appie Hour</div>
+    <div id="lg-tagline" style="position:relative;font-size:14.5px;font-weight:600;line-height:1.5;opacity:.97;max-width:290px;">Find &amp; share the best happy hours near you.</div>
   </div>
 
   <!-- ══ BOTTOM: white form panel ══ -->
@@ -31339,14 +31398,20 @@ function _setupDealMap() {
         <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#6B5D54;cursor:pointer;">
           <input type="checkbox" id="login-remember" style="width:16px;height:16px;accent-color:#E01F34;cursor:pointer;flex-shrink:0;"> Remember me
         </label>
-        <a onclick="custForgotPassword()" style="font-size:13px;font-weight:700;color:#E01F34;cursor:pointer;white-space:nowrap;">Forgot password?</a>
+        <a onclick="custForgotPassword()" style="font-size:13px;font-weight:700;color:#FF5836;cursor:pointer;white-space:nowrap;">Forgot password?</a>
       </div>
 
       <div id="login-error" style="color:#E8192C;font-size:13px;font-weight:700;margin-bottom:8px;min-height:0;text-align:center;"></div>
       <div id="captcha-box" style="display:none;justify-content:center;margin-bottom:10px;"></div>
 
-      <!-- Sign In (solid red) -->
-      <button type="button" id="signin-btn" onclick="_loginMode==='signup'?doSignUp():doLogin()" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 14px 30px rgba(214,18,46,.42)'" onmouseout="this.style.transform='';this.style.boxShadow='0 10px 24px rgba(214,18,46,.32)'" style="position:relative;overflow:hidden;width:100%;background:linear-gradient(135deg,#F5273C,#D6122E);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;box-shadow:0 10px 24px rgba(214,18,46,.32);transition:transform .15s,box-shadow .2s;">Sign In</button>
+      <!-- Terms & Conditions gate (required before sign in / sign up / Google) -->
+      <label id="login-terms-row" style="display:flex;align-items:flex-start;gap:9px;margin-bottom:13px;font-size:12.5px;font-weight:600;color:#6B5D54;line-height:1.5;cursor:pointer;">
+        <input type="checkbox" id="login-terms" onchange="_syncTermsGate()" style="width:17px;height:17px;margin-top:1px;accent-color:#FF5836;cursor:pointer;flex-shrink:0;">
+        <span>I agree to the <span onclick="event.preventDefault();event.stopPropagation();loginViewLegal('terms')" style="color:#FF5836;font-weight:800;">Terms &amp; Conditions</span> and <span onclick="event.preventDefault();event.stopPropagation();loginViewLegal('privacy')" style="color:#FF5836;font-weight:800;">Privacy Policy</span></span>
+      </label>
+
+      <!-- Sign In (sunset gradient) -->
+      <button type="button" id="signin-btn" onclick="_loginMode==='signup'?doSignUp():doLogin()" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 16px 32px rgba(255,88,54,.5)'" onmouseout="this.style.transform='';this.style.boxShadow='0 12px 26px rgba(255,88,54,.4)'" style="position:relative;overflow:hidden;width:100%;background:linear-gradient(135deg,#FF4D6D 0%,#FF5836 55%,#FF8A2B 100%);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;box-shadow:0 12px 26px rgba(255,88,54,.4);transition:transform .15s,box-shadow .2s;">Sign In</button>
 
       <!-- OR divider (customer only) -->
       <div id="login-or-div" style="display:flex;align-items:center;gap:10px;margin:0 0 14px;">
@@ -31366,15 +31431,15 @@ function _setupDealMap() {
 
       <!-- Continue as Guest (customer only) -->
       <button type="button" id="guest-btn" onclick="doGuestLogin()" style="width:100%;align-items:center;justify-content:center;gap:9px;background:#fff;color:#4A4A4A;border:1.5px solid #E6E4EA;border-radius:14px;padding:12px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;display:flex;transition:background .2s;" onmouseover="this.style.background='#FAF8F6'" onmouseout="this.style.background='#fff'">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="#E01F34" style="flex-shrink:0;"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6Z"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#FF5836" style="flex-shrink:0;"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6Z"/></svg>
         Continue as Guest
       </button>
 
       <!-- Create Account (below Continue as Guest, per request) -->
-      <button type="button" id="create-acct-btn" onclick="switchAuthMode('signup')" style="width:100%;background:#fff;color:#D6122E;border:1.5px solid #F3C9CF;border-radius:14px;padding:12px;font-size:14.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s,border-color .2s;" onmouseover="this.style.background='#FFF4F5';this.style.borderColor='#EDA9B2'" onmouseout="this.style.background='#fff';this.style.borderColor='#F3C9CF'">Create Account</button>
+      <button type="button" id="create-acct-btn" onclick="switchAuthMode('signup')" style="width:100%;background:#fff;color:#FF5836;border:1.5px solid #FFD3C4;border-radius:14px;padding:12px;font-size:14.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s,border-color .2s;" onmouseover="this.style.background='#FFF3EE';this.style.borderColor='#FFB79E'" onmouseout="this.style.background='#fff';this.style.borderColor='#FFD3C4'">Create Account</button>
 
       <!-- Back to sign-in link (signup mode only) -->
-      <div id="login-signup-cta" onclick="switchAuthMode('signin')" style="display:none;text-align:center;margin-top:10px;font-size:13px;font-weight:700;color:#D6122E;cursor:pointer;"></div>
+      <div id="login-signup-cta" onclick="switchAuthMode('signin')" style="display:none;text-align:center;margin-top:10px;font-size:13px;font-weight:700;color:#FF5836;cursor:pointer;"></div>
 
       <div id="login-demo-hint" style="display:none;"></div>
 
@@ -31455,6 +31520,15 @@ function _setupDealMap() {
     // fragment → finish sign-in on our domain (so the chooser showed "Appie Hour").
     var gm = h.match(/[#&]_gid=([^&]+)/);
     if(gm){
+      // Terms gate: the redirect Google flow left the page, so we enforce the
+      // acceptance that was persisted before the redirect (checkbox → sessionStorage).
+      var _termsOk = false; try { _termsOk = sessionStorage.getItem('hh_terms_login') === '1'; } catch(e){}
+      if(!_termsOk){
+        try { history.replaceState(null, '', location.pathname + (location.search||'')); } catch(e){}
+        if(typeof showLoginScreen==='function') showLoginScreen();
+        var etg = document.getElementById('login-error'); if(etg) etg.textContent = 'Please accept the Terms & Conditions, then sign in with Google again.';
+        return;
+      }
       var lsg = document.getElementById('login-screen'); if(lsg) lsg.style.display = 'none';
       var spg = document.getElementById('role-splash');  if(spg) spg.style.display = 'flex';
       var tok = decodeURIComponent(gm[1]);
