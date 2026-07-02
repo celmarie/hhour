@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702140857';
+var BUILD_VERSION = '20260702151639';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -24928,6 +24928,7 @@ function meOpenVoucherPurchases(dealId){
   };
   var statusPill = function(p){
     if(p.status === 'used') return '<span style="font-size:10px;font-weight:800;color:#12A150;background:rgba(18,161,80,.1);padding:3px 9px;border-radius:20px;white-space:nowrap;">✓ Redeemed</span>';
+    if(p.status === 'cancelled') return '<span style="font-size:10px;font-weight:800;color:#B91C1C;background:rgba(232,25,44,.1);padding:3px 9px;border-radius:20px;white-space:nowrap;">🚫 Refused</span>';
     if(p.noShow)            return '<span style="font-size:10px;font-weight:800;color:#E8192C;background:rgba(232,25,44,.1);padding:3px 9px;border-radius:20px;white-space:nowrap;">✕ No-show</span>';
     return '<span style="font-size:10px;font-weight:800;color:#d97706;background:rgba(217,119,6,.1);padding:3px 9px;border-radius:20px;white-space:nowrap;">● Active</span>';
   };
@@ -24938,10 +24939,13 @@ function meOpenVoucherPurchases(dealId){
         var initials = (p.buyer||'C').trim().substring(0,2).toUpperCase();
         var nm = String(p.buyer||'').replace(/['"\\]/g,'');
         // Flag a no-show only for an unredeemed purchase we have an id for.
-        var action = (p.status !== 'used' && p.id != null)
-          ? (p.noShow
-              ? '<button onclick="meUndoNoShowPurchase('+Number(p.id)+',\''+did+'\')" style="background:none;border:none;color:#9A9AB0;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:2px 4px;margin-top:4px;">Undo</button>'
-              : '<button onclick="meReportNoShowPurchase('+Number(p.id)+',\''+nm+'\',\''+did+'\')" style="background:rgba(232,25,44,.06);color:#E8192C;border:1px solid rgba(232,25,44,.25);border-radius:8px;padding:3px 10px;font-size:10px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;margin-top:4px;">No Show</button>')
+        var action = (p.status !== 'used' && p.status !== 'cancelled' && p.id != null)
+          ? '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;margin-top:4px;">'
+            + (p.noShow
+              ? '<button onclick="meUndoNoShowPurchase('+Number(p.id)+',\''+did+'\')" style="background:none;border:none;color:#9A9AB0;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:2px 4px;">Undo</button>'
+              : '<button onclick="meReportNoShowPurchase('+Number(p.id)+',\''+nm+'\',\''+did+'\')" style="background:rgba(232,25,44,.06);color:#E8192C;border:1px solid rgba(232,25,44,.25);border-radius:8px;padding:3px 10px;font-size:10px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">No Show</button>')
+            + '<button onclick="meRefuseService('+Number(p.id)+',\''+String(p.code||'').replace(/[\x27\x22\\]/g,'')+'\',\''+nm+'\',\''+String(p.user_id||'').replace(/[\x27\x22\\]/g,'')+'\',\''+String(v.name||'').replace(/[\x27\x22\\]/g,'')+'\',\''+did+'\')" style="background:none;border:none;color:#B91C1C;font-size:10px;font-weight:800;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:2px 4px;">Refuse / cancel</button>'
+            + '</div>'
           : '';
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F0F0F4;">'
           + '<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#E8192C,#FF6B35);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;">'+initials+'</div>'
@@ -25579,7 +25583,8 @@ async function meCheckRedeem(scannedCode){
       +'</div>'
       // Confirm button — onsite vouchers collect payment + redeem in one step
       +'<button onclick="meConfirmRedeem(\''+purchase.id+'\',\''+code+'\',\''+customerName.replace(/'/g,'')+'\',\''+dealName.replace(/'/g,'')+'\',\''+price+'\','+qty+',\''+purchase.user_id+'\','+(needsCollect?'true':'false')+');this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:'+(needsCollect?'linear-gradient(135deg,#C2410C,#EA580C)':'linear-gradient(135deg,#12A150,#0f8f45)')+';color:white;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 14px '+(needsCollect?'rgba(194,65,12,.35)':'rgba(18,161,80,.35)')+';margin-bottom:8px;">'+(needsCollect?('💰 Collect '+collectStr+' &amp; Redeem'):'✅ Confirm Redemption')+'</button>'
-      +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:none;border:1.5px solid #E8E8EC;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Cancel</button>';
+      +'<button onclick="meRefuseService(\''+purchase.id+'\',\''+code+'\',\''+customerName.replace(/'/g,'')+'\',\''+purchase.user_id+'\',\''+dealName.replace(/'/g,'')+'\',\'\');this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:#fff;color:#B91C1C;border:1.5px solid rgba(232,25,44,.4);border-radius:14px;padding:14px;font-size:14.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:8px;">🚫 Refuse service (can’t serve this order)</button>'
+      +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:none;border:1.5px solid #E8E8EC;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Close</button>';
 
     modal.appendChild(card);
     document.body.appendChild(modal);
@@ -25678,6 +25683,74 @@ async function meConfirmRedeem(purchaseId, code, customerName, dealName, price, 
     console.error('[meConfirmRedeem]', e);
     showToast('⚠️ Redemption failed: '+(e.message||'Try again'));
     if(btn){ btn.textContent='✅ Confirm Redemption'; btn.disabled=false; }
+  }
+}
+
+// ── Merchant: refuse service / cancel a purchase ─────────────────────────────
+// For when the venue can't serve an order at the door — the customer is underage,
+// too intoxicated, or the venue simply can't cater it. Opens a reason picker; the
+// choice voids the voucher (status→'cancelled', so it can't be redeemed), records
+// the reason, and notifies the customer. dealId is optional (lets the purchases
+// list refresh after a refuse from there).
+function meRefuseService(purchaseId, code, customerName, customerId, dealName, dealId){
+  var s = function(x){ return String(x==null?'':x).replace(/['"\\]/g,''); };
+  var pid=s(purchaseId), cd=s(code), cn=s(customerName), cid=s(customerId), dn=s(dealName), did=s(dealId);
+  var mkArgs = function(reasonExpr){ return "'"+pid+"','"+cd+"','"+cn+"','"+cid+"','"+dn+"',"+reasonExpr+",'"+did+"'"; };
+  var reasons = [ {e:'🔞',l:'Customer is underage'}, {e:'🍺',l:'Customer too intoxicated'}, {e:'⛔',l:'Can’t provide the service'} ];
+  var old=document.getElementById('me-refuse-modal'); if(old) old.remove();
+  var ov=document.createElement('div');
+  ov.id='me-refuse-modal';
+  ov.style.cssText='position:fixed;inset:0;z-index:1000001;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;font-family:Inter,sans-serif;';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;padding:22px 20px calc(env(safe-area-inset-bottom,0px) + 20px);">'
+    + '<div style="text-align:center;font-size:34px;margin-bottom:4px;">🚫</div>'
+    + '<div style="text-align:center;font-size:18px;font-weight:900;color:#1A1A1A;margin-bottom:4px;">Refuse this order?</div>'
+    + '<div style="text-align:center;font-size:13px;color:#9A9AB0;margin-bottom:18px;line-height:1.5;">Pick a reason. This voids '+esc(cn||'the customer')+'’s voucher and sends them a note explaining why.</div>'
+    + reasons.map(function(r){
+        return '<button onclick="meDoRefuse('+mkArgs("'"+r.l+"'")+')" style="width:100%;display:flex;align-items:center;gap:12px;background:#FFF5F5;border:1.5px solid rgba(232,25,44,.22);border-radius:14px;padding:15px 16px;margin-bottom:10px;font-size:14.5px;font-weight:800;color:#B91C1C;cursor:pointer;font-family:Inter,sans-serif;text-align:left;"><span style="font-size:22px;">'+r.e+'</span>'+r.l+'</button>';
+      }).join('')
+    + '<input id="me-refuse-other" placeholder="Other reason (optional)" style="width:100%;box-sizing:border-box;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:14px;padding:14px 16px;margin-bottom:10px;font-size:14px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;">'
+    + '<button onclick="meDoRefuse('+mkArgs("(document.getElementById('me-refuse-other').value||'Other')")+')" style="width:100%;background:linear-gradient(135deg,#E8192C,#b91c1c);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:8px;">Refuse with the reason above</button>'
+    + '<button onclick="var m=document.getElementById(\'me-refuse-modal\');if(m)m.remove();" style="width:100%;background:none;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Never mind</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+}
+
+async function meDoRefuse(purchaseId, code, customerName, customerId, dealName, reason, dealId){
+  var modal=document.getElementById('me-refuse-modal');
+  if(modal){ modal.querySelectorAll('button').forEach(function(b){ b.disabled=true; b.style.opacity='.6'; }); }
+  try {
+    // Void the voucher — only if still active (can't refuse an already-redeemed one).
+    var { data, error } = await db.from('voucher_purchases')
+      .update({ status:'cancelled' }).eq('id', purchaseId).eq('status','active').select('id');
+    if(error) throw error;
+    if(!data || !data.length){ showToast('⚠️ Can’t refuse — already redeemed or cancelled.'); if(modal) modal.remove(); return; }
+    // Best-effort audit trail (columns added by voucher_cancel.sql; ignored if not present).
+    try { await db.from('voucher_purchases').update({ cancel_reason:reason, cancelled_at:new Date().toISOString(), cancelled_by:(currentUser&&currentUser.id)||null }).eq('id', purchaseId); } catch(e){}
+    // Notify the customer (in-app alert + OS push if they enabled it).
+    if(customerId){
+      try { await db.from('notifications').insert({ user_id:customerId, type:'system', icon:'🚫', icon_class:'ai-red', read:false, title:'Order cancelled by the venue', body:(dealName?dealName+' — ':'')+'the venue couldn’t serve this order. Reason: '+reason+'. If you paid online, your refund will be processed.' }); } catch(e){}
+    }
+    // If the customer's vouchers are loaded on this device, void it there too.
+    if(typeof myVouchers!=='undefined' && myVouchers && myVouchers.length){
+      for(var i=0;i<myVouchers.length;i++){ if(myVouchers[i].code===code){ myVouchers[i].status='cancelled'; myVouchers[i].used=true; } }
+      if(typeof renderMyVouchers==='function'){ try{ renderMyVouchers(); }catch(e){} }
+    }
+    if(modal) modal.remove();
+    var res=document.getElementById('me-redeem-result'); if(res) res.innerHTML='';
+    showToast('🚫 Order refused — '+(customerName||'customer')+' notified. Voucher voided.');
+    // Reflect the change in an open purchases list.
+    if(dealId && typeof meVoucherPurchaseMap!=='undefined' && meVoucherPurchaseMap[String(dealId)]){
+      var arr=(meVoucherPurchaseMap[String(dealId)].purchases)||[];
+      for(var j=0;j<arr.length;j++){ if(String(arr[j].id)===String(purchaseId)){ arr[j].status='cancelled'; } }
+      var holder=document.getElementById('me-voucher-purchases-holder');
+      if(holder && holder.innerHTML.trim()){ try{ meOpenVoucherPurchases(dealId); }catch(e){} }
+    }
+  } catch(e){
+    console.error('[meDoRefuse]', e);
+    showToast('⚠️ Could not refuse: '+(e.message||'try again'));
+    if(modal){ modal.querySelectorAll('button').forEach(function(b){ b.disabled=false; b.style.opacity='1'; }); }
   }
 }
 
