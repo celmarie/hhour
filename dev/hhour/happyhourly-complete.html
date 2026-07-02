@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702154338';
+var BUILD_VERSION = '20260702175800';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5608,6 +5608,9 @@ async function initializeAuth(){
     updateGuestVisibility();
     updateLogoutBtnLabel();
   }
+  // First-visit T&C gate — ONLY for users who are not logged in (a restored session
+  // means they already accepted at sign-up; never interrupt them). One-time per device.
+  try { if(!currentUser && typeof _maybeShowTermsGate==='function') _maybeShowTermsGate(); } catch(e){}
 }
 
 // iOS keeps offering "Fill Password" for the hidden login/merchant forms even after
@@ -14637,7 +14640,8 @@ function _maybeShowTermsGate(){
     document.body.appendChild(ov);
   } catch(e){}
 }
-try { if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', _maybeShowTermsGate); } else { _maybeShowTermsGate(); } } catch(e){}
+// NOTE: the gate is triggered from initializeAuth (only when there's NO logged-in
+// session) — never at page-load, so it can't appear over an already-signed-in user.
 
 async function doSignUp(){
   if(!_loginTermsCheck('login-terms', document.getElementById('login-error'))){ return; }
