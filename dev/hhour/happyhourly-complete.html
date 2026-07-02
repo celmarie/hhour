@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702153405';
+var BUILD_VERSION = '20260702154338';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5682,6 +5682,7 @@ function showLoginScreen(){
   if(ls){ ls.style.display = 'flex'; ls.style.opacity = '1'; }
   _lockLoginInputs(false);   // login is needed now → re-enable the fields
   try { _guardPasswordFields(); } catch(e){}        // restore real input types now that login is visible
+  try { if(typeof _termsAccepted==='function' && _termsAccepted()){ var _lt=document.getElementById('login-terms'); if(_lt) _lt.checked=true; } } catch(e){}   // already accepted on this device → don't ask twice
   try { _syncTermsGate(); } catch(e){}              // reflect the T&C checkbox state (gates Google redirect)
   try { _captchaInit('captcha-box'); } catch(e){}   // ensure CAPTCHA is ready (boot preload is now deferred)
   updateGuestVisibility();
@@ -5704,6 +5705,7 @@ function openWebLoginPopup(){
   var er = document.getElementById('wl-error'); if(er) er.textContent='';
   p.style.display = 'block';
   try { _revealLoginFields(['wl-email','wl-pass']); } catch(e){}   // popup shown → restore its real input types
+  try { if(typeof _termsAccepted==='function' && _termsAccepted()){ var _wt=document.getElementById('wl-terms'); if(_wt) _wt.checked=true; } } catch(e){}   // already accepted on this device
   try { _captchaInit('captcha-box-weblogin'); } catch(e){}
   // Render Google's popup button (no supabase.co); reveal the redirect button only
   // if GIS can't load. This popup is desktop-only, so the popup flow always applies.
@@ -14580,7 +14582,7 @@ function loginViewLegal(which){
   var old = document.getElementById('login-legal-ov'); if(old) old.remove();
   var ov = document.createElement('div');
   ov.id = 'login-legal-ov';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:#fff;display:flex;flex-direction:column;font-family:Inter,sans-serif;';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:2000001;background:#fff;display:flex;flex-direction:column;font-family:Inter,sans-serif;';
   ov.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 13px;border-bottom:1px solid #F1E7DF;flex-shrink:0;">'
     + '<button type="button" onclick="var o=document.getElementById(\'login-legal-ov\');if(o)o.remove();" style="background:#F5F2EF;border:none;border-radius:10px;width:36px;height:36px;font-size:22px;line-height:1;cursor:pointer;color:#333;">&lsaquo;</button>'
     + '<div style="font-size:17px;font-weight:800;color:#1A1A1A;">' + title + '</div></div>'
@@ -14588,6 +14590,54 @@ function loginViewLegal(which){
   document.body.appendChild(ov);
   var b = document.getElementById('login-legal-body'); if(b) b.textContent = body;
 }
+
+// ── First-visit Terms & Conditions gate ──────────────────────────────────────
+// Groupon-style browsing lets people in without ever seeing the login screen, so a
+// one-time acceptance screen (per device) guarantees EVERY user accepts before using
+// the app. Bump HH_TERMS_VERSION to re-prompt everyone if the terms change.
+var HH_TERMS_VERSION = '2026-07';
+function _termsAccepted(){ try { return localStorage.getItem('hh_terms_accepted') === HH_TERMS_VERSION; } catch(e){ return false; } }
+function _acceptTermsGate(){
+  var cb=document.getElementById('hh-terms-gate-cb');
+  if(!cb || !cb.checked){
+    var err=document.getElementById('hh-terms-gate-err'); if(err) err.style.display='block';
+    try{ var row=document.getElementById('hh-terms-gate-row'); if(row) row.animate([{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(-3px)'},{transform:'translateX(0)'}],{duration:260}); }catch(e){}
+    return;
+  }
+  try { localStorage.setItem('hh_terms_accepted', HH_TERMS_VERSION); } catch(e){}
+  var ov=document.getElementById('hh-terms-gate'); if(ov) ov.remove();
+  // Reflect on the login/web checkboxes so nobody is asked to accept twice.
+  try {
+    var lt=document.getElementById('login-terms'); if(lt) lt.checked=true;
+    var wt=document.getElementById('wl-terms');   if(wt) wt.checked=true;
+    if(typeof _syncTermsGate==='function') _syncTermsGate();
+  } catch(e){}
+}
+function _maybeShowTermsGate(){
+  try {
+    if(_termsAccepted()) return;
+    if(document.getElementById('hh-terms-gate')) return;
+    if(!document.body){ document.addEventListener('DOMContentLoaded', _maybeShowTermsGate); return; }
+    var ov=document.createElement('div');
+    ov.id='hh-terms-gate';
+    ov.style.cssText='position:fixed;inset:0;z-index:2000000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:calc(env(safe-area-inset-top,0px) + 30px) 26px calc(env(safe-area-inset-bottom,0px) + 30px);font-family:Inter,sans-serif;overflow-y:auto;';
+    ov.innerHTML =
+      '<div style="max-width:400px;width:100%;margin:auto;">'
+      + '<svg width="56" height="70" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin:0 auto 14px;display:block;filter:drop-shadow(0 6px 14px rgba(232,25,44,.28));"><path d="M29 2C14.6 2 3 13.4 3 27.4 3 45.6 29 72 29 72s26-26.4 26-44.6C55 13.4 43.4 2 29 2Z" fill="#E8192C"/><path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#fff"/></svg>'
+      + '<div style="font-size:24px;font-weight:900;letter-spacing:-.5px;margin-bottom:6px;"><span style="color:#E8192C;">Appie</span> <span style="color:#1A1A1A;">Hour</span></div>'
+      + '<div style="font-size:15px;font-weight:600;color:#6B6B76;line-height:1.55;margin-bottom:22px;">Welcome! Before you start, please review and accept our terms.</div>'
+      + '<label id="hh-terms-gate-row" style="display:flex;align-items:flex-start;gap:11px;text-align:left;background:#F7F7F9;border:1.5px solid #E8E8EC;border-radius:14px;padding:15px 16px;margin-bottom:8px;font-size:13.5px;font-weight:600;color:#4A4A4A;line-height:1.5;cursor:pointer;">'
+        + '<input type="checkbox" id="hh-terms-gate-cb" onchange="var e=document.getElementById(\'hh-terms-gate-err\');if(e)e.style.display=\'none\';" style="width:19px;height:19px;margin-top:1px;accent-color:#E8192C;flex-shrink:0;cursor:pointer;">'
+        + '<span>I have read and agree to the <span onclick="event.preventDefault();event.stopPropagation();loginViewLegal(\'terms\')" style="color:#E8192C;font-weight:800;">Terms &amp; Conditions</span> and <span onclick="event.preventDefault();event.stopPropagation();loginViewLegal(\'privacy\')" style="color:#E8192C;font-weight:800;">Privacy Policy</span>.</span>'
+      + '</label>'
+      + '<div id="hh-terms-gate-err" style="display:none;color:#E8192C;font-size:12.5px;font-weight:700;margin-bottom:6px;">Please accept the Terms &amp; Conditions to continue.</div>'
+      + '<button onclick="_acceptTermsGate()" style="width:100%;background:#E8192C;color:#fff;border:none;border-radius:28px;padding:15px;font-size:15.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-top:10px;box-shadow:0 10px 24px rgba(232,25,44,.28);">Continue</button>'
+      + '<div style="font-size:11px;color:#B0B0B8;margin-top:16px;">You must accept to use Appie Hour.</div>'
+      + '</div>';
+    document.body.appendChild(ov);
+  } catch(e){}
+}
+try { if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', _maybeShowTermsGate); } else { _maybeShowTermsGate(); } } catch(e){}
 
 async function doSignUp(){
   if(!_loginTermsCheck('login-terms', document.getElementById('login-error'))){ return; }
