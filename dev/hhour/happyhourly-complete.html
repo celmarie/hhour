@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702182631';
+var BUILD_VERSION = '20260702183637';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -18542,6 +18542,75 @@ async function adminResolveSpotReport(reportId, newStatus){
   }catch(e){ showToast('⚠️ '+((e&&e.message)||'failed')); }
 }
 
+// ── Admin: find & merge duplicate venues ─────────────────────────────────────
+function _admVenueNorm(s){ return String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]/g,''); }
+async function adminOpenDupVenues(){
+  var holder=document.getElementById('adm-dupven-holder');
+  if(!holder){ holder=document.createElement('div'); holder.id='adm-dupven-holder'; document.body.appendChild(holder); }
+  holder.innerHTML='<div style="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;"><div style="background:#fff;border-radius:16px;padding:26px 30px;font-size:14px;font-weight:700;color:#555;">Scanning venues…</div></div>';
+  try {
+    var vr = await db.from('venues').select('id,name,address,status').order('name');
+    if(vr.error) throw vr.error;
+    var venues=(vr.data||[]).filter(function(v){ return v.status!=='merged'; });
+    var dcount={};
+    try { var dr=await db.from('deals').select('venue_id'); (dr.data||[]).forEach(function(d){ if(d.venue_id) dcount[d.venue_id]=(dcount[d.venue_id]||0)+1; }); } catch(e){}
+    var groups={};
+    venues.forEach(function(v){ var k=_admVenueNorm(v.name); if(!k) return; (groups[k]=groups[k]||[]).push(v); });
+    var dupGroups=Object.keys(groups).map(function(k){ return groups[k]; }).filter(function(g){ return g.length>1; });
+    _admRenderDupVenues(dupGroups, dcount, venues.length);
+  } catch(e){
+    holder.innerHTML='<div onclick="adminCloseDupVenues()" style="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;"><div style="background:#fff;border-radius:16px;padding:24px;max-width:360px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#dc2626;margin-bottom:8px;">Couldn’t load venues</div><div style="font-size:13px;color:#666;">'+esc((e&&e.message)||'Error')+'</div></div></div>';
+  }
+}
+function adminCloseDupVenues(){ var h=document.getElementById('adm-dupven-holder'); if(h) h.innerHTML=''; }
+function _admRenderDupVenues(dupGroups, dcount, total){
+  var holder=document.getElementById('adm-dupven-holder'); if(!holder) return;
+  var esc2=function(s){ return String(s==null?'':s).replace(/['"\\]/g,''); };
+  var inner;
+  if(!dupGroups.length){
+    inner='<div style="text-align:center;padding:26px 8px;"><div style="font-size:40px;margin-bottom:10px;">✅</div><div style="font-size:16px;font-weight:900;color:#1A1A1A;margin-bottom:4px;">No duplicate venues</div><div style="font-size:13px;color:#9A9AB0;">Scanned '+total+' venues — all unique by name.</div></div>';
+  } else {
+    inner=dupGroups.map(function(g){
+      var rows=g.map(function(v){
+        var others=g.filter(function(x){ return x.id!==v.id; }).map(function(x){ return x.id; }).join(',');
+        var n=dcount[v.id]||0;
+        return '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border:1.5px solid #EEE;border-radius:12px;margin-bottom:8px;">'
+          +'<div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:800;color:#1A1A1A;">'+esc(v.name)+'</div>'
+          +'<div style="font-size:11.5px;color:#9A9AB0;margin-top:2px;word-break:break-word;">'+esc(v.address||'—')+'</div>'
+          +'<div style="font-size:11px;color:#12A150;font-weight:700;margin-top:2px;">'+n+' deal'+(n!==1?'s':'')+'</div></div>'
+          +'<button onclick="adminMergeVenues(\''+esc2(v.id)+'\',\''+esc2(others)+'\',\''+esc2(v.name)+'\')" style="background:#E8192C;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">Keep this ✓</button>'
+        +'</div>';
+      }).join('');
+      return '<div style="background:#FFF7F7;border:1.5px solid rgba(232,25,44,.2);border-radius:14px;padding:12px;margin-bottom:14px;">'
+        +'<div style="font-size:12px;font-weight:800;color:#B91C1C;margin-bottom:8px;">⚠️ "'+esc(g[0].name)+'" — '+g.length+' copies</div>'+rows
+        +'<div style="font-size:10.5px;color:#9A9AB0;margin-top:2px;line-height:1.5;">Tap “Keep this” on the correct one — the others merge into it (their deals move over, then they’re removed).</div>'
+      +'</div>';
+    }).join('');
+  }
+  holder.innerHTML='<div onclick="if(event.target===this)adminCloseDupVenues()" style="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;font-family:Inter,sans-serif;">'
+    +'<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">'
+    +'<div style="padding:16px 18px;border-bottom:1px solid #F0F0F4;display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">🔀</div><div style="flex:1;"><div style="font-size:16px;font-weight:900;color:#1A1A1A;">Duplicate venues</div><div style="font-size:11px;color:#9A9AB0;">'+(dupGroups.length?(dupGroups.length+' group'+(dupGroups.length!==1?'s':'')+' found'):'')+'</div></div>'
+    +'<button onclick="adminCloseDupVenues()" style="background:#F5F5F7;border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;color:#555;">✕</button></div>'
+    +'<div style="flex:1;overflow-y:auto;padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 16px);">'+inner+'</div>'
+    +'</div></div>';
+}
+async function adminMergeVenues(keepId, removeIdsCsv, keepName){
+  var removeIds=(removeIdsCsv||'').split(',').filter(Boolean);
+  if(!removeIds.length){ showToast('Nothing to merge'); return; }
+  if(!confirm('Merge '+removeIds.length+' duplicate'+(removeIds.length!==1?'s':'')+' into "'+(keepName||'this venue')+'"?\n\nTheir deals move to this venue, then the duplicates are removed. This can’t be undone.')) return;
+  var okCount=0, moved=0, err='';
+  for(var i=0;i<removeIds.length;i++){
+    try {
+      var r=await db.rpc('admin_merge_venues',{ p_keep:keepId, p_remove:removeIds[i] });
+      if(r.error) throw r.error;
+      okCount++; if(r.data && typeof r.data.moved_deals==='number') moved+=r.data.moved_deals;
+    } catch(e){ err=(e&&e.message)||'error'; }
+  }
+  if(okCount) showToast('✅ Merged '+okCount+' venue'+(okCount!==1?'s':'')+(moved?' · '+moved+' deal'+(moved!==1?'s':'')+' moved':''));
+  if(err) showToast('⚠️ '+(/admin_merge_venues|function|does not exist|schema cache/i.test(err)?'Run merge_venues.sql in Supabase first':(/admins only/i.test(err)?'Admins only':err)));
+  try { adminOpenDupVenues(); } catch(e){}   // re-scan so the merged group disappears
+}
+
 function adminPage(page,btn){
   // Check if user has access to this page (skip for super_admin)
   if(_currentAdminRole !== 'super_admin' && !hasAdminAccess(page)){
@@ -19167,6 +19236,8 @@ function adminPage(page,btn){
       : regularMerchants;
     var emptyMerchants = '<div style="padding:32px 20px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">🏪</div><div style="font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:4px;">No merchants yet</div><div style="font-size:12px;color:#9A9AB0;">Merchants who sign up will appear here</div></div>';
     body.innerHTML=''
+      // Duplicate-venue cleanup tool
+      +'<button onclick="adminOpenDupVenues()" style="width:100%;background:#fff;color:#B91C1C;border:1.5px dashed rgba(232,25,44,.4);border-radius:12px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:14px;">🔀 Find &amp; merge duplicate venues</button>'
       // ── Applications section ──
       +(applications.length ? '<div style="background:white;border-radius:14px;border:2px solid #d97706;overflow:hidden;margin-bottom:14px;">'
         +'<button onclick="admToggleSection(\'adm-merch-apps\',\'adm-merch-apps-chev\')" style="width:100%;padding:12px 16px;background:rgba(217,119,6,.07);border:none;border-bottom:1px solid rgba(217,119,6,.2);display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:Inter,sans-serif;">'
