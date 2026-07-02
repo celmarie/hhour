@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702153051';
+var BUILD_VERSION = '20260702153405';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14894,6 +14894,7 @@ function _captchaInit(id){
 }
 
 function doGuestLogin(){
+  if(!_loginTermsCheck('login-terms', document.getElementById('login-error'))){ return; }   // no entry — even as guest — without accepting the T&C
   isGuest=true;
   _pendingLoginScreen = null;   // dismissing login → drop any gated-tab intent
   try { _lockLoginInputs(true); } catch(e){}   // browsing as guest → suppress iOS "Fill Password" prompts
