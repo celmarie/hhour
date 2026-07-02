@@ -131,6 +131,9 @@ body{font-family:'Inter',sans-serif;background:#111;display:flex;justify-content
      content off the right edge. max-width:100% pins it to the visual viewport. */
   html{ height:100%; overflow-x:hidden; max-width:100%; }
   body{ height:100svh; min-height:0; overflow:hidden; overflow-x:hidden; max-width:100%; }
+  /* Small-screen safety net: media can never force horizontal scroll on narrow phones.
+     (Leaflet's own CSS re-allows full-size map tiles, so the map is unaffected.) */
+  img,video,canvas{ max-width:100%; }
   .shell{ height:100svh; max-height:none; width:100%; max-width:100%; }
   .screen{ overscroll-behavior:contain; }
 }
@@ -4159,7 +4162,7 @@ function _loadGT(){
     <!-- SEARCH OVERLAY -->
     <div class="soverlay" id="soverlay">
       <div class="so-top">
-        <input class="so-inp" id="sinp" placeholder="Search happy hours..." oninput="doSearch(this.value)">
+        <input class="so-inp" id="sinp" placeholder="Search happy hours..." oninput="clearTimeout(window._soT);var _q=this.value;window._soT=setTimeout(function(){doSearch(_q);},200)">
         <button class="so-cancel" onclick="closeSearch()">Cancel</button>
       </div>
       <div class="so-body" id="sres"></div>
@@ -5446,20 +5449,35 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703013354';
+var BUILD_VERSION = '20260703014102';
 (function(){
+  // POLITE auto-update: reload for a new build only if the user hasn't started
+  // using the app yet. If they're already tapping/typing (the check can resolve
+  // seconds after boot on slow networks), defer the reload to the next time the
+  // app is backgrounded — never yank the screen away mid-interaction.
+  var _used = false;
+  try { ['touchstart','keydown','mousedown'].forEach(function(ev){ window.addEventListener(ev, function(){ _used = true; }, { passive:true }); }); } catch(e){}
+  function _typingNow(){ try { var a=document.activeElement; return !!(a && (a.tagName==='INPUT' || a.tagName==='TEXTAREA' || a.isContentEditable)); } catch(e){ return false; } }
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(j){
-        if(j && j.v && j.v !== BUILD_VERSION){
-          // Reload at most ONCE per new build, guard stored in localStorage so a
-          // crash-and-restart can never turn this into a reload loop ("A problem
-          // repeatedly occurred"). sessionStorage was cleared by crashes → could loop.
-          var k = 'hh_upd_' + j.v;
-          var seen = false; try { seen = !!localStorage.getItem(k); } catch(e){}
-          if(!seen){ try { localStorage.setItem(k, '1'); } catch(e){} location.reload(); }
-        }
+        if(!(j && j.v && j.v !== BUILD_VERSION)) return;
+        // Reload at most ONCE per new build, guard stored in localStorage so a
+        // crash-and-restart can never turn this into a reload loop ("A problem
+        // repeatedly occurred"). sessionStorage was cleared by crashes → could loop.
+        var k = 'hh_upd_' + j.v;
+        var seen = false; try { seen = !!localStorage.getItem(k); } catch(e){}
+        if(seen) return;
+        var doReload = function(){ try { localStorage.setItem(k, '1'); } catch(e){} location.reload(); };
+        if(!_used && !_typingNow()){ doReload(); return; }   // still on the splash → safe to swap now
+        var onHide = function(){
+          if(document.visibilityState === 'hidden'){
+            document.removeEventListener('visibilitychange', onHide);
+            doReload();   // app is backgrounded — invisible, interruption-free update
+          }
+        };
+        document.addEventListener('visibilitychange', onHide);
       })
       .catch(function(){});
   } catch(e){}
@@ -14052,7 +14070,10 @@ function doSearch(q){
     });
   if(!m.length){res.innerHTML=`<div style="text-align:center;color:var(--t3);font-size:14px;padding:32px 0;">No results for "${q}"</div>`;return;}
   const ucIdSet=new Set(ucDeals.map(x=>String(x.id)));
-  res.innerHTML=m.map(d=>{
+  // Cap rendered results — a 1-letter query matches hundreds of deals, and rendering
+  // them all (thumbs + live countdowns) on every keystroke can crash mobile Safari.
+  const mAll=m.length, mShown=m.slice(0,40);
+  res.innerHTML=mShown.map(d=>{
    try {
     const isUC=ucIdSet.has(String(d.id));
     const openFn=isUC?`openUCDeal('${d.id}')`:`openVoucher('${d.id}')`;
@@ -14093,7 +14114,8 @@ function doSearch(q){
       </div>
     </div>`;
    } catch(_e){ return ''; }   // skip a single malformed deal, keep the rest of the results
-  }).join('');
+  }).join('')
+  + (mAll>mShown.length ? `<div style="text-align:center;color:var(--t3);font-size:12.5px;font-weight:600;padding:14px 0;">Showing ${mShown.length} of ${mAll} — keep typing to narrow it down</div>` : '');
   startDeckCountdowns();
   } catch(e){
     console.error('[doSearch]', e);
