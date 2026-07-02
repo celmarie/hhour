@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702115242';
+var BUILD_VERSION = '20260702140857';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14541,8 +14541,9 @@ function switchAuthMode(mode){
   var ggB = document.getElementById('google-btn');
   if(ggB && isSU){ ggB.style.display = 'none'; }
   if(btn) btn.textContent = isSU ? (loginRole==='merchant' ? 'Register Business' : 'Create Account') : 'Sign In';
-  if(modeSI){ modeSI.style.background = isSU ? 'none' : '#fff'; modeSI.style.color = isSU ? '#9b8b86' : '#1A1A1A'; modeSI.style.boxShadow = isSU ? 'none' : '0 2px 8px rgba(0,0,0,.06)'; }
-  if(modeSU){ modeSU.style.background = isSU ? '#fff' : 'none'; modeSU.style.color = isSU ? '#1A1A1A' : '#9b8b86'; modeSU.style.boxShadow = isSU ? '0 2px 8px rgba(0,0,0,.06)' : 'none'; }
+  // Underline-style tabs (active = red text + red underline).
+  if(modeSI){ modeSI.style.color = isSU ? '#9A9AB0' : '#E8192C'; modeSI.style.borderBottom = isSU ? '2px solid transparent' : '2px solid #E8192C'; modeSI.style.fontWeight = isSU ? '700' : '800'; }
+  if(modeSU){ modeSU.style.color = isSU ? '#E8192C' : '#9A9AB0'; modeSU.style.borderBottom = isSU ? '2px solid #E8192C' : '2px solid transparent'; modeSU.style.fontWeight = isSU ? '800' : '700'; }
   var errEl = document.getElementById('login-error');
   if(errEl) errEl.textContent = '';
   _updateSignupCta();
@@ -31327,67 +31328,60 @@ function _setupDealMap() {
   #login-screen .hh-blob, #login-screen .hh-emoji, #merchant-login-screen .ml-blob{ display:none !important; }
 </style>
 <style>
-  /* ══ Split login: red brand panel (left) + white form (right) ══════════════
-     Mobile-first, matches the Appie Hour brand mockup. Overrides the older
-     glass-card rules above via higher (2-id) specificity. */
+  /* ══ Clean white login (matches the Appie Hour mockup) ═══════════════════════
+     Overrides the older glass-card rules above via higher (2-id) specificity. */
   #login-screen{ background:#fff !important; }
-  /* Form inputs on the white panel: solid light fill + visible border
-     (defeats the translucent-glass input rules defined earlier). */
+  /* Form inputs: clean light-grey fill (defeats the translucent-glass rules above). */
   #login-screen #lg-right input:not([type=checkbox]){
-    background:#FFF5F0 !important; border:1.5px solid #FBDDD0 !important; color:#1A1A1A !important;
+    background:#F5F5F7 !important; border:1.5px solid #E8E8EC !important; color:#1A1A1A !important;
     -webkit-backdrop-filter:none !important; backdrop-filter:none !important;
   }
-  #login-screen #lg-right input:not([type=checkbox])::placeholder{ color:#C09A88 !important; }
+  #login-screen #lg-right input:not([type=checkbox])::placeholder{ color:#A0A0AA !important; }
   #login-screen #lg-right input:not([type=checkbox]):focus{
-    border-color:#FF5836 !important; box-shadow:0 0 0 3px rgba(255,88,54,.16) !important; background:#fff !important;
+    border-color:#E8192C !important; box-shadow:0 0 0 3px rgba(232,25,44,.13) !important; background:#fff !important;
   }
-  /* Neutralise the old warm-glass card chrome — the form now floats on white. */
+  /* Neutralise the old warm-glass card chrome — the form floats on white. */
   #login-screen #lg-right #hh-login-card{
     background:transparent !important; border:none !important; box-shadow:none !important;
     -webkit-backdrop-filter:none !important; backdrop-filter:none !important; padding:0 !important;
   }
-  /* Small phones: gentle trims so the hero doesn't crowd the form. */
-  @media (max-width:360px){
-    #lg-brand-name{ font-size:24px !important; }
-    #lg-hero{ padding-top:calc(env(safe-area-inset-top,0px) + 34px) !important; padding-bottom:30px !important; }
+  /* Outline "Sign In" button gets a → arrow (survives switchAuthMode's textContent set).
+     left/width/height reset overrides the old shine ::after so the arrow sits at the right. */
+  #login-screen #signin-btn::after{
+    content:'→'; left:auto; width:auto; height:auto; right:22px; top:50%;
+    transform:translateY(-50%); font-size:17px; font-weight:800; animation:none; background:none;
   }
-  /* Short/landscape viewports: shrink the hero so the form stays reachable. */
-  @media (max-height:560px){
-    #lg-hero{ padding-top:calc(env(safe-area-inset-top,0px) + 20px) !important; padding-bottom:20px !important; }
-    #lg-brand-name{ font-size:22px !important; margin-bottom:6px !important; }
-  }
+  #login-screen.ls-admin #signin-btn::after{ display:none !important; }
+  @media (max-width:360px){ #lg-brand-name{ font-size:22px !important; } }
 </style>
 <div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:none;flex-direction:column;font-family:'Inter',sans-serif;overflow:hidden;background:#fff;">
 
-  <!-- ══ TOP: sunset brand hero (fun + lively) ══ -->
-  <div id="lg-hero" style="position:relative;flex-shrink:0;display:flex;flex-direction:column;align-items:center;text-align:center;color:#fff;background:linear-gradient(140deg,#FF4D6D 0%,#FF5836 48%,#FF9F1C 100%);padding:calc(env(safe-area-inset-top,0px) + 42px) 26px 40px;border-radius:0 0 34px 34px;box-shadow:0 16px 36px rgba(255,88,54,.36);overflow:hidden;">
-    <!-- playful floating drinks (kept to the corners, clear of the text) -->
-    <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;">
-      <span style="position:absolute;top:16px;left:16px;font-size:31px;transform:rotate(-16deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,.16));">🍹</span>
-      <span style="position:absolute;top:50px;right:16px;font-size:27px;transform:rotate(14deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,.16));">🍸</span>
-      <span style="position:absolute;bottom:16px;left:18px;font-size:26px;transform:rotate(11deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,.16));">🍺</span>
-      <span style="position:absolute;bottom:18px;right:20px;font-size:29px;transform:rotate(-13deg);filter:drop-shadow(0 3px 6px rgba(0,0,0,.16));">🍷</span>
-      <span style="position:absolute;top:20px;right:94px;font-size:18px;transform:rotate(18deg);opacity:.9;">🍊</span>
-    </div>
-    <!-- soft top highlight for depth -->
-    <div aria-hidden="true" style="position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:300px;height:190px;background:radial-gradient(ellipse,rgba(255,255,255,.3),transparent 70%);pointer-events:none;"></div>
-    <!-- frosted pin badge -->
-    <div style="position:relative;width:80px;height:80px;border-radius:24px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 16px 32px rgba(0,0,0,.2);">
-      <svg width="37" height="47" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M29 2C14.6 2 3 13.4 3 27.4 3 45.6 29 72 29 72s26-26.4 26-44.6C55 13.4 43.4 2 29 2Z" fill="#fff"/>
-        <path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#FF5836"/>
-      </svg>
-    </div>
-    <div id="lg-brand-name" style="position:relative;font-size:28px;font-weight:900;letter-spacing:-.5px;line-height:1;margin-bottom:10px;text-shadow:0 2px 12px rgba(0,0,0,.14);">Appie Hour</div>
-    <div id="lg-tagline" style="position:relative;font-size:14.5px;font-weight:600;line-height:1.5;opacity:.97;max-width:290px;">Find &amp; share the best happy hours near you.</div>
-  </div>
+  <!-- faint city skyline at the bottom (decorative) -->
+  <svg aria-hidden="true" viewBox="0 0 390 90" preserveAspectRatio="none" width="100%" height="88" style="position:absolute;left:0;bottom:0;z-index:0;pointer-events:none;opacity:.14;" fill="#E8192C">
+    <path d="M0,90 L0,55 L18,55 L18,40 L34,40 L34,60 L50,60 L50,30 L58,30 L58,60 L74,60 L74,48 L92,48 L92,64 L108,64 L108,38 L118,38 L118,64 L134,64 L134,52 L150,52 L150,66 L168,66 L168,42 L178,42 L178,66 L196,66 L196,58 L214,58 L214,34 L222,34 L222,58 L240,58 L240,50 L258,50 L258,64 L276,64 L276,40 L286,40 L286,64 L304,64 L304,54 L322,54 L322,44 L340,44 L340,62 L358,62 L358,50 L376,50 L376,58 L390,58 L390,90 Z"/>
+  </svg>
 
-  <!-- ══ BOTTOM: white form panel ══ -->
-  <div id="lg-right" style="flex:1 1 auto;min-width:0;background:#fff;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:safe center;padding:26px 22px calc(env(safe-area-inset-bottom,0px) + 26px);">
+  <!-- ══ Clean white login (single scrolling column) ══ -->
+  <div id="lg-right" style="position:relative;z-index:1;flex:1 1 auto;min-width:0;background:transparent;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:safe center;padding:calc(env(safe-area-inset-top,0px) + 30px) 22px calc(env(safe-area-inset-bottom,0px) + 26px);">
     <div id="hh-login-card" style="width:100%;max-width:400px;margin:0 auto;">
 
+      <!-- logo: red pin + wordmark -->
+      <div style="text-align:center;margin-bottom:4px;">
+        <svg width="46" height="58" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin:0 auto;display:block;filter:drop-shadow(0 5px 12px rgba(232,25,44,.28));">
+          <path d="M29 2C14.6 2 3 13.4 3 27.4 3 45.6 29 72 29 72s26-26.4 26-44.6C55 13.4 43.4 2 29 2Z" fill="#E8192C"/>
+          <path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#fff"/>
+        </svg>
+        <div id="lg-brand-name" style="font-size:24px;font-weight:900;letter-spacing:-.5px;margin-top:4px;"><span style="color:#E8192C;">Appie</span> <span style="color:#1A1A1A;">Hour</span></div>
+      </div>
+
       <!-- welcome title -->
-      <div id="login-mode-title" style="font-size:21px;font-weight:800;color:#1A1A1A;letter-spacing:-.3px;margin-bottom:20px;">Hey, welcome! 👋</div>
+      <div id="login-mode-title" style="text-align:center;font-size:14px;font-weight:600;color:#6B6B76;margin-bottom:18px;">Hey, welcome! 👋</div>
+
+      <!-- Sign In / Create Account tabs (customer only) -->
+      <div id="auth-mode-wrap" style="display:flex;gap:26px;justify-content:center;border-bottom:1px solid #EEE;margin-bottom:20px;">
+        <button id="mode-signin" onclick="switchAuthMode('signin')" style="background:none;border:none;border-bottom:2px solid #E8192C;color:#E8192C;font-size:14.5px;font-weight:800;padding:0 4px 10px;margin-bottom:-1px;cursor:pointer;font-family:'Inter',sans-serif;">Sign In</button>
+        <button id="mode-signup" onclick="switchAuthMode('signup')" style="background:none;border:none;border-bottom:2px solid transparent;color:#9A9AB0;font-size:14.5px;font-weight:700;padding:0 4px 10px;margin-bottom:-1px;cursor:pointer;font-family:'Inter',sans-serif;">Create Account</button>
+      </div>
 
       <!-- Input fields -->
       <div id="lg-fields" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;">
@@ -31422,22 +31416,16 @@ function _setupDealMap() {
       <!-- Remember me + Forgot password (sign-in only) -->
       <div id="login-remember-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;">
         <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#6B5D54;cursor:pointer;">
-          <input type="checkbox" id="login-remember" style="width:16px;height:16px;accent-color:#E01F34;cursor:pointer;flex-shrink:0;"> Remember me
+          <input type="checkbox" id="login-remember" style="width:16px;height:16px;accent-color:#E8192C;cursor:pointer;flex-shrink:0;"> Remember me
         </label>
-        <a onclick="custForgotPassword()" style="font-size:13px;font-weight:700;color:#FF5836;cursor:pointer;white-space:nowrap;">Forgot password?</a>
+        <a onclick="custForgotPassword()" style="font-size:13px;font-weight:700;color:#E8192C;cursor:pointer;white-space:nowrap;">Forgot password?</a>
       </div>
 
       <div id="login-error" style="color:#E8192C;font-size:13px;font-weight:700;margin-bottom:8px;min-height:0;text-align:center;"></div>
       <div id="captcha-box" style="display:none;justify-content:center;margin-bottom:10px;"></div>
 
-      <!-- Terms & Conditions gate (required before sign in / sign up / Google) -->
-      <label id="login-terms-row" style="display:flex;align-items:flex-start;gap:9px;margin-bottom:13px;font-size:12.5px;font-weight:600;color:#6B5D54;line-height:1.5;cursor:pointer;">
-        <input type="checkbox" id="login-terms" onchange="_syncTermsGate()" style="width:17px;height:17px;margin-top:1px;accent-color:#FF5836;cursor:pointer;flex-shrink:0;">
-        <span>I agree to the <span onclick="event.preventDefault();event.stopPropagation();loginViewLegal('terms')" style="color:#FF5836;font-weight:800;">Terms &amp; Conditions</span> and <span onclick="event.preventDefault();event.stopPropagation();loginViewLegal('privacy')" style="color:#FF5836;font-weight:800;">Privacy Policy</span></span>
-      </label>
-
-      <!-- Sign In (sunset gradient) -->
-      <button type="button" id="signin-btn" onclick="_loginMode==='signup'?doSignUp():doLogin()" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 16px 32px rgba(255,88,54,.5)'" onmouseout="this.style.transform='';this.style.boxShadow='0 12px 26px rgba(255,88,54,.4)'" style="position:relative;overflow:hidden;width:100%;background:linear-gradient(135deg,#FF4D6D 0%,#FF5836 55%,#FF8A2B 100%);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;box-shadow:0 12px 26px rgba(255,88,54,.4);transition:transform .15s,box-shadow .2s;">Sign In</button>
+      <!-- Sign In (outline pill; → arrow added via CSS ::after) -->
+      <button type="button" id="signin-btn" onclick="_loginMode==='signup'?doSignUp():doLogin()" style="position:relative;width:100%;background:#fff;color:#E8192C;border:1.5px solid #E8192C;border-radius:28px;padding:15px;font-size:15.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:16px;transition:background .15s;" onmouseover="this.style.background='#FFF4F4'" onmouseout="this.style.background='#fff'">Sign In</button>
 
       <!-- OR divider (customer only) -->
       <div id="login-or-div" style="display:flex;align-items:center;gap:10px;margin:0 0 14px;">
@@ -31455,17 +31443,17 @@ function _setupDealMap() {
         Sign in another way
       </button>
 
-      <!-- Continue as Guest (customer only) -->
-      <button type="button" id="guest-btn" onclick="doGuestLogin()" style="width:100%;align-items:center;justify-content:center;gap:9px;background:#fff;color:#4A4A4A;border:1.5px solid #E6E4EA;border-radius:14px;padding:12px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;display:flex;transition:background .2s;" onmouseover="this.style.background='#FAF8F6'" onmouseout="this.style.background='#fff'">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="#FF5836" style="flex-shrink:0;"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6Z"/></svg>
+      <!-- Continue as Guest (peachy) -->
+      <button type="button" id="guest-btn" onclick="doGuestLogin()" style="width:100%;align-items:center;justify-content:center;gap:9px;background:#F7E4D3;color:#5A4A3F;border:none;border-radius:28px;padding:14px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px;display:flex;transition:background .2s;" onmouseover="this.style.background='#F2D9C3'" onmouseout="this.style.background='#F7E4D3'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#8A6D5A" style="flex-shrink:0;"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6Z"/></svg>
         Continue as Guest
       </button>
 
-      <!-- Create Account (below Continue as Guest, per request) -->
-      <button type="button" id="create-acct-btn" onclick="switchAuthMode('signup')" style="width:100%;background:#fff;color:#FF5836;border:1.5px solid #FFD3C4;border-radius:14px;padding:12px;font-size:14.5px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s,border-color .2s;" onmouseover="this.style.background='#FFF3EE';this.style.borderColor='#FFB79E'" onmouseout="this.style.background='#fff';this.style.borderColor='#FFD3C4'">Create Account</button>
-
-      <!-- Back to sign-in link (signup mode only) -->
-      <div id="login-signup-cta" onclick="switchAuthMode('signin')" style="display:none;text-align:center;margin-top:10px;font-size:13px;font-weight:700;color:#FF5836;cursor:pointer;"></div>
+      <!-- Terms & Conditions gate (required before sign in / sign up / Google) -->
+      <label id="login-terms-row" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;font-size:12.5px;font-weight:600;color:#6B6B76;line-height:1.4;cursor:pointer;">
+        <input type="checkbox" id="login-terms" onchange="_syncTermsGate()" style="width:16px;height:16px;accent-color:#E8192C;cursor:pointer;flex-shrink:0;">
+        <span>I agree to the <span onclick="event.preventDefault();event.stopPropagation();loginViewLegal('terms')" style="color:#E8192C;font-weight:800;">Terms &amp; Conditions</span></span>
+      </label>
 
       <div id="login-demo-hint" style="display:none;"></div>
 
