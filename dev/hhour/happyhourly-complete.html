@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703003613';
+var BUILD_VERSION = '20260703010550';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -5746,7 +5746,7 @@ async function webLoginSubmit(){
   try {
     var { data, error } = await db.auth.signInWithPassword({ email: em, password: pw, options: _captchaOpts({}, 'captcha-box-weblogin') });
     _captchaReset('captcha-box-weblogin');
-    if(error){ if(err) err.textContent = (/invalid login credentials|invalid email or password/i.test(error.message||'')) ? 'Invalid email or password.' : error.message; return; }
+    if(error){ if(err) err.textContent = (/invalid login credentials|invalid email or password/i.test(error.message||'')) ? 'Invalid email or password.' : _friendlyAuthErr(error.message); return; }
     // Customer-only (mirror doLogin's role gate) — merchants/admins use their own portals.
     var acctRole = (data.user.app_metadata && data.user.app_metadata.role) || (data.user.user_metadata && data.user.user_metadata.role) || 'customer';
     if(acctRole !== 'customer'){ await db.auth.signOut().catch(function(){}); if(err) err.textContent = 'Invalid email or password.'; return; }
@@ -14607,6 +14607,16 @@ function switchAuthMode(mode){
   _updateSignupCta();
 }
 
+// Translate raw browser/network errors ("Load failed", "Failed to fetch") into a
+// message a human can act on. Anything else passes through unchanged.
+function _friendlyAuthErr(m){
+  m = String(m||'');
+  if(/load failed|failed to fetch|network ?error|fetch failed|timed? ?out|abort/i.test(m)){
+    return '📶 Connection problem — check your internet and try again.';
+  }
+  return m;
+}
+
 // ── Terms & Conditions gate ───────────────────────────────────────────────
 // A ticked "I agree" box is required before any sign-in / sign-up / Google.
 function _loginTermsCheck(cbId, errEl){
@@ -14772,7 +14782,7 @@ async function doSignUp(){
       return;
     }
 
-    if(error){ errEl.textContent = error.message; if(btn){ btn.disabled=false; btn.textContent='Create Account'; } return; }
+    if(error){ errEl.textContent = _friendlyAuthErr(error.message); if(btn){ btn.disabled=false; btn.textContent='Create Account'; } return; }
 
     var user = data && data.user;
     if(!user){ errEl.textContent = 'Signup failed — please try again'; if(btn){ btn.disabled=false; btn.textContent='Create Account'; } return; }
@@ -14868,7 +14878,7 @@ async function handleGoogleCredential(resp){
     if(!resp || !resp.credential) return;   // user dismissed the chooser
     if(!_googleTermsOk()){ return; }         // must accept Terms & Conditions first
     var { data, error } = await db.auth.signInWithIdToken({ provider:'google', token: resp.credential });
-    if(error){ if(errEl) errEl.textContent = error.message; return; }
+    if(error){ if(errEl) errEl.textContent = _friendlyAuthErr(error.message); return; }
     if(data && data.user){
       // A successful Google sign-in PROVES the person owns this account, so route them
       // to wherever their role belongs — a customer stays on the consumer site, a
@@ -14942,7 +14952,7 @@ async function loginWithGoogleRedirect(){
     // prompt=select_account → always show Google's account chooser instead of
     // silently reusing the last-used Google account.
     var { error } = await db.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: redirectTo, queryParams: { prompt: 'select_account' } } });
-    if(error && errEl){ errEl.textContent = error.message; }
+    if(error && errEl){ errEl.textContent = _friendlyAuthErr(error.message); }
   }catch(e){
     if(errEl) errEl.textContent = 'Google sign-in failed: ' + (e.message || e);
   }
@@ -15140,7 +15150,7 @@ async function doLogin(captchaId){
           : 'Invalid email or password.';
         return;
       }
-      errEl.textContent = error.message;
+      errEl.textContent = _friendlyAuthErr(error.message);
       return;
     }
 
