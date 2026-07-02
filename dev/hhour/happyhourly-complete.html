@@ -5433,7 +5433,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702015340';
+var BUILD_VERSION = '20260702031913';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -31269,45 +31269,37 @@ function _setupDealMap() {
     background:transparent !important; border:none !important; box-shadow:none !important;
     -webkit-backdrop-filter:none !important; backdrop-filter:none !important; padding:0 !important;
   }
-  /* Roomier form on small phones by trimming the red panel a touch. */
-  @media (max-width:380px){
-    #lg-left{ flex-basis:37% !important; }
-    #lg-brand-name{ font-size:21px !important; }
-    #lg-tagline{ font-size:13px !important; }
-    #lg-cocktail{ font-size:84px !important; }
-    #login-screen #lg-right input:not([type=checkbox]){ font-size:14px !important; }
-    #login-screen #lg-right #login-pass{ padding-left:38px !important; padding-right:42px !important; }
+  /* Small phones: gentle trims so the hero doesn't crowd the form. */
+  @media (max-width:360px){
+    #lg-brand-name{ font-size:24px !important; }
+    #lg-hero{ padding-top:calc(env(safe-area-inset-top,0px) + 34px) !important; padding-bottom:30px !important; }
   }
-  /* Short/landscape viewports: drop the decorative cocktail so the brand text isn't clipped. */
-  @media (max-height:480px){
-    #lg-cocktail-wrap{ display:none !important; }
-    #lg-left{ justify-content:center !important; padding-bottom:24px !important; }
+  /* Short/landscape viewports: shrink the hero so the form stays reachable. */
+  @media (max-height:560px){
+    #lg-hero{ padding-top:calc(env(safe-area-inset-top,0px) + 20px) !important; padding-bottom:20px !important; }
+    #lg-brand-name{ font-size:22px !important; margin-bottom:6px !important; }
   }
-  @media (prefers-reduced-motion: reduce){ #lg-cocktail{ animation:none !important; } }
 </style>
-<div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:none;flex-direction:row;align-items:stretch;justify-content:center;font-family:'Inter',sans-serif;overflow:hidden;background:#fff;">
+<div id="login-screen" style="position:fixed;inset:0;z-index:999999;display:none;flex-direction:column;font-family:'Inter',sans-serif;overflow:hidden;background:#fff;">
 
-  <!-- ══ LEFT: red brand panel ══ -->
-  <div id="lg-left" style="flex:0 0 42%;max-width:220px;position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;color:#fff;background:linear-gradient(165deg,#F5273C 0%,#D6122E 52%,#A50C24 100%);padding:calc(env(safe-area-inset-top,0px) + 46px) 14px 0;overflow:hidden;">
-    <!-- location pin (white) with Appie sparkle (red) -->
-    <div style="filter:drop-shadow(0 10px 22px rgba(0,0,0,.28));margin-bottom:14px;">
-      <svg width="56" height="72" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- ══ TOP: red brand hero ══ -->
+  <div id="lg-hero" style="position:relative;flex-shrink:0;display:flex;flex-direction:column;align-items:center;text-align:center;color:#fff;background:linear-gradient(160deg,#F5273C 0%,#DA132F 55%,#B00C27 100%);padding:calc(env(safe-area-inset-top,0px) + 42px) 26px 36px;border-radius:0 0 32px 32px;box-shadow:0 12px 30px rgba(176,12,39,.28);overflow:hidden;">
+    <!-- soft top highlight for depth -->
+    <div aria-hidden="true" style="position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:300px;height:190px;background:radial-gradient(ellipse,rgba(255,255,255,.22),transparent 70%);pointer-events:none;"></div>
+    <!-- frosted pin badge -->
+    <div style="position:relative;width:76px;height:76px;border-radius:22px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 12px 28px rgba(0,0,0,.22);">
+      <svg width="34" height="43" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M29 2C14.6 2 3 13.4 3 27.4 3 45.6 29 72 29 72s26-26.4 26-44.6C55 13.4 43.4 2 29 2Z" fill="#fff"/>
         <path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#E01F34"/>
       </svg>
     </div>
-    <div id="lg-brand-name" style="font-size:25px;font-weight:900;letter-spacing:-.4px;line-height:1;margin-bottom:16px;">Appie Hour</div>
-    <div id="lg-tagline" style="font-size:14.5px;font-weight:600;line-height:1.5;opacity:.96;">Find &amp; share the best happy hours near you.</div>
-    <!-- cocktail hero anchored to the bottom -->
-    <div id="lg-cocktail-wrap" style="margin-top:auto;position:relative;width:100%;height:150px;">
-      <div style="position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:160px;height:160px;background:radial-gradient(circle,rgba(255,222,150,.42),transparent 66%);"></div>
-      <div id="lg-cocktail" style="position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);font-size:104px;line-height:1;filter:drop-shadow(0 -4px 18px rgba(0,0,0,.3));">🍹</div>
-    </div>
+    <div id="lg-brand-name" style="position:relative;font-size:27px;font-weight:900;letter-spacing:-.5px;line-height:1;margin-bottom:10px;">Appie Hour</div>
+    <div id="lg-tagline" style="position:relative;font-size:14.5px;font-weight:500;line-height:1.5;opacity:.94;max-width:300px;">Find &amp; share the best happy hours near you.</div>
   </div>
 
-  <!-- ══ RIGHT: white form panel ══ -->
-  <div id="lg-right" style="flex:1 1 auto;min-width:0;background:#fff;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:safe center;padding:calc(env(safe-area-inset-top,0px) + 30px) 20px calc(env(safe-area-inset-bottom,0px) + 26px);">
-    <div id="hh-login-card" style="width:100%;max-width:360px;margin:0 auto;">
+  <!-- ══ BOTTOM: white form panel ══ -->
+  <div id="lg-right" style="flex:1 1 auto;min-width:0;background:#fff;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:safe center;padding:26px 22px calc(env(safe-area-inset-bottom,0px) + 26px);">
+    <div id="hh-login-card" style="width:100%;max-width:400px;margin:0 auto;">
 
       <!-- welcome title -->
       <div id="login-mode-title" style="font-size:21px;font-weight:800;color:#1A1A1A;letter-spacing:-.3px;margin-bottom:20px;">Hey, welcome! 👋</div>
