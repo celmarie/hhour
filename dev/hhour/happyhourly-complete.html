@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703010550';
+var BUILD_VERSION = '20260703011748';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -27406,8 +27406,16 @@ function _mePublishDealInner(){
 
   // Build the deal object
   var cat=(document.getElementById('me-deal-cat').value||'bars');
-  var off=(document.getElementById('me-deal-off').value||'').trim()||'DEAL';
   var wasRaw=(document.getElementById('me-deal-was').value||'').trim();
+  // Discount label is auto-computed from the prices (the manual field was removed):
+  // FREE → "FREE"; was+now → "N% OFF"; otherwise a neutral "DEAL".
+  var off=(function(){
+    if(isFreeSelected) return 'FREE';
+    var p=parseFloat(priceRaw), w=parseFloat(wasRaw);
+    if(isFinite(p) && isFinite(w) && w>p && w>0) return Math.round((1-p/w)*100)+'% OFF';
+    var _manual=(document.getElementById('me-deal-off').value||'').trim();   // legacy prefill from an older deal edit
+    return _manual||'DEAL';
+  })();
   if(!isFreeSelected){ var _pr=priceRuleError(priceRaw, wasRaw); if(_pr){ highlight('me-deal-price'); highlight('me-deal-was'); showToast('⚠️ '+_pr); return; } }
   var was=wasRaw?(sym+parseFloat(wasRaw).toFixed(2)):'';
   var total=parseInt(document.getElementById('me-deal-total').value||'100')||100;
@@ -31287,9 +31295,10 @@ function _setupDealMap() {
               <option value="hotel">🏨 Hotel (date booking)</option>
             </select>
           </div>
-          <div>
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Discount Label</label>
-            <input id="me-deal-off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" placeholder="e.g. 50% OFF" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+          <!-- Discount label is auto-computed from the prices now (field removed from the
+               form per request; kept hidden so edit-prefill + submit code stay working). -->
+          <div style="display:none;">
+            <input id="me-deal-off" type="hidden">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:12px;">
