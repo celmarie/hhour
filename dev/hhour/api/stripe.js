@@ -185,6 +185,40 @@ module.exports = async function handler(req, res) {
       return res.json({ client_secret: paymentIntent.client_secret, payment_intent_id: paymentIntent.id });
     }
 
+    // ── Refund a voucher purchase (merchant refuses a prepaid/card order) ────
+    if (action === 'refund_purchase') {
+      const { purchase_id } = req.body || {};
+      if (!purchase_id) return res.status(400).json({ error: 'purchase_id required' });
+      const sb = createClient(SB_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+
+      const { data: pur, error: pErr } = await sb.from('voucher_purchases')
+        .select('id, deal_id, status, payment_method, stripe_payment_intent_id, refunded_at')
+        .eq('id', purchase_id).single();
+      if (pErr || !pur) return res.status(404).json({ error: 'Purchase not found' });
+
+      // AuthZ: the caller must own the venue for this deal (or be an admin).
+      let owns = caller.isAdmin;
+      if (!owns) {
+        const { data: deal } = await sb.from('deals').select('venue_id').eq('id', pur.deal_id).single();
+        if (deal && deal.venue_id) {
+          const { data: ven } = await sb.from('venues').select('owner_id').eq('id', deal.venue_id).single();
+          owns = !!(ven && ven.owner_id === caller.user.id);
+        }
+      }
+      if (!owns) { audit(req, { type: 'permission_denied', severity: 'warn', actor: caller.user && caller.user.id, meta: { route: 'stripe', action: action, reason: 'not_purchase_owner' } }); return res.status(403).json({ error: 'Not your purchase' }); }
+
+      // Pay-at-venue or never-paid orders have nothing to refund.
+      if (pur.payment_method === 'onsite' || !pur.stripe_payment_intent_id) {
+        return res.json({ refunded: false, reason: 'no_online_payment' });
+      }
+      if (pur.refunded_at) return res.json({ refunded: false, reason: 'already_refunded' });
+
+      const refund = await stripe.refunds.create({ payment_intent: pur.stripe_payment_intent_id });
+      try { await sb.from('voucher_purchases').update({ refunded_at: new Date().toISOString() }).eq('id', purchase_id); } catch (e) {}
+      audit(req, { type: 'stripe_refund', severity: 'warn', actor: caller.user && caller.user.id, meta: { route: 'stripe', purchase_id: purchase_id, refund_id: refund.id, amount: refund.amount } });
+      return res.json({ refunded: true, refund_id: refund.id, amount: refund.amount });
+    }
+
     return res.status(400).json({ error: 'Unknown action: ' + action });
 
   } catch (err) {

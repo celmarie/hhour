@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702151639';
+var BUILD_VERSION = '20260702153051';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -24945,6 +24945,7 @@ function meOpenVoucherPurchases(dealId){
               ? '<button onclick="meUndoNoShowPurchase('+Number(p.id)+',\''+did+'\')" style="background:none;border:none;color:#9A9AB0;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:2px 4px;">Undo</button>'
               : '<button onclick="meReportNoShowPurchase('+Number(p.id)+',\''+nm+'\',\''+did+'\')" style="background:rgba(232,25,44,.06);color:#E8192C;border:1px solid rgba(232,25,44,.25);border-radius:8px;padding:3px 10px;font-size:10px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">No Show</button>')
             + '<button onclick="meRefuseService('+Number(p.id)+',\''+String(p.code||'').replace(/[\x27\x22\\]/g,'')+'\',\''+nm+'\',\''+String(p.user_id||'').replace(/[\x27\x22\\]/g,'')+'\',\''+String(v.name||'').replace(/[\x27\x22\\]/g,'')+'\',\''+did+'\')" style="background:none;border:none;color:#B91C1C;font-size:10px;font-weight:800;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:2px 4px;">Refuse / cancel</button>'
+            + '<button onclick="meReportCustomer('+Number(p.id)+',\''+nm+'\',\''+String(p.user_id||'').replace(/[\x27\x22\\]/g,'')+'\',\''+String(v.name||'').replace(/[\x27\x22\\]/g,'')+'\',\''+did+'\')" style="background:none;border:none;color:#9A9AB0;font-size:10px;font-weight:800;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:2px 4px;">🚩 Report</button>'
             + '</div>'
           : '';
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F0F0F4;">'
@@ -25584,7 +25585,8 @@ async function meCheckRedeem(scannedCode){
       // Confirm button — onsite vouchers collect payment + redeem in one step
       +'<button onclick="meConfirmRedeem(\''+purchase.id+'\',\''+code+'\',\''+customerName.replace(/'/g,'')+'\',\''+dealName.replace(/'/g,'')+'\',\''+price+'\','+qty+',\''+purchase.user_id+'\','+(needsCollect?'true':'false')+');this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:'+(needsCollect?'linear-gradient(135deg,#C2410C,#EA580C)':'linear-gradient(135deg,#12A150,#0f8f45)')+';color:white;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 14px '+(needsCollect?'rgba(194,65,12,.35)':'rgba(18,161,80,.35)')+';margin-bottom:8px;">'+(needsCollect?('💰 Collect '+collectStr+' &amp; Redeem'):'✅ Confirm Redemption')+'</button>'
       +'<button onclick="meRefuseService(\''+purchase.id+'\',\''+code+'\',\''+customerName.replace(/'/g,'')+'\',\''+purchase.user_id+'\',\''+dealName.replace(/'/g,'')+'\',\'\');this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:#fff;color:#B91C1C;border:1.5px solid rgba(232,25,44,.4);border-radius:14px;padding:14px;font-size:14.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:8px;">🚫 Refuse service (can’t serve this order)</button>'
-      +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:none;border:1.5px solid #E8E8EC;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Close</button>';
+      +'<button onclick="this.closest(\'[style*=fixed]\').remove()" style="width:100%;background:none;border:1.5px solid #E8E8EC;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Close</button>'
+      +'<div style="text-align:center;margin-top:10px;"><span onclick="meReportCustomer(\''+purchase.id+'\',\''+customerName.replace(/'/g,'')+'\',\''+purchase.user_id+'\',\''+dealName.replace(/'/g,'')+'\',\'\')" style="font-size:12.5px;font-weight:800;color:#B91C1C;cursor:pointer;text-decoration:underline;">🚩 Report this customer</span></div>';
 
     modal.appendChild(card);
     document.body.appendChild(modal);
@@ -25713,6 +25715,7 @@ function meRefuseService(purchaseId, code, customerName, customerId, dealName, d
     + '<input id="me-refuse-other" placeholder="Other reason (optional)" style="width:100%;box-sizing:border-box;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:14px;padding:14px 16px;margin-bottom:10px;font-size:14px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;">'
     + '<button onclick="meDoRefuse('+mkArgs("(document.getElementById('me-refuse-other').value||'Other')")+')" style="width:100%;background:linear-gradient(135deg,#E8192C,#b91c1c);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:8px;">Refuse with the reason above</button>'
     + '<button onclick="var m=document.getElementById(\'me-refuse-modal\');if(m)m.remove();" style="width:100%;background:none;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Never mind</button>'
+    + '<div style="text-align:center;margin-top:10px;"><span onclick="meReportCustomer(\''+pid+'\',\''+cn+'\',\''+cid+'\',\''+dn+'\',\''+did+'\')" style="font-size:12.5px;font-weight:800;color:#B91C1C;cursor:pointer;text-decoration:underline;">🚩 Also report this customer</span></div>'
     + '</div>';
   document.body.appendChild(ov);
 }
@@ -25728,9 +25731,19 @@ async function meDoRefuse(purchaseId, code, customerName, customerId, dealName, 
     if(!data || !data.length){ showToast('⚠️ Can’t refuse — already redeemed or cancelled.'); if(modal) modal.remove(); return; }
     // Best-effort audit trail (columns added by voucher_cancel.sql; ignored if not present).
     try { await db.from('voucher_purchases').update({ cancel_reason:reason, cancelled_at:new Date().toISOString(), cancelled_by:(currentUser&&currentUser.id)||null }).eq('id', purchaseId); } catch(e){}
+    // If it was a card / online order, refund it automatically (the server checks the
+    // payment method and issues the Stripe refund). Pay-at-venue orders refund nothing.
+    var _refunded=false;
+    try {
+      var _tok=''; try { var _s=await db.auth.getSession(); _tok=(_s&&_s.data&&_s.data.session&&_s.data.session.access_token)||''; } catch(e){}
+      var _rf=await fetch('/api/stripe?action=refund_purchase',{ method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+_tok }, body:JSON.stringify({ purchase_id:purchaseId }) });
+      var _rj=await _rf.json().catch(function(){ return {}; });
+      _refunded = !!(_rf.ok && _rj.refunded);
+    } catch(e){}
     // Notify the customer (in-app alert + OS push if they enabled it).
     if(customerId){
-      try { await db.from('notifications').insert({ user_id:customerId, type:'system', icon:'🚫', icon_class:'ai-red', read:false, title:'Order cancelled by the venue', body:(dealName?dealName+' — ':'')+'the venue couldn’t serve this order. Reason: '+reason+'. If you paid online, your refund will be processed.' }); } catch(e){}
+      var _rBody=(dealName?dealName+' — ':'')+'the venue couldn’t serve this order. Reason: '+reason+'. '+(_refunded?'Your payment has been refunded.':'If you paid online, your refund will be processed.');
+      try { await db.from('notifications').insert({ user_id:customerId, type:'system', icon:'🚫', icon_class:'ai-red', read:false, title:'Order cancelled by the venue', body:_rBody }); } catch(e){}
     }
     // If the customer's vouchers are loaded on this device, void it there too.
     if(typeof myVouchers!=='undefined' && myVouchers && myVouchers.length){
@@ -25739,7 +25752,7 @@ async function meDoRefuse(purchaseId, code, customerName, customerId, dealName, 
     }
     if(modal) modal.remove();
     var res=document.getElementById('me-redeem-result'); if(res) res.innerHTML='';
-    showToast('🚫 Order refused — '+(customerName||'customer')+' notified. Voucher voided.');
+    showToast('🚫 Order refused — '+(customerName||'customer')+' notified. Voucher voided.'+(_refunded?' 💳 Card payment refunded.':''));
     // Reflect the change in an open purchases list.
     if(dealId && typeof meVoucherPurchaseMap!=='undefined' && meVoucherPurchaseMap[String(dealId)]){
       var arr=(meVoucherPurchaseMap[String(dealId)].purchases)||[];
@@ -25750,6 +25763,60 @@ async function meDoRefuse(purchaseId, code, customerName, customerId, dealName, 
   } catch(e){
     console.error('[meDoRefuse]', e);
     showToast('⚠️ Could not refuse: '+(e.message||'try again'));
+    if(modal){ modal.querySelectorAll('button').forEach(function(b){ b.disabled=false; b.style.opacity='1'; }); }
+  }
+}
+
+// ── Merchant: report a customer (multi-select reasons) ───────────────────────
+// Flags a guest for Appie Hour admins to review (fake ID, aggression, fraud, etc.).
+// Uses the report_customer RPC (verifies the caller owns the deal's venue).
+function meReportCustomer(purchaseId, customerName, customerId, dealName, dealId){
+  var s=function(x){ return String(x==null?'':x).replace(/['"\\]/g,''); };
+  var cn=s(customerName);
+  var reasons=[
+    {k:'underage',    e:'🔞', l:'Underage / used fake ID'},
+    {k:'intoxicated', e:'🍺', l:'Heavily intoxicated'},
+    {k:'aggressive',  e:'😡', l:'Aggressive or abusive'},
+    {k:'fraud',       e:'🚨', l:'Fraudulent / suspicious'},
+    {k:'noshow',      e:'🔁', l:'Repeat no-show'}
+  ];
+  var old=document.getElementById('me-report-modal'); if(old) old.remove();
+  var ov=document.createElement('div');
+  ov.id='me-report-modal';
+  ov.style.cssText='position:fixed;inset:0;z-index:1000002;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;font-family:Inter,sans-serif;';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML=
+    '<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;padding:22px 20px calc(env(safe-area-inset-bottom,0px) + 20px);">'
+    +'<div style="text-align:center;font-size:32px;margin-bottom:4px;">🚩</div>'
+    +'<div style="text-align:center;font-size:18px;font-weight:900;color:#1A1A1A;margin-bottom:4px;">Report '+esc(cn||'customer')+'</div>'
+    +'<div style="text-align:center;font-size:13px;color:#9A9AB0;margin-bottom:16px;line-height:1.5;">Pick all that apply. Reports are reviewed by Appie Hour admins.</div>'
+    +reasons.map(function(r){
+       return '<label style="display:flex;align-items:center;gap:12px;background:#F7F7F9;border:1.5px solid #E8E8EC;border-radius:14px;padding:14px 16px;margin-bottom:9px;font-size:14px;font-weight:700;color:#1A1A1A;cursor:pointer;">'
+        +'<input type="checkbox" class="me-report-cb" value="'+r.k+'" style="width:18px;height:18px;accent-color:#E8192C;flex-shrink:0;">'
+        +'<span style="font-size:20px;">'+r.e+'</span>'+r.l+'</label>';
+     }).join('')
+    +'<textarea id="me-report-note" placeholder="Add a note (optional)" rows="2" style="width:100%;box-sizing:border-box;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:14px;padding:12px 14px;margin:4px 0 12px;font-size:14px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;resize:vertical;"></textarea>'
+    +'<button onclick="meDoReportCustomer(\''+s(purchaseId)+'\',\''+cn+'\',\''+s(dealId)+'\')" style="width:100%;background:linear-gradient(135deg,#E8192C,#b91c1c);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:8px;">Submit report</button>'
+    +'<button onclick="var m=document.getElementById(\'me-report-modal\');if(m)m.remove();" style="width:100%;background:none;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;color:#555;">Cancel</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+}
+
+async function meDoReportCustomer(purchaseId, customerName, dealId){
+  var modal=document.getElementById('me-report-modal');
+  var reasons=[]; if(modal){ modal.querySelectorAll('.me-report-cb').forEach(function(c){ if(c.checked) reasons.push(c.value); }); }
+  if(!reasons.length){ showToast('⚠️ Pick at least one reason'); return; }
+  var noteEl=modal&&modal.querySelector('#me-report-note');
+  var note=((noteEl&&noteEl.value)||'').slice(0,500);
+  if(modal){ modal.querySelectorAll('button').forEach(function(b){ b.disabled=true; b.style.opacity='.6'; }); }
+  try {
+    var { data, error } = await db.rpc('report_customer', { p_purchase_id: Number(purchaseId), p_reasons: reasons, p_note: note });
+    if(error) throw error;
+    if(modal) modal.remove();
+    showToast('🚩 '+(customerName||'Customer')+' reported'+(typeof data==='number'?(' · '+data+' report'+(data>1?'s':'')+' on file'):'')+'. Thank you.');
+  } catch(e){
+    var m=(e&&e.message)||'';
+    showToast('⚠️ '+(/not authorized/i.test(m)?'Not your customer':/report_customer|function|does not exist|schema cache/i.test(m)?'Run customer_reports.sql in Supabase first':(m||'Could not report')));
     if(modal){ modal.querySelectorAll('button').forEach(function(b){ b.disabled=false; b.style.opacity='1'; }); }
   }
 }
