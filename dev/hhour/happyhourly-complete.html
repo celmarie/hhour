@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703012650';
+var BUILD_VERSION = '20260703013354';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -30538,9 +30538,14 @@ function _renderMapVenueList(){
     el.innerHTML = '<div style="padding:26px 16px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;line-height:1.5;">No venues in this area.<br>Zoom out or drag the map to explore.</div>';
     return;
   }
+  // Cap the rendered cards (nearest first) — zoomed way out, "everything is in view"
+  // and rendering hundreds of image cards on every move crashes mobile Safari.
+  var MAX_LIST = 30;
+  var shown = items.slice(0, MAX_LIST);
   el.innerHTML = '<div style="padding:9px 14px 5px;font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;background:#fff;z-index:1;border-bottom:1px solid #F2F2F5;">'
-      + items.length + ' venue' + (items.length>1?'s':'') + ' in view</div>'
-    + items.map(function(x){ return _mapVenueCard(x.deal); }).join('');
+      + items.length + ' venue' + (items.length>1?'s':'') + ' in view' + (items.length>MAX_LIST ? ' · nearest '+MAX_LIST+' shown' : '') + '</div>'
+    + shown.map(function(x){ try { return _mapVenueCard(x.deal); } catch(e){ return ''; } }).join('')
+    + (items.length>MAX_LIST ? '<div style="padding:12px 16px;text-align:center;font-size:12px;color:#9A9AB0;font-weight:600;">Zoom in to see the other '+(items.length-MAX_LIST)+' venues</div>' : '');
 }
 function _mapVenueCard(deal){
   var isWatch = !!deal._isWatch;
@@ -30900,11 +30905,16 @@ function _setupDealMap() {
     try { _gmapObj.zoomControl.setPosition('bottomright'); } catch(e){}
     try { _gmapObj.attributionControl.setPosition('bottomleft'); } catch(e){}
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors',
+      // iOS memory safety: keep almost no off-screen tiles and only load tiles once
+      // panning/zooming settles — zooming far out otherwise stacks hundreds of tiles
+      // across zoom levels and WebKit kills the page ("crashes while doing nothing").
+      keepBuffer: 1, updateWhenIdle: true, updateWhenZooming: false
     }).addTo(_gmapObj);
     _initMapClusterer();
-    // Refresh the "venues in view" list whenever the map is panned/zoomed.
-    try { _gmapObj.on('moveend', _renderMapVenueList); } catch(e){}
+    // Refresh the "venues in view" list whenever the map is panned/zoomed —
+    // DEBOUNCED: a pinch-zoom fires several moveends; render once, after it settles.
+    try { _gmapObj.on('moveend', function(){ clearTimeout(window._mvlT); window._mvlT = setTimeout(_renderMapVenueList, 300); }); } catch(e){}
 
     // User location dot (kept directly on the map, not clustered)
     try { L.circleMarker([center.lat, center.lng], { radius: 7, color: '#ffffff', weight: 2, fillColor: '#4285F4', fillOpacity: 1 }).addTo(_gmapObj).bindPopup('You are here'); } catch(e){}
