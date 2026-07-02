@@ -3234,7 +3234,7 @@ function _loadGT(){
         </div>
         <!-- Inline search bar (hidden by default) -->
         <div id="alldeals-search-wrap" style="display:none;align-items:center;gap:10px;padding:0 18px 12px;">
-          <input id="alldeals-sinp" type="text" placeholder="Search deals, venues..." oninput="renderAllDeals(_adCurTab)" style="flex:1;background:rgba(255,255,255,.95);border:none;border-radius:10px;padding:10px 14px;font-family:'Inter',sans-serif;font-size:14px;outline:none;color:#1A1A1A;">
+          <input id="alldeals-sinp" type="text" placeholder="Search deals, venues..." oninput="clearTimeout(window._adSt);window._adSt=setTimeout(function(){renderAllDeals(_adCurTab);},220)" style="flex:1;background:rgba(255,255,255,.95);border:none;border-radius:10px;padding:10px 14px;font-family:'Inter',sans-serif;font-size:14px;outline:none;color:#1A1A1A;">
           <button onclick="document.getElementById('alldeals-sinp').value='';document.getElementById('alldeals-search-wrap').style.display='none';renderAllDeals(_adCurTab)" style="background:none;border:none;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">Cancel</button>
         </div>
         <!-- Tabs -->
@@ -5446,7 +5446,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260702185814';
+var BUILD_VERSION = '20260702191045';
 (function(){
   try {
     fetch('/version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -9354,11 +9354,14 @@ function _hasPurchasableVouchers(){
 // Non-Supabase URLs / data-URIs are returned unchanged.
 function _imgThumb(url, w){
   try {
-    if(!url || typeof url !== 'string') return url;
+    if(!url || typeof url !== 'string') return '';
+    // NEVER inline a base64 data: image in a list — a few 200–450KB ones render
+    // together and crash mobile Safari (out of memory). Show the gradient instead.
+    if(url.slice(0,5)==='data:') return '';
     if(url.indexOf('/storage/v1/object/public/') === -1) return url;
     var base = url.split('?')[0].replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
     return base + '?width=' + (w||600) + '&quality=70&resize=cover';
-  } catch(e){ return url; }
+  } catch(e){ return ''; }
 }
 function renderCoupons(cat){
   if(!Array.isArray(vouchers)) vouchers = [];
@@ -9414,7 +9417,7 @@ function renderCoupons(cat){
     +'</div>'
     +'</button>' : '';
   el.innerHTML = shown.map(function(v){
-    var imgTag = v.img ? '<img src="'+esc(_imgThumb(v.img,600))+'" alt="'+esc(v.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
+    var _vth=_imgThumb(v.img,600); var imgTag = _vth ? '<img src="'+esc(_vth)+'" alt="'+esc(v.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
     var badge = v.verified ? '<div class="vbadge">✓ Verified</div>' : '<div class="vbadge" style="background:rgba(60,60,80,.8);">👥 Community</div>';
     var freeTag = (v.isFree||v.off==='FREE') ? '<div style="position:absolute;bottom:44px;left:10px;z-index:3;background:rgba(18,161,80,.9);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:5px;text-transform:uppercase;">FREE</div>' : '';
     var wasTxt = v.wasPrice ? '<div class="cimg-was">'+v.wasPrice+'</div>' : '';
@@ -9453,7 +9456,7 @@ function renderUC(cat){
     +'</div>'
     +'</button>' : '';
   el.innerHTML = shown.map(function(u){
-    var imgTag = u.img ? '<img src="'+esc(_imgThumb(u.img,600))+'" alt="'+esc(u.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
+    var _uth=_imgThumb(u.img,600); var imgTag = _uth ? '<img src="'+esc(_uth)+'" alt="'+esc(u.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">' : '';
     var freeTag = (u.isFree||u.off==='FREE') ? '<div style="position:absolute;top:8px;left:8px;background:rgba(18,161,80,.9);color:white;font-size:9px;font-weight:900;padding:2px 7px;border-radius:5px;z-index:3;">FREE</div>' : '';
     var uSym = getCurrencySymbol(u.currency||'EUR');
     var wasTxt = u.wasPrice ? '<div class="cimg-was">'+uSym+u.wasPrice+'</div>' : '';
@@ -9521,7 +9524,10 @@ function dealSearchText(d){
   return [d.name, d.deal, d.desc, d.address, d.cat, d.days, d.hours, d.price, d.off]
     .filter(Boolean).join(' ').toLowerCase();
 }
-function renderAllDeals(tab){
+function renderAllDeals(tab, more){
+  // Paginate: render 50 at a time (326+ community deals in one grid is too heavy for
+  // mobile). "more" (from the Show more button) reveals another 50; any other call resets.
+  window._adShowLimit = more ? ((window._adShowLimit||50)+50) : 50;
   if(!Array.isArray(vouchers)) vouchers = [];
   if(!Array.isArray(ucDeals)) ucDeals = [];
   var q = ((document.getElementById('alldeals-sinp')||{}).value||'').trim().toLowerCase();
@@ -9555,10 +9561,12 @@ function renderAllDeals(tab){
       +'</div>';
     return;
   }
+  var _adSlice = filtered.slice(0, window._adShowLimit);
   grid.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
-    + filtered.map(function(d){
+    + _adSlice.map(function(d){
+     try {
       var isV = d._kind==='verified';
-      var imgTag = d.img ? '<img src="'+esc(_imgThumb(d.img,600))+'" alt="'+esc(d.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;">' : '';
+      var _dth=_imgThumb(d.img,600); var imgTag = _dth ? '<img src="'+esc(_dth)+'" alt="'+esc(d.name)+'" loading="lazy" decoding="async" onerror="this.style.display=\'none\'" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;">' : '';
       var badgeHtml = isV
         ? '<div style="position:absolute;top:8px;left:8px;background:var(--red);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;z-index:3;">✓ Verified</div>'
         : '<div style="position:absolute;top:8px;left:8px;background:rgba(40,40,60,.8);color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:6px;z-index:3;">👥 Community</div>';
@@ -9589,8 +9597,12 @@ function renderAllDeals(tab){
           +'<button onclick="'+btnClick+'" style="width:100%;background:'+btnColor+';color:white;border:none;border-radius:9px;padding:8px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">'+btnLabel+'</button>'
         +'</div>'
       +'</div>';
+     } catch(_e){ return ''; }   // skip one malformed deal, keep rendering the rest
     }).join('')
-  +'</div>';
+  +'</div>'
+  + (filtered.length > window._adShowLimit
+      ? '<button onclick="renderAllDeals(_adCurTab,true)" style="width:100%;margin-top:14px;background:#fff;color:#E8192C;border:1.5px solid rgba(232,25,44,.35);border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Show more ('+(filtered.length-window._adShowLimit)+' more)</button>'
+      : '');
 }
 
 
@@ -14047,9 +14059,10 @@ function doSearch(q){
    try {
     const isUC=ucIdSet.has(String(d.id));
     const openFn=isUC?`openUCDeal('${d.id}')`:`openVoucher('${d.id}')`;
-    const thumbInner=d.img
-      ?`<img src="${esc(d.img)}" alt="${esc(d.name)}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
-      :`<span style="font-size:28px;">${d.emoji}</span>`;
+    const _sth=_imgThumb(d.img,300);
+    const thumbInner=_sth
+      ?`<img src="${esc(_sth)}" alt="${esc(d.name)}" loading="lazy" decoding="async" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+      :`<span style="font-size:28px;">${d.emoji||'📍'}</span>`;
     const avg=getDealAvgRating(d.id)||d.rating||0;
     const catDef=(appCategories||[]).find(c=>c.id===d.cat);
     const catLabel=catDef?catDef.emoji+' '+catDef.label:'';
@@ -30404,8 +30417,9 @@ function _mapVenueCard(deal){
   // Football/match rows are dark-purple (matching the map pin) so they're never confused
   // with the red-priced deal rows.
   var thumbBg = isWatch ? '#7B2FBE' : '#F0F0F4';
-  var thumb = (img && typeof img==='string')
-    ? '<img src="'+esc(img)+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.parentNode.textContent=\''+(isWatch?'⚽':'📍')+'\'">'
+  var _mth=_imgThumb(img,200);
+  var thumb = _mth
+    ? '<img src="'+esc(_mth)+'" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.parentNode.textContent=\''+(isWatch?'⚽':'📍')+'\'">'
     : '<span style="font-size:24px;">'+esc(emoji)+'</span>';
   return '<div onclick="'+onclick+'" ontouchstart="this.style.background=\'#F7F7F9\'" ontouchend="this.style.background=\'#fff\'" style="display:flex;gap:11px;padding:9px 13px;border-bottom:1px solid #F2F2F5;cursor:pointer;align-items:center;background:#fff;">'
     +'<div style="width:60px;height:60px;border-radius:10px;overflow:hidden;flex-shrink:0;background:'+thumbBg+';display:flex;align-items:center;justify-content:center;">'+thumb+'</div>'
