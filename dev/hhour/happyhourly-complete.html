@@ -5339,6 +5339,9 @@ function _loadGT(){
           <button id="filter-community" onclick="toggleMapFilter('community')" style="pointer-events:auto;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;border:2px solid #E8192C;background:white;color:#E8192C;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.2);"><div style="width:10px;height:10px;border-radius:50%;background:#E8192C;"></div>Community</button>
           <button id="filter-football" onclick="toggleMapFilter('football')" style="display:none;pointer-events:auto;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;border:2px solid #7B2FBE;background:white;color:#7B2FBE;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.2);"><span style="font-size:13px;line-height:1;">⚽</span>Football</button>
         </div>
+        <button id="map-loc-btn" onclick="mapGoMyLocation()" title="My location" style="position:absolute;right:12px;bottom:14px;z-index:500;width:46px;height:46px;border-radius:14px;background:white;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+          <span style="display:block;width:22px;height:22px;border-radius:50%;background:rgba(37,99,235,.18);position:relative;"><span style="position:absolute;inset:5px;border-radius:50%;background:#2563EB;"></span></span>
+        </button>
         <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;pointer-events:none;">
           <div style="font-size:32px;margin-bottom:8px;">🗺️</div>
           <div style="font-size:14px;font-weight:700;color:var(--t2);">Loading map…</div>
@@ -5463,7 +5466,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703235334';
+var BUILD_VERSION = '20260704004600';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -30760,6 +30763,30 @@ function openDealByRef(ref){
     }
   } catch(e){}
   goScreen('deals');
+}
+
+// 📍 "My location" button on the deal map — recenter on a fresh GPS fix,
+// falling back to the last remembered position if the fix fails/denied.
+function mapGoMyLocation(){
+  var btn = document.getElementById('map-loc-btn');
+  if(btn) btn.style.opacity = '.5';
+  function done(lat, lng){
+    if(btn) btn.style.opacity = '1';
+    _geoSave(lat, lng);
+    if(_gmapObj){ try { _gmapObj.setView([lat, lng], Math.max(_gmapObj.getZoom(), 14)); } catch(e){} }
+  }
+  function fail(){
+    if(btn) btn.style.opacity = '1';
+    var c = _geoCached();
+    if(c) done(c.lat, c.lng);
+    else showToast('📍 Allow location access to find you on the map');
+  }
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      function(p){ done(p.coords.latitude, p.coords.longitude); },
+      fail,
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 });
+  } else fail();
 }
 
 function _buildHomeMapSrc(lat, lng) {
