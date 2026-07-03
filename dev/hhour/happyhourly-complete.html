@@ -45,7 +45,7 @@
 <meta name="msapplication-TileColor" content="#E8192C">
 <link rel="icon" type="image/png" href="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-icon.png?v=4">
 <link rel="apple-touch-icon" href="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-icon.png?v=4">
-<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Appie Hour%22%2C%22short_name%22%3A%22Appie Hour%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23E8192C%22%2C%22theme_color%22%3A%22%23E8192C%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fhjzyqhfuvcswfcvkjsyv.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fphotos%2Fappie-icon.png?v=4%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Appie Hour%22%2C%22short_name%22%3A%22Appie Hour%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22orientation%22%3A%22portrait%22%2C%22background_color%22%3A%22%23E8192C%22%2C%22theme_color%22%3A%22%23E8192C%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fhjzyqhfuvcswfcvkjsyv.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fphotos%2Fappie-icon.png?v=4%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
 <title>Appie Hour — All-in-One</title>
 <script>
 /* Portal deep-link boot guard: on a /merchant or /fireclay (admin) URL, mark
@@ -5466,7 +5466,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704012751';
+var BUILD_VERSION = '20260704013019';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -30577,6 +30577,20 @@ goScreen = function(name){
 };
 
 // Merchant responsive layout — re-sync on orientation/resize
+// Rotation hardening: iOS re-composites the whole page on orientation change,
+// and repainting a stale-sized Leaflet canvas mid-rotation can OOM-kill the tab.
+// Recalculate the map size ONCE, after the rotation settles — never during it.
+var _rotT = null;
+window.addEventListener('orientationchange', function(){
+  clearTimeout(_rotT);
+  _rotT = setTimeout(function(){
+    try {
+      var ms = document.getElementById('screen-map');
+      if(_gmapObj && ms && ms.style.display !== 'none') _gmapObj.invalidateSize({ animate:false });
+    } catch(e){}
+  }, 400);
+});
+
 window.addEventListener('resize', function(){
   var root = document.getElementById('merch-root');
   if(!root || root.style.display==='none') return;
