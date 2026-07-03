@@ -5466,7 +5466,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704011811';
+var BUILD_VERSION = '20260704012112';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -11573,7 +11573,16 @@ async function _finishVoucherPurchase(paymentIntentId, opts){
         stripe_payment_intent_id: paymentIntentId || null
       }, _payFields, _hotelFields)).select('id').single();
       if(insRes && insRes.data) purchaseId = insRes.data.id;
-      if(insRes && insRes.error) console.warn('[buyVoucher] insert returned error:', insRes.error.message);
+      if(insRes && insRes.error){
+        console.warn('[buyVoucher] insert returned error:', insRes.error.message);
+        // Server-side sell cap (enforce_voucher_cap trigger): no voucher was created.
+        if(/SOLD_OUT/i.test(insRes.error.message||'')){
+          showToast(paymentIntentId
+            ? '😔 Sold out — this purchase can’t be completed. Your payment will be refunded; contact support if it isn’t.'
+            : '😔 This deal is sold out — no vouchers left.');
+          return;
+        }
+      }
       try { phCapture('voucher_purchased', { deal_id: curV, qty: qty }); } catch(e){}
       // Notify buyer + venue owner (in-app alert + OS push via the notifications trigger).
       // Fire-and-forget: a notification hiccup must never affect the purchase.
@@ -25424,12 +25433,18 @@ async function meUndoNoShow(bookingId){
 }
 
 function meRenderVouchers(){
-  var arr=vouchersData||[];
+  // Active deals first, newest first within each group.
+  var arr=(vouchersData||[]).slice().sort(function(a,b){
+    var aa=(a.status==='active'||a.active!==false)?1:0, bb=(b.status==='active'||b.active!==false)?1:0;
+    if(aa!==bb) return bb-aa;
+    return (Number(b._dbId||b.id)||0)-(Number(a._dbId||a.id)||0);
+  });
   var rows = arr.length
     ? '<div style="display:grid;gap:12px;">'
       + arr.map(function(v){
         var total = v.total || v.sold || 0;
-        var percent = total > 0 ? Math.round((v.sold/total)*100) : 0;
+        var percent = total > 0 ? Math.min(100, Math.round((v.sold/total)*100)) : 0;
+        var soldOut = total > 0 && v.sold >= total;
         var count = (v.purchases && v.purchases.length) || v.sold || 0;
         return '<div onclick="meOpenVoucherPurchases(\''+String(v.id)+'\')" style="background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:14px;transition:all .2s;cursor:pointer;" onmouseenter="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.08)\'" onmouseleave="this.style.boxShadow=\'none\'">'
           +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
@@ -25446,7 +25461,7 @@ function meRenderVouchers(){
             +'</div>'
           +'</div>'
           +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
-            +'<span style="font-size:10px;color:#9A9AB0;font-weight:600;">'+percent+'% sold</span>'
+            +'<span style="font-size:10px;font-weight:'+(soldOut?'800':'600')+';color:'+(soldOut?'#dc2626':'#9A9AB0')+';">'+(soldOut?'SOLD OUT':percent+'% sold')+'</span>'
             +'<span style="font-size:10px;color:#9A9AB0;font-weight:600;">'+v.price+' each</span>'
           +'</div>'
           +'<div style="background:#F5F5F7;border-radius:4px;height:6px;overflow:hidden;margin-bottom:10px;"><div style="width:'+percent+'%;height:100%;background:linear-gradient(90deg,var(--red),#FF6B35);border-radius:4px;transition:width .3s;"></div></div>'
