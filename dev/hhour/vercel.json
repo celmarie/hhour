@@ -14,12 +14,6 @@
       ]
     },
     {
-      "source": "/(merchant|fireclay)(/.*)?",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
-      ]
-    },
-    {
       "source": "/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache" },
@@ -27,6 +21,12 @@
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "geolocation=(self), camera=(self), microphone=(), usb=(), payment=(self)" }
+      ]
+    },
+    {
+      "source": "/(merchant|fireclay)(/.*)?",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
       ]
     }
   ]
