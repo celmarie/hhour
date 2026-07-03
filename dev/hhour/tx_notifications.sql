@@ -90,3 +90,79 @@ drop trigger if exists trg_notify_deal_approved on public.community_deals;
 create trigger trg_notify_deal_approved
   after update on public.community_deals
   for each row execute function public.notify_deal_approved();
+
+-- 3) Event transactions: joining an event notifies the attendee (confirmation) and
+--    the host (new attendee, with paid-ticket info when applicable); cancelling
+--    notifies the host. Triggers on event_rsvps cover every join/cancel path.
+
+create or replace function public.notify_event_rsvp()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_host   uuid;
+  v_title  text;
+  v_date   text;
+  v_price  text;
+  v_ticket text;
+  v_name   text;
+begin
+  select e.user_id, e.title, coalesce(e.event_date,''), coalesce(e.price::text,''), coalesce(e.ticket_type,'free')
+    into v_host, v_title, v_date, v_price, v_ticket
+  from community_events e where e.id = NEW.event_id;
+  if v_title is null then return NEW; end if;
+  select coalesce(name,'Someone') into v_name from profiles where id = NEW.user_id;
+
+  -- Attendee confirmation
+  insert into notifications (user_id, type, icon, icon_class, read, title, body)
+  values (NEW.user_id, 'system', '🎉', 'ai-green', false,
+          'You''re going!',
+          v_title || case when v_date <> '' then ' · ' || v_date else '' end
+          || case when v_ticket <> 'free' and v_price <> '' then ' · ticket ' || v_price else '' end);
+
+  -- Host alert
+  if v_host is not null and v_host <> NEW.user_id then
+    insert into notifications (user_id, type, icon, icon_class, read, title, body)
+    values (v_host, 'system', '🎟️', 'ai-green', false,
+            'New attendee for your event',
+            v_name || ' joined "' || v_title || '"'
+            || case when v_ticket <> 'free' and v_price <> '' then ' (paid ticket ' || v_price || ')' else '' end || '.');
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists trg_notify_event_rsvp on public.event_rsvps;
+create trigger trg_notify_event_rsvp
+  after insert on public.event_rsvps
+  for each row execute function public.notify_event_rsvp();
+
+create or replace function public.notify_event_rsvp_cancel()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_host  uuid;
+  v_title text;
+  v_name  text;
+begin
+  select e.user_id, e.title into v_host, v_title
+  from community_events e where e.id = OLD.event_id;
+  if v_title is null or v_host is null or v_host = OLD.user_id then return OLD; end if;
+  select coalesce(name,'Someone') into v_name from profiles where id = OLD.user_id;
+  insert into notifications (user_id, type, icon, icon_class, read, title, body)
+  values (v_host, 'system', '↩️', 'ai-red', false,
+          'Attendee cancelled',
+          v_name || ' can no longer make it to "' || v_title || '".');
+  return OLD;
+end;
+$$;
+
+drop trigger if exists trg_notify_event_rsvp_cancel on public.event_rsvps;
+create trigger trg_notify_event_rsvp_cancel
+  after delete on public.event_rsvps
+  for each row execute function public.notify_event_rsvp_cancel();
