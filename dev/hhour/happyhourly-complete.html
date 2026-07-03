@@ -2447,8 +2447,10 @@ body, button, input, textarea, select {
 
   /* Bottom nav — frosted glass, hairline border, safe-area padding */
   .bnav{
-    height:calc(var(--nav) + env(safe-area-inset-bottom, 0px));
-    padding-bottom:calc(3px + env(safe-area-inset-bottom, 0px));
+    /* Safe-area cushion trimmed ~15% (−6px) — still clears the home indicator;
+       max() keeps it sane on devices with no inset. */
+    height:max(var(--nav), calc(var(--nav) + env(safe-area-inset-bottom, 0px) - 6px));
+    padding-bottom:max(3px, calc(env(safe-area-inset-bottom, 0px) - 6px));
     /* SOLID background — no backdrop blur. A blur layer composited over the live map
        tiles is the same iOS GPU crash pattern documented for the old login screen
        ("A problem repeatedly occurred"); the map pans/zooms right underneath this bar. */
@@ -2458,7 +2460,7 @@ body, button, input, textarea, select {
     border-top:1px solid rgba(0,0,0,.06);
     box-shadow:0 -4px 24px rgba(20,20,40,.06);
   }
-  .screen{ padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom, 0px)); }
+  .screen{ padding-bottom:max(var(--nav), calc(var(--nav) + env(safe-area-inset-bottom, 0px) - 6px)); }
   /* Push every non-Deals screen's header below the iPhone notch / status bar so the
      title & back button aren't covered by the earpiece/battery (the Deals hero already
      includes its own safe-area-top padding). */
@@ -5461,7 +5463,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703211141';
+var BUILD_VERSION = '20260703211734';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
