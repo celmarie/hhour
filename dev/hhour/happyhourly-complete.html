@@ -5463,7 +5463,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703234834';
+var BUILD_VERSION = '20260703235334';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -19795,9 +19795,10 @@ function adminPage(page,btn){
     }
 
     // ── SUMMARY COUNTS ─────────────────────────────────────────────────────────
-    dHtml += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">'
+    dHtml += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px;">'
       +[['⏳','Pending',pending.length,'#d97706'],
-        ['✅','Approved',approved.length,'#12A150'],
+        ['✅','Live',approved.length,'#12A150'],
+        ['⌛','Expired',expiredDeals.length,'#B45309'],
         ['✗','Rejected',rejected.length,'#dc2626']].map(function(s){
         return '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:12px;text-align:center;">'
           +'<div style="font-size:22px;font-weight:900;color:'+s[3]+';">'+s[2]+'</div>'
