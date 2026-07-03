@@ -5458,7 +5458,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703153815';
+var BUILD_VERSION = '20260703154046';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -19386,7 +19386,7 @@ function adminPage(page,btn){
     var applications = adminMerchants.filter(function(m){ return m._source === 'application'; });
     var regularMerchants = adminMerchants.filter(function(m){ return m._source !== 'application'; });
     var filteredMerchants = _merchantSearch
-      ? regularMerchants.filter(function(m){ return (m.name+m.city+m.owner+m.ownerEmail).toLowerCase().includes(_merchantSearch.toLowerCase()); })
+      ? regularMerchants.filter(function(m){ return (m.name+(m.city||'')+(m.address||'')+m.owner+m.ownerEmail).toLowerCase().includes(_merchantSearch.toLowerCase()); })
       : regularMerchants;
     var emptyMerchants = '<div style="padding:32px 20px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">🏪</div><div style="font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:4px;">No merchants yet</div><div style="font-size:12px;color:#9A9AB0;">Merchants who sign up will appear here</div></div>';
     body.innerHTML=''
@@ -19666,7 +19666,7 @@ function adminPage(page,btn){
       +(pending.length===0
         ? '<div style="padding:28px 16px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">✅</div><div style="font-size:14px;font-weight:700;color:#9A9AB0;">No pending submissions</div></div>'
         : pending.map(function(deal){
-            var _pq = esc(((deal.venue||deal.name||'')+' '+(deal.deal||deal.desc||'')+' '+(deal.user||'')).toLowerCase());
+            var _pq = esc(((deal.venue||deal.name||'')+' '+(deal.deal||deal.desc||'')+' '+(deal.user||'')+' '+(deal.address||'')).toLowerCase());
             return '<div class="adm-pend-row" data-q="'+_pq+'" style="padding:14px 16px;border-bottom:1px solid #E8E8EC;">'
               +'<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;">'
                 +'<div style="width:40px;height:40px;border-radius:50%;background:'+(deal.userCol||'#9A9AB0')+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:white;flex-shrink:0;">'+(deal.userAv||(deal.user||'??').substring(0,2).toUpperCase())+'</div>'
@@ -19723,7 +19723,7 @@ function adminPage(page,btn){
           +'<div id="adm-live-none" style="display:none;padding:20px 16px;text-align:center;font-size:13px;color:#9A9AB0;font-weight:600;">No live deals match your search</div>'
           +_liveRows.map(function(deal){
             var isPaused = deal.status === 'paused';
-            var hay = esc(((deal.deal||deal.desc||'')+' '+(deal.venue||deal.name||'')+' '+(deal.user||'')).toLowerCase());
+            var hay = esc(((deal.deal||deal.desc||'')+' '+(deal.venue||deal.name||'')+' '+(deal.user||'')+' '+(deal.address||'')).toLowerCase());
             // Community signals from the deal-detail "👍 Still active" / "🚩 Report expired" buttons.
             var _dbId = deal._dbId || (deal.id>9999?deal.id-10000:deal.id);
             var _avN  = (window._dealActiveVotes||{})[_dbId] || 0;
@@ -19777,7 +19777,7 @@ function adminPage(page,btn){
             var _da=a._updatedAt||a._createdAt||'', _db=b._updatedAt||b._createdAt||'';
             return _ms==='oldest' ? (_da<_db?-1:_da>_db?1:0) : (_da<_db?1:_da>_db?-1:0);
           }).map(function(deal){
-          var _mq = esc(((deal.deal||deal.name||'')+' '+(deal.name||'')+' '+(deal.days||'')).toLowerCase());
+          var _mq = esc(((deal.deal||deal.name||'')+' '+(deal.name||'')+' '+(deal.days||'')+' '+(deal.address||'')).toLowerCase());
           return '<div class="adm-srow" data-q="'+_mq+'" onclick="adminPreviewDeal('+deal.id+',\'merchant\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #E8E8EC;cursor:pointer;" onmouseenter="this.style.background=\'#FAFAFA\'" onmouseleave="this.style.background=\'\'">'
             +'<div style="font-size:22px;flex-shrink:0;">'+deal.emoji+'</div>'
             +'<div style="flex:1;min-width:0;">'
