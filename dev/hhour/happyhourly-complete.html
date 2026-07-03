@@ -2929,7 +2929,13 @@ function _loadGT(){
   // Service worker — caches the app shell + libraries + fonts + deal photos so the
   // app opens offline. Deal data comes from the localStorage cache the app keeps.
   if('serviceWorker' in navigator){
-    window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(e){ console.warn('[sw] register failed', e); }); });
+    // Register only on customer-facing pages — portal visits (/merchant, /fireclay)
+    // never install the SW, and sw.js itself denylists those paths for sessions
+    // where a SW is already active from an earlier customer visit.
+    var _swPortal = /^\/(merchant|fireclay)(\/|$)/.test(location.pathname || '');
+    if(!_swPortal){
+      window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(e){ console.warn('[sw] register failed', e); }); });
+    }
   }
 })();
 </script>
@@ -5452,7 +5458,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703144101';
+var BUILD_VERSION = '20260703145506';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve

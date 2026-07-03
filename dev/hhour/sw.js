@@ -3,8 +3,16 @@
    cache the app already maintains (last-loaded deals), so users can browse what
    they last saw while offline. Private/dynamic data (Supabase REST/auth, our API)
    is NEVER cached — only the shell, libraries, fonts and public deal photos. */
-var CACHE = 'hh-offline-v3';
+var CACHE = 'hh-offline-v4';   // v4: portal routes (/merchant, /fireclay) bypass the SW entirely
 var SHELL = ['/', '/happyhourly-complete.html', '/version.json'];
+
+// Merchant + admin portals must NEVER be answered from this cache — always network.
+// (They're client-side routes of the same single-file app, but a stale cached shell
+// there can boot an outdated build whose portal routing misbehaves.)
+function isPortalPath(pathname){
+  return pathname === '/merchant' || pathname.indexOf('/merchant/') === 0 ||
+         pathname === '/fireclay' || pathname.indexOf('/fireclay/') === 0;
+}
 
 self.addEventListener('install', function(e){
   self.skipWaiting();
@@ -27,6 +35,10 @@ self.addEventListener('fetch', function(e){
   var url;
   try { url = new URL(req.url); } catch(_){ return; }
 
+  // Portal denylist: /merchant + /fireclay (and subroutes) go straight to the
+  // network — no respondWith, no cache read, no cache write. Ever.
+  if(url.origin === self.location.origin && isPortalPath(url.pathname)) return;
+
   // Supabase REST / auth / realtime → always network (never cache private/dynamic data)
   if(url.hostname.indexOf('supabase.co') !== -1 &&
      (url.pathname.indexOf('/rest/') === 0 || url.pathname.indexOf('/auth/') === 0 || url.pathname.indexOf('/realtime') === 0)){
@@ -43,7 +55,7 @@ self.addEventListener('fetch', function(e){
     return;
   }
 
-  // App navigation (any SPA path: /, /merchant, /fireclay …) → network-first,
+  // App navigation (customer SPA paths only — portals returned above) → network-first,
   // fall back to the cached shell when offline.
   if(req.mode === 'navigate' ||
      (url.origin === self.location.origin && (url.pathname === '/' || url.pathname.indexOf('happyhourly-complete.html') !== -1))){
