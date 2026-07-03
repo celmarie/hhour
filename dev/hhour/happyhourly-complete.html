@@ -5463,7 +5463,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703212733';
+var BUILD_VERSION = '20260703214840';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -6223,6 +6223,8 @@ function dbUCToLocal(row) {
     desc: row.description || '',
     status: row.status || 'approved',
     rejectionReason: row.rejection_reason || '',
+    startDate: row.start_date || '',
+    endDate: row.end_date || '',
     perks: [],
   };
 }
@@ -9241,6 +9243,9 @@ async function _fetchHeroDealCount(){
     var _tod = new Date().toISOString().slice(0,10);
     var vr = await db.from('deals').select('id', { count:'exact', head:true }).eq('status','active').or('end_date.is.null,end_date.gte.'+_tod);
     var cr = await db.from('community_deals').select('id', { count:'exact', head:true }).eq('status','approved').is('deleted_at', null).or('end_date.is.null,end_date.gte.'+_tod);
+    // If the end_date filter errored (column not added yet — add_deal_dates.sql), count without it.
+    if(!cr || cr.count == null) cr = await db.from('community_deals').select('id', { count:'exact', head:true }).eq('status','approved').is('deleted_at', null);
+    if(!vr || vr.count == null) vr = await db.from('deals').select('id', { count:'exact', head:true }).eq('status','active');
     var total = ((vr && vr.count) || 0) + ((cr && cr.count) || 0);
     if(total > 0){
       window._accurateDealCount = total;   // reused by the map header so it matches the home
@@ -13704,6 +13709,7 @@ function _submitDealInner(){
     rating: 0, off: off, discPct: 0, isFree: isFreeSelected,
     timeLeft: '—', claimed: 0, ago: 'Just now', wasPrice: was,
     website: website,
+    startDate: startDate || '', endDate: endDate || '',
     img: _ucPhotos[0] || '',
     img2: _ucPhotos[1] || '',
     img3: _ucPhotos[2] || '',
@@ -13723,7 +13729,7 @@ function _submitDealInner(){
         if(p2){ try{ savedImg3 = await compressAndUpload(p2, 800, 0.8, 'community'); }catch(e){ savedImg3 = p2; } }
         var allPhotos = [savedImg1, savedImg2, savedImg3].filter(Boolean);
         var dbImageUrl = allPhotos.length > 1 ? JSON.stringify(allPhotos) : (allPhotos[0] || null);
-        var { data: row, error: insErr } = await db.from('community_deals').insert({
+        var _ins = {
           user_id: currentUser.id,
           user_name: (currentProfile && currentProfile.name) || 'Anonymous',
           venue_name: v, title: title, description: d,
@@ -13735,8 +13741,17 @@ function _submitDealInner(){
           category: catVal || 'bars',
           image_url: dbImageUrl,
           website: website || null,
+          start_date: startDate || null,
+          end_date: endDate || null,
           status: 'pending'
-        }).select().single();
+        };
+        var { data: row, error: insErr } = await db.from('community_deals').insert(_ins).select().single();
+        if (insErr && /start_date|end_date/.test(insErr.message||'')) {
+          // Date columns not in the table yet (add_deal_dates.sql not run) — save the rest.
+          delete _ins.start_date; delete _ins.end_date;
+          var _rt = await db.from('community_deals').insert(_ins).select().single();
+          row = _rt.data; insErr = _rt.error;
+        }
         if (insErr) {
           console.error('[Supabase] submitDeal error:', insErr.message, insErr);
           showToast('⚠️ Deal saved locally only — DB error: ' + insErr.message);
@@ -21956,6 +21971,8 @@ function admCollectEdits(){
     discPct:  (!isNaN(priceN)&&!isNaN(wasN)&&wasN>0) ? Math.round((wasN-priceN)/wasN*100) : 0,
     img:      photoToSave,
     website:  (document.getElementById('adm-edit-website')||{value:''}).value.trim(),
+    startDate: (document.getElementById('adm-edit-date-start')||{value:''}).value || '',
+    endDate:   (document.getElementById('adm-edit-date-end')||{value:''}).value || '',
   };
 }
 
@@ -21984,9 +22001,16 @@ async function adminSaveAndApprove(){
     hours: edits.hours || deal.hours,
     days: edits.days || deal.days,
     website: edits.website || deal.website || '',
+    start_date: edits.startDate || null,
+    end_date: edits.endDate || null,
   };
   try {
-    await db.from('community_deals').update(updatePayload).eq('id', dbId);
+    var _sar = await db.from('community_deals').update(updatePayload).eq('id', dbId);
+    if(_sar.error && /start_date|end_date/.test(_sar.error.message||'')){
+      // Date columns not in the table yet (add_deal_dates.sql not run) — save the rest.
+      delete updatePayload.start_date; delete updatePayload.end_date;
+      await db.from('community_deals').update(updatePayload).eq('id', dbId);
+    }
   } catch(e) { console.warn('[adminSaveAndApprove] Save edits error:', e); }
 
   await adminApproveDeal(_admReviewDealId);
@@ -22245,6 +22269,8 @@ async function adminSaveEditsOnly(){
         currency: edits.currency||'EUR',
         discount_pct: edits.discPct||0,
         website: edits.website||'',
+        start_date: edits.startDate || null,
+        end_date: edits.endDate || null,
         removed_images: _admRemovedForSave()
       };
       var allPhotosM = [savedImg1, savedImg2, savedImg3].filter(Boolean);
@@ -22296,12 +22322,20 @@ async function adminSaveEditsOnly(){
         off_label: edits.off||undefined,
         discount_pct: edits.discPct||0,
         website: edits.website||'',
+        start_date: edits.startDate || null,
+        end_date: edits.endDate || null,
         removed_images: _admRemovedForSave()
       };
       // Store all photos as JSON array in image_url — no extra columns needed
       var allPhotos = [savedImg1, savedImg2, savedImg3].filter(Boolean);
       cUpdate.image_url = allPhotos.length > 1 ? JSON.stringify(allPhotos) : (allPhotos[0] || '');
       var { error, data } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
+      if(error && /start_date|end_date/.test(error.message||'')){
+        // Date columns not in the table yet (add_deal_dates.sql not run) — save the rest.
+        delete cUpdate.start_date; delete cUpdate.end_date;
+        var _rt = await db.from('community_deals').update(cUpdate).eq('id', dbId);
+        error = _rt.error; data = _rt.data;
+      }
 
       console.log('[adminSaveEditsOnly] Database response:');
       console.log('  - error:', error ? error.message : 'NONE');
