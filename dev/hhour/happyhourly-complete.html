@@ -5458,7 +5458,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703145638';
+var BUILD_VERSION = '20260703150201';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -5637,7 +5637,9 @@ async function initializeAuth(){
   }
   // First-visit T&C gate — ONLY for users who are not logged in (a restored session
   // means they already accepted at sign-up; never interrupt them). One-time per device.
-  try { if(!currentUser && typeof _maybeShowTermsGate==='function') _maybeShowTermsGate(); } catch(e){}
+  // Consumer-only: staff portals (/merchant, /fireclay) have their own logins and must
+  // never be covered by the customer welcome gate.
+  try { if(!currentUser && !_loginRequiredPath() && typeof _maybeShowTermsGate==='function') _maybeShowTermsGate(); } catch(e){}
 }
 
 // iOS keeps offering "Fill Password" for the hidden login/merchant forms even after
