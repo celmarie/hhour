@@ -5463,7 +5463,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703220258';
+var BUILD_VERSION = '20260703222409';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -13696,7 +13696,7 @@ function _submitDealInner(){
     _ucSaveEdit({ dbId:window._ucEditingId, v:v, title:title, d:d, addr:addr, website:website,
                   hours:hours, days:days, curCode:curCode, priceRaw:priceRaw, wasRaw:wasRaw,
                   isFreeSelected:isFreeSelected, catVal:catVal, emoji:emoji,
-                  priceDisp:price, wasDisp:was });
+                  priceDisp:price, wasDisp:was, startDate:startDate, endDate:endDate });
     return;
   }
 
@@ -13871,6 +13871,13 @@ function _ucPrefillForm(deal){
     c.style.color      = on ? 'white' : '#9A9AB0';
     c.style.borderColor= on ? '#E8192C' : '#E8E8EC';
   });
+  // Start/end dates + their "Not definite" pills (apply the pill state FIRST —
+  // turning a pill on clears the input, so the value must be set after).
+  _ucStartIndefinite = !deal.start_date;
+  _ucEndIndefinite   = !deal.end_date;
+  try { _ucApplyIndefinite(true, _ucStartIndefinite); _ucApplyIndefinite(false, _ucEndIndefinite); } catch(e){}
+  setv('uc-deal-start-date', deal.start_date||'');
+  setv('uc-deal-end-date',   deal.end_date||'');
   // Photos — keep existing image URL(s); user can replace. compressAndUpload
   // passes plain URLs through untouched, so unchanged photos aren't re-uploaded.
   var imgs = [], raw = deal.image_url || '';
@@ -13920,7 +13927,8 @@ async function _ucSaveEdit(f){
       price: f.isFreeSelected ? 0 : parseFloat(f.priceRaw||0),
       was_price: f.wasRaw ? parseFloat(f.wasRaw) : null,
       currency:f.curCode, emoji:f.emoji, address:f.addr||'',
-      category:f.catVal||'bars', website:f.website||null
+      category:f.catVal||'bars', website:f.website||null,
+      start_date: f.startDate || null, end_date: f.endDate || null
     };
     // Only overwrite image_url when we have hosted URL(s); otherwise leave the deal's
     // existing image untouched (don't wipe it because a re-upload failed).
@@ -13943,7 +13951,8 @@ async function _ucSaveEdit(f){
       if(xid!==f.dbId) return x;
       var patch = {venue:f.v,name:f.v,deal:f.title,desc:f.d,hours:f.hours,days:f.days,
         address:f.addr,website:f.website,cat:f.catVal,emoji:f.emoji,currency:f.curCode,
-        price:f.priceDisp,wasPrice:f.wasDisp,isFree:f.isFreeSelected};
+        price:f.priceDisp,wasPrice:f.wasDisp,isFree:f.isFreeSelected,
+        startDate:f.startDate||'',endDate:f.endDate||''};
       if(photos.length){ patch.img=photos[0]||''; patch.img2=photos[1]||''; patch.img3=photos[2]||''; }
       return Object.assign({}, x, patch);
     }); } catch(e){}
