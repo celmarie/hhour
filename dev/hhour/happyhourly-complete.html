@@ -5458,7 +5458,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703150201';
+var BUILD_VERSION = '20260703151734';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -5703,6 +5703,14 @@ function _guardPasswordFields(){
   } catch(e){}
 }
 function showLoginScreen(){
+  // Parse-safety: this can be called (initializeAuth) while the document is still
+  // parsing and #login-screen doesn't exist yet — defer until the DOM is ready
+  // instead of silently doing nothing (that no-op dropped portal visitors onto the
+  // consumer home).
+  if(!document.getElementById('login-screen') && document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ try { showLoginScreen(); } catch(e){} }, { once:true });
+    return;
+  }
   // End the portal-boot state so the login isn't suppressed by the boot CSS
   // (the boot splash hides the login until auth resolves; here we genuinely want it).
   if(typeof _endPortalBoot === 'function') _endPortalBoot();
@@ -7531,9 +7539,10 @@ document.addEventListener('DOMContentLoaded', async function(){
   // initializeAuth may have tried to hide login before #login-screen was parsed, so
   // we re-assert it here now that the DOM exists.
   try {
+    var _sess0 = await db.auth.getSession();
+    var _hasSess0 = !!(_sess0 && _sess0.data && _sess0.data.session);
     if(!_loginRequiredPath()){
-      var _sess0 = await db.auth.getSession();
-      if(!(_sess0 && _sess0.data && _sess0.data.session)){
+      if(!_hasSess0){
         isGuest = true;
         var _lg=document.getElementById('login-screen'); if(_lg) _lg.style.display='none';
         var _rs=document.getElementById('role-splash');  if(_rs) _rs.style.display='none';
@@ -7541,6 +7550,13 @@ document.addEventListener('DOMContentLoaded', async function(){
         if(typeof updateGuestVisibility==='function') updateGuestVisibility();
         if(typeof updateLogoutBtnLabel==='function') updateLogoutBtnLabel();
       }
+    } else if(!_hasSess0){
+      // PORTAL path (/merchant, /fireclay) with no session: initializeAuth often runs
+      // BEFORE #login-screen is parsed (it sits near the end of this large file), so
+      // its showLoginScreen() was a silent no-op and visitors fell through to the
+      // consumer home. Re-assert the portal login now that the DOM exists.
+      isGuest = false;
+      if(typeof showLoginScreen==='function') showLoginScreen();
     }
   } catch(e){}
 
@@ -14939,6 +14955,9 @@ async function handleGoogleCredential(resp){
 function initGsiButton(gsiId, fbId, width){
   gsiId = gsiId || 'gsi-button'; fbId = fbId || 'google-btn';
   if(!(window.google && google.accounts && google.accounts.id)) return false;
+  // Google sign-in is customer-only. This renders async (retry loop), so without this
+  // guard it re-shows itself on the ADMIN/merchant login after switchLoginTab hid it.
+  if(gsiId === 'gsi-button' && typeof loginRole !== 'undefined' && loginRole !== 'customer') return true;
   var c = document.getElementById(gsiId);
   if(!c) return false;
   var isMobile = (window.matchMedia && window.matchMedia('(max-width:899px)').matches)
@@ -31803,8 +31822,11 @@ function _setupDealMap() {
   }
   #login-screen.ls-admin input::placeholder{ color:#6b7d99 !important; }
   #login-screen.ls-admin input:focus{ border-color:#38bdf8 !important; box-shadow:0 0 0 4px rgba(56,189,248,.18) !important; background:rgba(255,255,255,.1) !important; }
-  #login-screen.ls-admin #signin-btn{ background:linear-gradient(135deg,#0ea5e9,#0369a1) !important; box-shadow:0 10px 26px rgba(3,105,161,.45) !important; }
+  #login-screen.ls-admin #signin-btn{ background:linear-gradient(135deg,#0ea5e9,#0369a1) !important; box-shadow:0 10px 26px rgba(3,105,161,.45) !important; color:#fff !important; border-color:transparent !important; }
   #login-screen.ls-admin #signin-btn::after{ display:none !important; }
+  /* Dark admin skin: keep the wordmark readable ("Hour" is near-black on light) */
+  #login-screen.ls-admin #lg-brand-name span{ color:#fff !important; }
+  #login-screen.ls-admin #lg-brand-name span:first-child{ color:#FF6B7A !important; }
   #login-screen.ls-admin #login-forgot-wrap a{ color:#7dd3fc !important; }
   #login-screen.ls-admin #login-error{ color:#fca5a5 !important; }
   #login-screen.ls-admin .hh-rolelink{ color:#9fb3d1 !important; background:rgba(255,255,255,.06) !important; border-color:rgba(120,150,200,.25) !important; }
