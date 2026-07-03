@@ -5463,7 +5463,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703212233';
+var BUILD_VERSION = '20260703212733';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -6334,15 +6334,17 @@ async function loadDealsFromSupabase() {
     if (dr.error) console.error('[Supabase] deals fetch error:', dr.error.message);
     if (ur.error){ console.error('[Supabase] community_deals fetch error:', ur.error.message); ucDeals = []; }
 
-    // Process verified deals
+    // Process verified deals. Expired deals are dropped HERE, once, so every customer
+    // surface (home deck, "See More +N", All Deals, search, map) counts the same set —
+    // admins still see expired deals via their own loader.
     if (dr.data) {
-      vouchers = dr.data.map(dbDealToLocal);
+      vouchers = dr.data.map(dbDealToLocal).filter(function(d){ return !isDealExpired(d); });
       try { localStorage.setItem('hh_deals_cache', JSON.stringify({v:vouchers,time:Date.now()})); } catch(e){}
     } else { vouchers = []; }
 
     // Process community deals
     if (ur.data) {
-      var freshUC = ur.data.map(dbUCToLocal);
+      var freshUC = ur.data.map(dbUCToLocal).filter(function(d){ return !isDealExpired(d); });
       var freshIds = {};
       freshUC.forEach(function(d){ if(d._dbId) freshIds[d._dbId] = true; });
       var sessionKept = ucDeals.filter(function(d){ return d._sessionAdded && !freshIds[d._dbId]; });
@@ -6391,7 +6393,7 @@ function loadDealsFromCache(){
     var cached = localStorage.getItem('hh_deals_cache');
     if(cached){
       var data = JSON.parse(cached);
-      vouchers = Array.isArray(data.v) ? data.v : [];
+      vouchers = (Array.isArray(data.v) ? data.v : []).filter(function(d){ return !isDealExpired(d); });
       if(typeof renderCoupons === 'function') renderCoupons('all');
     }
   }catch(e){ vouchers = []; }
@@ -6399,7 +6401,7 @@ function loadDealsFromCache(){
     var cachedUC = localStorage.getItem('hh_uc_deals_cache');
     if(cachedUC){
       var data2 = JSON.parse(cachedUC);
-      ucDeals = Array.isArray(data2.u) ? data2.u : [];
+      ucDeals = (Array.isArray(data2.u) ? data2.u : []).filter(function(d){ return !isDealExpired(d); });
       if(typeof renderUC === 'function') renderUC('all');
     }
   }catch(e){ ucDeals = []; }
@@ -9234,8 +9236,11 @@ function updateWebHeroStats(){
 // be derived from the capped (≤100) loaded set and so undercounted.
 async function _fetchHeroDealCount(){
   try {
-    var vr = await db.from('deals').select('id', { count:'exact', head:true }).eq('status','active');
-    var cr = await db.from('community_deals').select('id', { count:'exact', head:true }).eq('status','approved').is('deleted_at', null);
+    // LIVE deals only — exclude expired (end_date passed) so this number matches what
+    // the deck, "See More +N", All Deals and the map actually show.
+    var _tod = new Date().toISOString().slice(0,10);
+    var vr = await db.from('deals').select('id', { count:'exact', head:true }).eq('status','active').or('end_date.is.null,end_date.gte.'+_tod);
+    var cr = await db.from('community_deals').select('id', { count:'exact', head:true }).eq('status','approved').is('deleted_at', null).or('end_date.is.null,end_date.gte.'+_tod);
     var total = ((vr && vr.count) || 0) + ((cr && cr.count) || 0);
     if(total > 0){
       window._accurateDealCount = total;   // reused by the map header so it matches the home
