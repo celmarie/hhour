@@ -4219,13 +4219,25 @@ function _loadGT(){
         <div style="padding:14px 14px 6px;font-size:14px;font-weight:800;color:var(--text);">Earn credits now</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px;margin-bottom:14px;" id="cr-earn-grid"></div>
         <div style="display:flex;background:#F5F5F7;border-radius:12px;padding:3px;margin:0 14px 14px;">
-          <button id="cr-tab-rewards" onclick="crShowTab('rewards',this)" style="flex:1;padding:9px 6px;border-radius:9px;background:white;border:none;font-size:13px;font-weight:800;color:var(--text);cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.1);">Rewards</button>
-          <button id="cr-tab-history" onclick="crShowTab('history',this)" style="flex:1;padding:9px 6px;border-radius:9px;background:none;border:none;font-size:13px;font-weight:700;color:#9A9AB0;cursor:pointer;font-family:Inter,sans-serif;">History</button>
+          <button id="cr-tab-history" onclick="crShowTab('history',this)" style="flex:1;padding:9px 6px;border-radius:9px;background:white;border:none;font-size:13px;font-weight:800;color:var(--text);cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.1);">History</button>
+          <button id="cr-tab-rewards" onclick="crShowTab('rewards',this)" style="flex:1;padding:9px 6px;border-radius:9px;background:none;border:none;font-size:13px;font-weight:700;color:#9A9AB0;cursor:pointer;font-family:Inter,sans-serif;">Rewards</button>
           <button id="cr-tab-leaderboard" onclick="crShowTab('leaderboard',this)" style="flex:1;padding:9px 6px;border-radius:9px;background:none;border:none;font-size:13px;font-weight:700;color:#9A9AB0;cursor:pointer;font-family:Inter,sans-serif;">Top Earners</button>
         </div>
-        <div id="cr-panel-rewards" style="padding:0 14px 24px;"><div id="cr-rewards-list"></div></div>
-        <div id="cr-panel-history" style="display:none;padding:0 14px 24px;"><div id="cr-history-list"></div></div>
-        <div id="cr-panel-leaderboard" style="display:none;padding:0 14px 24px;"><div id="cr-leaderboard-list"></div></div>
+        <div id="cr-panel-history" style="padding:0 14px 24px;"><div id="cr-history-list"></div></div>
+        <div id="cr-panel-rewards" style="display:none;padding:0 14px 24px;">
+          <div style="text-align:center;padding:36px 20px;background:white;border-radius:14px;border:1.5px solid var(--border);">
+            <div style="font-size:34px;margin-bottom:10px;">🎁</div>
+            <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:5px;">Rewards — coming soon</div>
+            <div style="font-size:12.5px;color:#9A9AB0;font-weight:600;line-height:1.5;">Keep collecting credits! Soon you’ll be able to spend them on rewards right here.</div>
+          </div>
+        </div>
+        <div id="cr-panel-leaderboard" style="display:none;padding:0 14px 24px;">
+          <div style="text-align:center;padding:36px 20px;background:white;border-radius:14px;border:1.5px solid var(--border);">
+            <div style="font-size:34px;margin-bottom:10px;">🏆</div>
+            <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:5px;">Top Earners — coming soon</div>
+            <div style="font-size:12.5px;color:#9A9AB0;font-weight:600;line-height:1.5;">See how you rank against other deal hunters. Launching soon!</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="screen" id="screen-community" style="display:flex;flex-direction:column;padding-bottom:0;">
@@ -5450,7 +5462,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703230648';
+var BUILD_VERSION = '20260703230900';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -28305,7 +28317,7 @@ function crShowTab(tab,btn){
     if(tabBtn){tabBtn.style.background=t===tab?'white':'none';tabBtn.style.color=t===tab?'var(--text)':'#9A9AB0';tabBtn.style.fontWeight=t===tab?'800':'700';tabBtn.style.boxShadow=t===tab?'0 1px 4px rgba(0,0,0,.1)':'none';}
   });
   if(tab==='history' && !crHistoryLoaded) crLoadHistory();
-  if(tab==='leaderboard' && !crLeaderboardLoaded) crLoadLeaderboard();
+  // Rewards + Top Earners are static "coming soon" panels for now — nothing to load.
 }
 function crInitScreen(){
   crHistoryLoaded=false;
@@ -28316,7 +28328,7 @@ function crInitScreen(){
   crUpdateWalletUI();
   crCloseConvert();
   crRenderEarnGrid();
-  crRenderRewards();
+  crShowTab('history');   // History is the default tab (Rewards/Top Earners = coming soon)
 }
 
 // ── HappyCash wallet (store credit) ─────────────────────────────────
