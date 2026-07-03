@@ -2449,9 +2449,12 @@ body, button, input, textarea, select {
   .bnav{
     height:calc(var(--nav) + env(safe-area-inset-bottom, 0px));
     padding-bottom:calc(3px + env(safe-area-inset-bottom, 0px));
-    background:rgba(255,255,255,.92);
-    -webkit-backdrop-filter:saturate(180%) blur(20px);
-    backdrop-filter:saturate(180%) blur(20px);
+    /* SOLID background — no backdrop blur. A blur layer composited over the live map
+       tiles is the same iOS GPU crash pattern documented for the old login screen
+       ("A problem repeatedly occurred"); the map pans/zooms right underneath this bar. */
+    background:rgba(255,255,255,.97);
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
     border-top:1px solid rgba(0,0,0,.06);
     box-shadow:0 -4px 24px rgba(20,20,40,.06);
   }
@@ -5458,7 +5461,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703154940';
+var BUILD_VERSION = '20260703160025';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -30987,7 +30990,10 @@ function _setupDealMap() {
 
     // Leaflet + OpenStreetMap raster tiles (canvas-rendered markers) — light on iOS,
     // no zoom limit, no WebKit memory crash on zoom-out.
-    _gmapObj = L.map('deal-map', { zoomControl: true, attributionControl: true, preferCanvas: true })
+    _gmapObj = L.map('deal-map', { zoomControl: true, attributionControl: true, preferCanvas: true,
+      // iOS memory safety: zoom/fade compositing over a big tile layer is a known
+      // WKWebView GPU killer — skip the animations, keep the map.
+      zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false })
       .setView([center.lat, center.lng], 14);
     // Zoom +/- to the lower-right; keep attribution bottom-left so they don't overlap.
     try { _gmapObj.zoomControl.setPosition('bottomright'); } catch(e){}
