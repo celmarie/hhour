@@ -5461,7 +5461,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703160025';
+var BUILD_VERSION = '20260703201128';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -30779,7 +30779,11 @@ function _placeWatchMarker(s, lat, lng) {
 // Cap how many deal pins the map builds. Hundreds of markers + the Maps SDK can
 // exhaust the WebKit per-tab memory on low-end phones and crash the map. Keep the
 // nearest ~80 deals (by distance) plus all Where-to-Watch pins.
-var MAP_MAX_PINS = 35;   // lowered from 80 — fewer live geocodes + markers = far less memory on low-end iOS
+var MAP_MAX_PINS = 400;  // effectively "all deals". Safe now: markercluster collapses pins
+                         // into a handful of DOM nodes, and the real iOS crash sources
+                         // (tile buffer, zoom compositing, blur-over-map, unbounded venue
+                         // list) are fixed. Pins stream in nearest-first while addresses
+                         // geocode; results are cached, so later opens fill instantly.
 // Accurate "N deals" for the map header — DEALS only (never the Where-to-Watch
 // football pins). Uses the same server-side total the home shows when available,
 // else the count of loaded verified + community deals.
