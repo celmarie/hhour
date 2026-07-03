@@ -129,8 +129,8 @@ body{font-family:'Inter',sans-serif;background:#111;display:flex;justify-content
   /* overflow-x:hidden on <html> too — iOS lets the document scroll horizontally
      even when body is overflow:hidden, which shifts the whole app right and clips
      content off the right edge. max-width:100% pins it to the visual viewport. */
-  html{ height:100%; overflow-x:hidden; max-width:100%; }
-  body{ height:100svh; min-height:0; overflow:hidden; overflow-x:hidden; max-width:100%; }
+  html{ height:100%; overflow-x:hidden; max-width:100%; overscroll-behavior:none; }
+  body{ height:100svh; min-height:0; overflow:hidden; overflow-x:hidden; max-width:100%; overscroll-behavior:none; }
   /* Small-screen safety net: media can never force horizontal scroll on narrow phones.
      (Leaflet's own CSS re-allows full-size map tiles, so the map is unaffected.) */
   img,video,canvas{ max-width:100%; }
@@ -488,7 +488,7 @@ textarea.finput{resize:none;height:80px;}
 .so-body::-webkit-scrollbar{display:none;}
 
 /* BOTTOM NAV */
-.bnav{position:absolute;bottom:0;left:0;right:0;height:var(--nav);background:white;border-top:1px solid var(--border);display:flex;align-items:center;z-index:100;padding-bottom:8px;}
+.bnav{position:absolute;bottom:0;left:0;right:0;height:var(--nav);background:white;border-top:1px solid var(--border);display:flex;align-items:center;z-index:100;padding-bottom:8px;touch-action:none;}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding-top:6px;position:relative;transition:transform .15s;}
 .ni:active{transform:scale(.9);}
 .niw{position:relative;width:44px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:14px;transition:background .18s;}
@@ -5458,7 +5458,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703154046';
+var BUILD_VERSION = '20260703154940';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -30549,10 +30549,22 @@ function _initMapClusterer(){
     if(typeof L !== 'undefined' && L.markerClusterGroup && _gmapObj){
       _gmapCluster = L.markerClusterGroup({
         chunkedLoading: true, maxClusterRadius: 55, spiderfyOnMaxZoom: true,
-        // Multiple pins grouped together → show a gray "•••" pin (Agoda-style), matching
-        // the price-pin shape. Tapping it zooms in to reveal the individual price pins.
+        // Multiple pins grouped together → a "•••" pin (Agoda-style) colored by what's
+        // inside: purple = football, red = community happy hours, blue = verified
+        // merchants. Mixed clusters take the majority (football wins ties).
         iconCreateFunction: function(cluster){
           var col = '#6B6B76';
+          try {
+            var n = { fb:0, v:0, c:0 };
+            cluster.getAllChildMarkers().forEach(function(m){
+              if(m._isWatch) n.fb++;
+              else if(m._dealVerified) n.v++;
+              else n.c++;
+            });
+            if(n.fb > 0 && n.fb >= n.v && n.fb >= n.c) col = '#7B2FBE';   // ⚽ football
+            else if(n.c >= n.v)                        col = '#E8192C';   // 👥 community deals
+            else                                       col = '#2563EB';   // ✓ verified merchants
+          } catch(e){}
           var html = '<div style="position:relative;transform:translate(-50%,-100%);width:max-content;">'
             + '<div style="background:'+col+';color:#fff;padding:6px 13px;border-radius:14px;font-family:Inter,sans-serif;font-weight:900;font-size:12px;line-height:1;letter-spacing:2px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid #fff;">•••</div>'
             + '<div style="width:0;height:0;margin:-1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid '+col+';filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));"></div>'
