@@ -5461,7 +5461,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703205607';
+var BUILD_VERSION = '20260703205829';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -19411,10 +19411,12 @@ function adminPage(page,btn){
     // Deleted users section (restore facility)
     if (window.adminDeletedUsers && window.adminDeletedUsers.length > 0) {
       body.innerHTML += '<div style="background:white;border-radius:14px;border:1.5px solid rgba(232,25,44,.2);overflow:hidden;margin-top:12px;">'
-        +'<div style="padding:12px 16px;border-bottom:1px solid #E8E8EC;">'
-          +'<div style="font-size:13px;font-weight:700;color:#dc2626;">🗑️ Pending Deletion ('+window.adminDeletedUsers.length+')</div>'
-          +'<div style="font-size:11px;color:#9A9AB0;font-weight:500;margin-top:2px;">Recoverable for 30 days, then permanently erased. Tap ↺ Restore to recover access.</div>'
-        +'</div>'
+        +'<button onclick="admToggleSection(\'adm-del-users\',\'adm-del-users-chev\')" style="width:100%;padding:12px 16px;border:none;border-bottom:1px solid #E8E8EC;background:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:Inter,sans-serif;text-align:left;">'
+          +'<div><div style="font-size:13px;font-weight:700;color:#dc2626;">🗑️ Pending Deletion ('+window.adminDeletedUsers.length+')</div>'
+          +'<div style="font-size:11px;color:#9A9AB0;font-weight:500;margin-top:2px;">Recoverable for 30 days, then permanently erased. Tap ↺ Restore to recover access.</div></div>'
+          +'<span id="adm-del-users-chev" style="font-size:14px;color:#dc2626;transition:transform .2s;">›</span>'
+        +'</button>'
+        +'<div id="adm-del-users" style="display:none;">'
         +(window.adminDeletedUsers.map(function(u,i){
           var av=(u.name||'?').substring(0,2).toUpperCase();
           var pc=_purgeCountdown(u.deleted_at);
@@ -19435,6 +19437,7 @@ function adminPage(page,btn){
             +'</div>'
           +'</div>';
         }).join(''))
+        +'</div>'
       +'</div>';
     }
   } else if(page==='merchants'){
@@ -19531,10 +19534,12 @@ function adminPage(page,btn){
     // Show deleted merchants section if any exist
     if (window.adminDeletedMerchants && window.adminDeletedMerchants.length > 0) {
       body.innerHTML += '<div style="background:white;border-radius:14px;border:1.5px solid rgba(232,25,44,.2);overflow:hidden;margin-top:12px;">'
-        +'<div style="padding:12px 16px;border-bottom:1px solid #E8E8EC;">'
-          +'<div style="font-size:13px;font-weight:700;color:#dc2626;">🗑️ Pending Deletion ('+window.adminDeletedMerchants.length+')</div>'
-          +'<div style="font-size:11px;color:#9A9AB0;font-weight:500;margin-top:2px;">Recoverable for 30 days, then the venue & its deals are permanently erased. Tap ↺ Restore to recover.</div>'
-        +'</div>'
+        +'<button onclick="admToggleSection(\'adm-del-merch\',\'adm-del-merch-chev\')" style="width:100%;padding:12px 16px;border:none;border-bottom:1px solid #E8E8EC;background:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-family:Inter,sans-serif;text-align:left;">'
+          +'<div><div style="font-size:13px;font-weight:700;color:#dc2626;">🗑️ Pending Deletion ('+window.adminDeletedMerchants.length+')</div>'
+          +'<div style="font-size:11px;color:#9A9AB0;font-weight:500;margin-top:2px;">Recoverable for 30 days, then the venue & its deals are permanently erased. Tap ↺ Restore to recover.</div></div>'
+          +'<span id="adm-del-merch-chev" style="font-size:14px;color:#dc2626;transition:transform .2s;">›</span>'
+        +'</button>'
+        +'<div id="adm-del-merch" style="display:none;">'
         +(window.adminDeletedMerchants.map(function(m,i){
           var av=(m.name||'?').substring(0,2).toUpperCase();
           var pc=_purgeCountdown(m.deleted_at);
@@ -19552,6 +19557,7 @@ function adminPage(page,btn){
             +'<button onclick="adminPromptRestoreDeletedMerchant('+i+')" title="Restore" style="background:rgba(18,161,80,.1);color:#12A150;border:1.5px solid rgba(18,161,80,.2);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;">↺ Restore</button>'
           +'</div>';
         }).join(''))
+        +'</div>'
       +'</div>';
     }
   } else if(page==='deals'){
