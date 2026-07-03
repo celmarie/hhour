@@ -2850,12 +2850,13 @@ function _loadGT(){
   .wh-filter:hover{ transform:translateY(-2px); }
   .wh-map{
     flex-shrink:0; display:flex; align-items:center; gap:8px;
-    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3);
-    color:#fff; border-radius:14px; padding:0 22px; font-size:14px; font-weight:800;
-    cursor:pointer; font-family:'Inter',sans-serif; backdrop-filter:blur(8px);
+    background:#fff; border:none;
+    color:#1A1A1A; border-radius:999px; padding:0 22px; font-size:14px; font-weight:800;
+    cursor:pointer; font-family:'Inter',sans-serif;
+    box-shadow:0 4px 16px rgba(0,0,0,.25);
     transition:background .15s, transform .15s;
   }
-  .wh-map:hover{ background:rgba(255,255,255,.22); transform:translateY(-2px); }
+  .wh-map:hover{ background:#F5F5F7; transform:translateY(-2px); }
   .wh-stats{ display:flex; align-items:center; gap:22px; margin-top:30px; }
   .wh-stat{ display:flex; flex-direction:column; gap:3px; }
   .wh-stat b{ font-size:22px; font-weight:900; color:#fff; letter-spacing:-.5px; }
@@ -3048,7 +3049,7 @@ function _loadGT(){
               <span>Search venues, deals, neighborhoods…</span>
             </div>
             <button class="wh-filter" onclick="openFilterSheet()" title="Filters"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"><path d="M2 4h16M5 10h10M8 16h4" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round"/></svg></button>
-            <button class="wh-map" onclick="goScreen('map')"><span style="font-size:16px;">🗺️</span> Map view</button>
+            <button class="wh-map" onclick="goScreen('map')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20 3 22V6l6-2 6 2 6-2v10"/><path d="M9 4v16"/><path d="M15 6v6"/><path d="M19 22s3-2.7 3-5a3 3 0 0 0-6 0c0 2.3 3 5 3 5z"/></svg> Map view</button>
           </div>
           <div class="wh-stats">
             <div class="wh-stat"><b id="wh-stat-deals">—</b><span>deals available</span></div>
@@ -5462,7 +5463,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703231240';
+var BUILD_VERSION = '20260703232214';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
