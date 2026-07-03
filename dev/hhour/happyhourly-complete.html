@@ -5461,7 +5461,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703204456';
+var BUILD_VERSION = '20260703205607';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -18706,9 +18706,13 @@ async function adminOpenDupVenues(){
   if(!holder){ holder=document.createElement('div'); holder.id='adm-dupven-holder'; document.body.appendChild(holder); }
   holder.innerHTML='<div style="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;"><div style="background:#fff;border-radius:16px;padding:26px 30px;font-size:14px;font-weight:700;color:#555;">Scanning venues…</div></div>';
   try {
-    var vr = await db.from('venues').select('id,name,address,status').order('name');
+    var vr = await db.from('venues').select('id,name,address,status,active').order('name');
     if(vr.error) throw vr.error;
-    var venues=(vr.data||[]).filter(function(v){ return v.status!=='merged'; });
+    // LIVE venues only — merged/rejected/deleted (and deactivated) rows stay in the DB
+    // for restore purposes, but they're not duplicates the admin needs to act on.
+    var venues=(vr.data||[]).filter(function(v){
+      return v.status!=='merged' && v.status!=='rejected' && v.status!=='deleted' && v.active!==false;
+    });
     var dcount={};
     try { var dr=await db.from('deals').select('venue_id'); (dr.data||[]).forEach(function(d){ if(d.venue_id) dcount[d.venue_id]=(dcount[d.venue_id]||0)+1; }); } catch(e){}
     var groups={};
@@ -18719,7 +18723,7 @@ async function adminOpenDupVenues(){
     try {
       var wr = await db.from('match_screenings').select('id,venue_name,location,status,going').order('venue_name');
       var wg={};
-      (wr.data||[]).forEach(function(s){ var k=_admVenueNorm(s.venue_name); if(!k) return; (wg[k]=wg[k]||[]).push(s); });
+      (wr.data||[]).forEach(function(s){ if(s.status==='rejected') return; var k=_admVenueNorm(s.venue_name); if(!k) return; (wg[k]=wg[k]||[]).push(s); });
       watchDups=Object.keys(wg).map(function(k){ return wg[k]; }).filter(function(g){ return g.length>1; });
     } catch(e){}
     _admRenderDupVenues(dupGroups, dcount, venues.length, watchDups);
@@ -18742,7 +18746,7 @@ function _admRenderDupVenues(dupGroups, dcount, total, watchDups){
         var n=dcount[v.id]||0;
         return '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border:1.5px solid #EEE;border-radius:12px;margin-bottom:8px;">'
           +'<div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:800;color:#1A1A1A;">'+esc(v.name)+'</div>'
-          +'<div style="font-size:11.5px;color:#9A9AB0;margin-top:2px;word-break:break-word;">'+esc(v.address||'—')+'</div>'
+          +'<div style="font-size:11.5px;color:#9A9AB0;margin-top:2px;word-break:break-word;">'+esc(v.address||'—')+(v.status&&v.status!=='active'?' · '+esc(v.status):'')+'</div>'
           +'<div style="font-size:11px;color:#12A150;font-weight:700;margin-top:2px;">'+n+' deal'+(n!==1?'s':'')+'</div></div>'
           +'<button onclick="adminMergeVenues(\''+esc2(v.id)+'\',\''+esc2(others)+'\',\''+esc2(v.name)+'\')" style="background:#E8192C;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:11.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">Keep this ✓</button>'
         +'</div>';
