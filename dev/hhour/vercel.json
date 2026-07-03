@@ -1,0 +1,27 @@
+{
+  "crons": [
+    { "path": "/api/purge-deleted", "schedule": "0 3 * * *" }
+  ],
+  "rewrites": [
+    { "source": "/delete-account", "destination": "/delete-account.html" },
+    { "source": "/((?!api/|_vercel/).*)", "destination": "/happyhourly-complete.html" }
+  ],
+  "headers": [
+    {
+      "source": "/happyhourly-complete.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(self), camera=(self), microphone=(), usb=(), payment=(self)" }
+      ]
+    }
+  ]
+}
