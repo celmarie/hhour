@@ -5452,7 +5452,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703015828';
+var BUILD_VERSION = '20260703022505';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -6279,7 +6279,9 @@ async function fetchCommunityFeed(){
       if(Array.isArray(rows)) return { data: rows, error: null };
     }
   } catch(e){ /* fall through to the direct query */ }
-  return await db.from('community_deals').select('*').eq('status','approved').is('deleted_at', null).order('created_at', { ascending: false }).limit(100);
+  // 400 covers every live deal with growth headroom. Loading more DATA is safe now —
+  // the heavy part (rendering) is paginated 50-at-a-time and list images are thumbnailed.
+  return await db.from('community_deals').select('*').eq('status','approved').is('deleted_at', null).order('created_at', { ascending: false }).limit(400);
 }
 
 // ── Load public deals (no auth required) ──────────────────────────────────────
