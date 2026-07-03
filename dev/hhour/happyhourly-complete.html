@@ -5462,7 +5462,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703230900';
+var BUILD_VERSION = '20260703231240';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -6600,7 +6600,8 @@ async function loadUserData() {
         id: i, type: row.type || 'new', icon: row.icon || '📍',
         cls: row.icon_class || 'ai-red', title: row.title,
         body: row.body || '', time: dbAgo(row.created_at),
-        unread: !row.read && !_readLs.includes(row.id), act: true, _dbId: row.id
+        unread: !row.read && !_readLs.includes(row.id), act: true, _dbId: row.id,
+        dealRef: row.deal_ref || null
       };
     });
     console.log('[loadUserData] Total alerts after conversion:', alerts.length);
@@ -6629,7 +6630,8 @@ function subscribeToMyNotifications(){
           alerts.unshift({
             id: Date.now(), type: row.type || 'new', icon: row.icon || '✉️',
             cls: row.icon_class || 'ai-purple', title: row.title,
-            body: row.body || '', time: 'Just now', unread: true, act: true, _dbId: row.id
+            body: row.body || '', time: 'Just now', unread: true, act: true, _dbId: row.id,
+            dealRef: row.deal_ref || null
           });
           if(typeof renderAlerts === 'function') renderAlerts(_alertFilter || 'all');
           if(typeof showToast === 'function') showToast('✉️ New message: ' + (row.title || ''));
@@ -7733,7 +7735,8 @@ document.addEventListener('DOMContentLoaded', async function(){
         id: alerts.length + Date.now(),
         type: n.type||'system', icon: n.icon||'📣', cls:'ai-red',
         title: n.title, body: n.body||'',
-        time: 'Just now', unread: true, act: true, _dbId: n.id
+        time: 'Just now', unread: true, act: true, _dbId: n.id,
+        dealRef: n.deal_ref || null
       });
       if(typeof renderAlerts==='function') renderAlerts('all');
       // Show a mini toast so user knows a notification arrived
@@ -9743,11 +9746,14 @@ function openAlertDetail(id){
   if(nameEl)   nameEl.textContent = _SENDER[a.type] || 'Appie Hour';
   // Build chat bubble — the "Deal Available" CTA only belongs on deal alerts,
   // not on plain admin/system messages.
+  // If the notification carries a deal reference ("uc:123" / "v:45"), View Deal
+  // opens THAT deal; otherwise fall back to the deals screen.
+  var _ref = (a.dealRef && /^(uc|v):\d+$/.test(String(a.dealRef))) ? String(a.dealRef) : '';
   var dealCard = (a.act && a.type !== 'system')
     ? '<div class="chat-deal-card">'
         +'<div style="font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🎯 Deal Available</div>'
         +'<div style="font-size:13px;color:#555;font-weight:500;line-height:1.5;">Tap below to see the full deal and grab it before it\'s gone.</div>'
-        +'<button class="chat-deal-btn" onclick="closeAlertDetail();goScreen(\'deals\')">View Deal →</button>'
+        +'<button class="chat-deal-btn" onclick="closeAlertDetail();'+(_ref ? 'openDealByRef(\''+_ref+'\')' : 'goScreen(\'deals\')')+'">View Deal →</button>'
       +'</div>'
     : '';
   document.getElementById('chat-body').innerHTML =
@@ -30722,6 +30728,26 @@ function openDirections() {
 
 function openDealById(id, kind) {
   if (kind === 'v') openVoucher(id); else openUCDeal(id);
+}
+
+// Open a deal from a notification reference: "uc:<db id>" (community) or
+// "v:<db id>" (verified). Community deals use client id = db id + 10000.
+// Falls back to the deals screen if the deal isn't loaded (expired/removed).
+function openDealByRef(ref){
+  try {
+    var p = String(ref||'').split(':'), kind = p[0], dbId = parseInt(p[1], 10);
+    if(dbId){
+      if(kind === 'v'){
+        var vd = (vouchers||[]).find(function(d){ return d._dbId===dbId || d.id===dbId; });
+        if(vd){ openVoucher(vd.id); return; }
+      } else {
+        var uc = (ucDeals||[]).find(function(d){ return d._dbId===dbId || d.id===dbId+10000; });
+        if(uc){ openUCDeal(uc.id); return; }
+      }
+      showToast('That deal is no longer available');
+    }
+  } catch(e){}
+  goScreen('deals');
 }
 
 function _buildHomeMapSrc(lat, lng) {

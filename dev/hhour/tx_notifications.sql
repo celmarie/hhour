@@ -77,10 +77,11 @@ set search_path = public
 as $$
 begin
   if NEW.status = 'approved' and OLD.status is distinct from 'approved' and NEW.user_id is not null then
-    insert into notifications (user_id, type, icon, icon_class, read, title, body)
+    insert into notifications (user_id, type, icon, icon_class, read, title, body, deal_ref)
     values (NEW.user_id, 'rewards', '🎉', 'ai-green', false,
             'Your deal is live! 🎉',
-            coalesce(NEW.venue_name, 'Your deal') || ' — "' || coalesce(NEW.title,'your happy hour') || '" was approved and is now visible to everyone. Thanks for contributing!');
+            coalesce(NEW.venue_name, 'Your deal') || ' — "' || coalesce(NEW.title,'your happy hour') || '" was approved and is now visible to everyone. Thanks for contributing!',
+            'uc:' || NEW.id);
   end if;
   return NEW;
 end;
