@@ -5452,7 +5452,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703131311';
+var BUILD_VERSION = '20260703144101';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -7102,7 +7102,7 @@ function _addrGoogleFallback(inputId, q, seq, d, inputEl) {
 function _addrRender(inputId, items, d, inputEl) {
   _addrValidSuggestions[inputId] = items.map(function(p){ return p.description; });
   var pin = '<svg width="16" height="20" viewBox="0 0 24 24" fill="#9E9E9E" style="flex-shrink:0;margin-top:1px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
-  d.innerHTML = items.slice(0,3).map(function(p,i){
+  d.innerHTML = items.slice(0,8).map(function(p,i){
     var main = p.main || (p.description||'').split(',')[0];
     var sec  = p.sec || '';
     var esc  = (p.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -11524,6 +11524,9 @@ async function _finishVoucherPurchase(paymentIntentId, opts){
       if(insRes && insRes.data) purchaseId = insRes.data.id;
       if(insRes && insRes.error) console.warn('[buyVoucher] insert returned error:', insRes.error.message);
       try { phCapture('voucher_purchased', { deal_id: curV, qty: qty }); } catch(e){}
+      // Notify buyer + venue owner (in-app alert + OS push via the notifications trigger).
+      // Fire-and-forget: a notification hiccup must never affect the purchase.
+      if(purchaseId != null){ try { db.rpc('tx_notify', { p_purchase_id: purchaseId, p_event: 'purchased' }).then(function(){},function(){}); } catch(e){} }
 
       // Reserve the chosen arrival time (race-safe RPC)
       if(isBooking && purchaseId != null){
@@ -20866,9 +20869,10 @@ async function adminApproveDeal(id){
           console.warn('[adminApproveDeal] credit not applied:', up && up.error);
           showToast('⚠️ Deal live, but credits not applied — run the profiles RLS fix');
         }
-        // Best-effort ledger + in-app notification for the submitter.
+        // Best-effort ledger for the submitter. (The "deal is live" notification now
+        // comes from the community_deals DB trigger — tx_notifications.sql — so ALL
+        // approve paths notify, not just this one. No client insert = no double-send.)
         db.from('credits_ledger').insert({ user_id:_submitterId, delta:_dealApproveCr, reason:'Deal approved', ref:String(dbId) }).then(function(){},function(){});
-        db.from('notifications').insert({ user_id:_submitterId, type:'rewards', title:'Your deal is live! 🎉', body:'You earned +'+_dealApproveCr+' credits for '+(deal.venue||deal.name||'your deal')+'.', icon:'🎁', icon_class:'ai-green' }).then(function(){},function(){});
         // If the submitter is the person currently signed in, reflect it live.
         if(typeof currentUser!=='undefined' && currentUser && currentUser.id===_submitterId){
           if(currentProfile) currentProfile.credits = nu;
@@ -25884,6 +25888,9 @@ async function meConfirmRedeem(purchaseId, code, customerName, dealName, price, 
       });
       await Promise.resolve(db.rpc('increment_profile_credits', {p_user_id: customerId, p_amount: crAmt})).catch(function(){});
     } catch(ce){ console.warn('[meConfirmRedeem] credits error:', ce); }
+
+    // Notify customer + venue owner about the redemption (fire-and-forget).
+    try { db.rpc('tx_notify', { p_purchase_id: purchaseId, p_event: 'redeemed' }).then(function(){},function(){}); } catch(e){}
 
     // 3. Log locally
     _meRedeemLog.unshift({
