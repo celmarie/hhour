@@ -1,7 +1,8 @@
 -- Booking notifications: merchant gets an alert when an arrival booking is made,
 -- rescheduled or cancelled; customers get a reminder on the morning of their
--- booking. Rides the existing notifications table + push trigger, so OS push
--- works automatically. Safe to run more than once.
+-- booking. Counts are the voucher QUANTITY purchased (there is no separate
+-- guest count in the flow). Rides the existing notifications table + push
+-- trigger, so OS push works automatically. Safe to run more than once.
 
 -- 1) Merchant alerts ---------------------------------------------------------
 create or replace function public.notify_booking_change()
@@ -14,28 +15,31 @@ declare
   v_owner uuid;
   v_deal  text;
   v_name  text;
+  v_qty   int;
+  v_lbl   text;
 begin
   select v.owner_id, d.title into v_owner, v_deal
   from deals d join venues v on v.id = d.venue_id
   where d.id = NEW.deal_id;
   if v_owner is null then return NEW; end if;
   select coalesce(name, 'A customer') into v_name from profiles where id = NEW.user_id;
+  select qty into v_qty from voucher_purchases where id = NEW.purchase_id;
+  v_qty := coalesce(v_qty, NEW.guests, 1);
+  v_lbl := v_qty || ' voucher' || case when v_qty > 1 then 's' else '' end;
 
   if TG_OP = 'INSERT' and NEW.status = 'confirmed' then
     insert into notifications (user_id, type, icon, icon_class, read, title, body, deal_ref)
     values (v_owner, 'system', '📅', 'ai-green', false,
             'New arrival booking',
-            v_name || ' booked ' || NEW.guests || ' guest' || case when NEW.guests > 1 then 's' else '' end
-            || ' for ' || to_char(NEW.booking_date, 'DD Mon') || ' at ' || NEW.arrival_time
-            || ' — "' || coalesce(v_deal, 'your deal') || '".',
+            v_name || ' booked an arrival for ' || to_char(NEW.booking_date, 'DD Mon') || ' at ' || NEW.arrival_time
+            || ' (' || v_lbl || ') — "' || coalesce(v_deal, 'your deal') || '".',
             'v:' || NEW.deal_id);
   elsif TG_OP = 'UPDATE' and NEW.status = 'cancelled' and OLD.status = 'confirmed' then
     insert into notifications (user_id, type, icon, icon_class, read, title, body, deal_ref)
     values (v_owner, 'system', '🗓️', 'ai-red', false,
             'Booking cancelled',
             v_name || ' cancelled their ' || to_char(NEW.booking_date, 'DD Mon') || ' ' || NEW.arrival_time
-            || ' booking (' || NEW.guests || ' guest' || case when NEW.guests > 1 then 's' else '' end
-            || ') — "' || coalesce(v_deal, 'your deal') || '".',
+            || ' booking (' || v_lbl || ') — "' || coalesce(v_deal, 'your deal') || '".',
             'v:' || NEW.deal_id);
   elsif TG_OP = 'UPDATE' and NEW.status = 'confirmed' and OLD.status = 'confirmed'
         and (NEW.booking_date <> OLD.booking_date or NEW.arrival_time <> OLD.arrival_time) then
@@ -43,8 +47,7 @@ begin
     values (v_owner, 'system', '📅', 'ai-purple', false,
             'Booking rescheduled',
             v_name || ' moved their booking to ' || to_char(NEW.booking_date, 'DD Mon') || ' at ' || NEW.arrival_time
-            || ' (' || NEW.guests || ' guest' || case when NEW.guests > 1 then 's' else '' end
-            || ') — "' || coalesce(v_deal, 'your deal') || '".',
+            || ' (' || v_lbl || ') — "' || coalesce(v_deal, 'your deal') || '".',
             'v:' || NEW.deal_id);
   end if;
   return NEW;
