@@ -5463,7 +5463,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703215657';
+var BUILD_VERSION = '20260703220258';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -18759,16 +18759,31 @@ async function adminOpenDupVenues(){
       (wr.data||[]).forEach(function(s){ if(s.status==='rejected') return; var k=_admVenueNorm(s.venue_name); if(!k) return; (wg[k]=wg[k]||[]).push(s); });
       watchDups=Object.keys(wg).map(function(k){ return wg[k]; }).filter(function(g){ return g.length>1; });
     } catch(e){}
-    _admRenderDupVenues(dupGroups, dcount, venues.length, watchDups);
+    // 🍸 Possible duplicate community deals — several live deals at the SAME venue
+    // name AND address (name alone isn't enough: chains like Hard Rock Cafe exist
+    // in many cities). Admin decides if it's the same deal submitted twice.
+    var dealDups=[];
+    try {
+      var cdr = await db.from('community_deals').select('id,venue_name,title,address,user_name,created_at,price,was_price,hours').eq('status','approved').is('deleted_at', null).order('venue_name');
+      var dgm={};
+      (cdr.data||[]).forEach(function(d){
+        var nk=_admVenueNorm(d.venue_name); if(!nk) return;
+        var k=nk+'@'+String(d.address||'').trim().toLowerCase().replace(/\s+/g,' ');
+        (dgm[k]=dgm[k]||[]).push(d);
+      });
+      dealDups=Object.keys(dgm).map(function(k){ return dgm[k]; }).filter(function(g){ return g.length>1; });
+    } catch(e){}
+    _admRenderDupVenues(dupGroups, dcount, venues.length, watchDups, dealDups);
   } catch(e){
     holder.innerHTML='<div onclick="adminCloseDupVenues()" style="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;"><div style="background:#fff;border-radius:16px;padding:24px;max-width:360px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#dc2626;margin-bottom:8px;">Couldn’t load venues</div><div style="font-size:13px;color:#666;">'+esc((e&&e.message)||'Error')+'</div></div></div>';
   }
 }
 function adminCloseDupVenues(){ var h=document.getElementById('adm-dupven-holder'); if(h) h.innerHTML=''; }
-function _admRenderDupVenues(dupGroups, dcount, total, watchDups){
+function _admRenderDupVenues(dupGroups, dcount, total, watchDups, dealDups){
   var holder=document.getElementById('adm-dupven-holder'); if(!holder) return;
   var esc2=function(s){ return String(s==null?'':s).replace(/['"\\]/g,''); };
   watchDups = watchDups || [];
+  dealDups = dealDups || [];
   var inner;
   if(!dupGroups.length){
     inner='<div style="text-align:center;padding:26px 8px;"><div style="font-size:40px;margin-bottom:10px;">✅</div><div style="font-size:16px;font-weight:900;color:#1A1A1A;margin-bottom:4px;">No duplicate venues</div><div style="font-size:13px;color:#9A9AB0;">Scanned '+total+' venues — all unique by name.</div></div>';
@@ -18810,10 +18825,29 @@ function _admRenderDupVenues(dupGroups, dcount, total, watchDups){
           +'</div>';
         }).join('');
   }
-  var _totGroups = dupGroups.length + watchDups.length;
+  // 🍸 Possible duplicate deals — same venue name + address with several live deals.
+  if(dealDups.length){
+    inner += '<div style="font-size:12px;font-weight:800;color:#B45309;margin:18px 2px 10px;">🍸 SAME VENUE &amp; ADDRESS — POSSIBLE DUPLICATE DEALS</div>'
+      + dealDups.map(function(g){
+          var rows=g.map(function(d){
+            return '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid #EEE;border-radius:12px;margin-bottom:8px;">'
+              +'<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#1A1A1A;">'+esc(d.title||'')+'</div>'
+              +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">by '+esc(d.user_name||'Anonymous')+' · '+esc(String(d.created_at||'').slice(0,10))+(d.price!=null?' · '+esc(d.price)+(d.was_price?' (was '+esc(d.was_price)+')':''):'')+(d.hours?' · '+esc(d.hours):'')+'</div></div>'
+              +'<button onclick="adminCloseDupVenues();adminReviewDeal('+Number(d.id)+')" title="Open / edit" style="background:#F5F5F7;color:#555;border:1.5px solid #E8E8EC;border-radius:10px;padding:7px 9px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;">✏️</button>'
+              +'<button onclick="adminDupDealRemove('+Number(d.id)+',\''+esc2(d.title)+'\')" title="Remove this duplicate" style="background:#fff;color:#B91C1C;border:1.5px solid rgba(232,25,44,.35);border-radius:10px;padding:7px 9px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;">🗑</button>'
+            +'</div>';
+          }).join('');
+          return '<div style="background:#FFFBEB;border:1.5px solid rgba(217,119,6,.3);border-radius:14px;padding:12px;margin-bottom:14px;">'
+            +'<div style="font-size:12px;font-weight:800;color:#B45309;margin-bottom:2px;">🍸 "'+esc(g[0].venue_name)+'" — '+g.length+' deals</div>'
+            +'<div style="font-size:11px;color:#9A9AB0;margin-bottom:8px;">'+esc(g[0].address||'—')+'</div>'+rows
+            +'<div style="font-size:10.5px;color:#9A9AB0;margin-top:2px;line-height:1.5;">Same place, several deals — fine if they’re genuinely different offers. If two are the same deal submitted twice, 🗑 the extra copy (it moves to Scheduled Deletion, so it can be restored).</div>'
+          +'</div>';
+        }).join('');
+  }
+  var _totGroups = dupGroups.length + watchDups.length + dealDups.length;
   holder.innerHTML='<div onclick="if(event.target===this)adminCloseDupVenues()" style="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;padding:28px 16px;box-sizing:border-box;overflow-y:auto;font-family:Inter,sans-serif;">'
     +'<div style="background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.35);">'
-    +'<div style="padding:16px 18px;border-bottom:1px solid #F0F0F4;display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">🔀</div><div style="flex:1;"><div style="font-size:16px;font-weight:900;color:#1A1A1A;">Duplicate venues &amp; match spots</div><div style="font-size:11px;color:#9A9AB0;">'+(_totGroups?(_totGroups+' group'+(_totGroups!==1?'s':'')+' found'):'')+'</div></div>'
+    +'<div style="padding:16px 18px;border-bottom:1px solid #F0F0F4;display:flex;align-items:center;gap:10px;"><div style="font-size:22px;">🔀</div><div style="flex:1;"><div style="font-size:16px;font-weight:900;color:#1A1A1A;">Duplicate venues, deals &amp; match spots</div><div style="font-size:11px;color:#9A9AB0;">'+(_totGroups?(_totGroups+' group'+(_totGroups!==1?'s':'')+' found'):'')+'</div></div>'
     +'<button onclick="adminCloseDupVenues()" style="background:#F5F5F7;border:none;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;color:#555;">✕</button></div>'
     +'<div style="flex:1;overflow-y:auto;padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 16px);">'+inner+'</div>'
     +'</div></div>';
@@ -18836,6 +18870,19 @@ async function adminMergeWatchSpots(keepId, removeIdsCsv, keepName){
   if(err) showToast('⚠️ '+(/admin_merge_watch_spots|function|does not exist|schema cache/i.test(err)?'Run merge_watch_spots.sql in Supabase first':(/admins only/i.test(err)?'Admins only':err)));
   try { if(typeof adminLoadWatchSpots==='function') adminLoadWatchSpots(); } catch(e){}
   try { adminOpenDupVenues(); } catch(e){}
+}
+
+// 🍸 Remove one duplicate deal copy (soft delete — goes to Scheduled Deletion, restorable).
+async function adminDupDealRemove(dbId, title){
+  if(!confirm('Remove this deal?\n\n"'+(title||'')+'"\n\nIt disappears from customers right away and moves to Scheduled Deletion (it can be restored from there).')) return;
+  try {
+    var r = await db.from('community_deals').update({ deleted_at: new Date().toISOString(), status: 'removed' }).eq('id', Number(dbId));
+    if(r.error) throw r.error;
+    showToast('✅ Duplicate removed');
+    try { pendingCommunityDeals = pendingCommunityDeals.filter(function(d){ return d._dbId!==Number(dbId); }); } catch(e){}
+    try { ucDeals = ucDeals.filter(function(d){ return d._dbId!==Number(dbId); }); } catch(e){}
+  } catch(e){ showToast('⚠️ '+((e&&e.message)||'Could not remove')); }
+  try { adminOpenDupVenues(); } catch(e){}   // re-scan so the handled group updates
 }
 
 async function adminMergeVenues(keepId, removeIdsCsv, keepName){
@@ -21491,8 +21538,8 @@ function adminOpenDealReview(id, source){
     document.getElementById('adm-edit-was').value = deal.wasPrice||'';
     document.getElementById('adm-edit-cat').value = _canonCat(deal.cat);
     document.getElementById('adm-edit-website').value = deal.website||deal.social||'';
-    document.getElementById('adm-edit-date-start').value = deal.start_date||'';
-    document.getElementById('adm-edit-date-end').value = deal.end_date||'';
+    document.getElementById('adm-edit-date-start').value = deal.startDate||deal.start_date||'';
+    document.getElementById('adm-edit-date-end').value = deal.endDate||deal.end_date||'';
     var timeParts = (deal.hours||'').split('–').map(function(t){return t.trim();});
     document.getElementById('adm-edit-time-start').value = admParseTo24(timeParts[0]||'');
     document.getElementById('adm-edit-time-end').value = admParseTo24(timeParts[1]||'');
@@ -21799,8 +21846,8 @@ function adminReviewDeal(id){
   document.getElementById('adm-edit-website').value = deal.website||deal.social||'';
 
   // Parse dates
-  document.getElementById('adm-edit-date-start').value = deal.start_date||'';
-  document.getElementById('adm-edit-date-end').value = deal.end_date||'';
+  document.getElementById('adm-edit-date-start').value = deal.startDate||deal.start_date||'';
+  document.getElementById('adm-edit-date-end').value = deal.endDate||deal.end_date||'';
 
   // Parse time from hours string e.g. "5PM – 9PM"
   var timeParts = (deal.hours||'').split('–').map(function(t){return t.trim();});
