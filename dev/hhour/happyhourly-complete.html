@@ -4206,26 +4206,13 @@ function _loadGT(){
             <div id="cr-progress-bar" style="width:63%;height:100%;background:linear-gradient(90deg,#FF6B35,#E8192C);border-radius:6px;"></div>
           </div>
         </div>
-        <!-- HappyCash wallet -->
-        <div style="background:white;margin:12px 14px 0;border-radius:14px;border:1.5px solid var(--border);padding:16px;">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <!-- HappyCash wallet — conversion not launched yet, teaser card for now -->
+        <div style="background:linear-gradient(135deg,#F0FDF4,#ECFDF5);margin:12px 14px 0;border-radius:14px;border:1.5px solid rgba(18,161,80,.25);padding:16px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="font-size:26px;flex-shrink:0;">🚀</div>
             <div style="min-width:0;">
-              <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;">💶 HappyCash Wallet</div>
-              <div style="font-size:26px;font-weight:900;color:#12A150;margin-top:2px;line-height:1;" id="cr-wallet-balance">€0.00</div>
-              <div style="font-size:11px;color:#9A9AB0;font-weight:600;margin-top:3px;">Spend it at checkout to pay for deals</div>
-            </div>
-            <button onclick="crOpenConvert()" style="flex-shrink:0;background:#12A150;color:white;border:none;border-radius:12px;padding:11px 15px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Convert</button>
-          </div>
-          <div id="cr-convert-box" style="display:none;border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
-            <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Convert credits → HappyCash</div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input id="cr-convert-input" type="number" min="0" step="1" placeholder="Credits to convert" oninput="crConvertPreview()" style="flex:1;min-width:0;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:12px;font-family:Inter,sans-serif;font-size:15px;font-weight:700;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E8E8EC'">
-              <button onclick="crConvertMax()" style="flex-shrink:0;background:#F0F0F4;border:none;border-radius:10px;padding:12px 14px;font-size:12px;font-weight:800;color:#555;cursor:pointer;font-family:Inter,sans-serif;">Max</button>
-            </div>
-            <div id="cr-convert-preview" style="font-size:12.5px;color:#12A150;font-weight:700;margin-top:8px;">= €0.00</div>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-              <button onclick="crDoConvert()" style="flex:2;background:linear-gradient(135deg,#12A150,#0B7A3C);color:white;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Convert to wallet</button>
-              <button onclick="crCloseConvert()" style="flex:1;background:#F5F5F7;color:#555;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>
+              <div style="font-size:11px;font-weight:800;color:#0B7A3C;text-transform:uppercase;letter-spacing:.5px;">💶 HappyCash — Coming Soon</div>
+              <div style="font-size:12.5px;color:#374151;font-weight:600;margin-top:4px;line-height:1.5;">Your Happy Credits don’t have a money value just yet. Soon you’ll be able to convert them into HappyCash and spend them on deals — keep earning!</div>
             </div>
           </div>
         </div>
@@ -5463,7 +5450,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260703223041';
+var BUILD_VERSION = '20260703230648';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
