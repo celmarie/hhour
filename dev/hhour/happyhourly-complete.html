@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705011054';
+var BUILD_VERSION = '20260705012426';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -10485,11 +10485,13 @@ function openDeal(deal){
   const saveBtn=document.getElementById('vd-save-btn');
   if(saveBtn) saveBtn.textContent=isSaved?'❤️':'🤍';
 
-  // Store venue for directions + mini-map
+  // Store venue for directions + mini-map. Prefer the ADDRESS as the maps query:
+  // venue names (chains, generic bar names) match many places on Google Maps.
   _currentVenueName = deal.name || '';
+  _currentVenueAddr = deal.address || '';
   var miniMap = document.getElementById('vd-mini-map');
   if (miniMap) {
-    var src = _buildMiniMapSrc(_currentVenueName);
+    var src = _buildMiniMapSrc(_currentVenueAddr || _currentVenueName);
     if (src && miniMap.src !== src) miniMap.src = src;
     miniMap.closest('div').style.display = src ? 'block' : 'none';
   }
@@ -30834,6 +30836,7 @@ function _ensureLeaflet(cb){
 var _gmapMarkersAt = 0;            // when pins were last placed (map cache freshness)
 var MAP_STALE_MS = 5 * 60 * 1000;  // re-fetch/re-place only after 5 min, not every visit
 var _currentVenueName = '';
+var _currentVenueAddr = '';
 var _gmapsLoading = false;
 var _gmapsLoadCallbacks = [];
 var _autocompleteInited = false;
@@ -31072,7 +31075,8 @@ function openAddressOnMaps() {
 }
 
 function openDirections() {
-  var query = encodeURIComponent(_currentVenueName || '');
+  // Address first — venue names are ambiguous on Google Maps (chains, common names).
+  var query = encodeURIComponent(_currentVenueAddr || _currentVenueName || '');
   if (!query) { showToast('No venue info available'); return; }
   _openExternal('https://maps.google.com/?q=' + query);
 }
