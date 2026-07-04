@@ -5467,7 +5467,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704015245';
+var BUILD_VERSION = '20260704021401';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -27554,10 +27554,11 @@ function meBkToggle(which){
   if(which === 'required'){
     var body = document.getElementById('me-bk-body');
     if(body) body.style.display = on ? 'block' : 'none';
-    // First enable with an empty list → seed one row to guide the merchant
-    if(on && document.querySelectorAll('#me-bk-times-list .me-bk-row').length === 0){
-      meBkAddTimeRow('17:00','10');
-    }
+    // Booking ON = the per-date allocations ARE the inventory, so the separate
+    // "Total Vouchers Available" input disappears (total is computed at save).
+    var tw = document.getElementById('me-total-wrap');
+    if(tw) tw.style.display = on ? 'none' : '';
+    if(on){ try { meBkGenDateRows(); } catch(e){} }
   }
 }
 function meBkIsOn(which){
@@ -27600,32 +27601,78 @@ function meBkClear(){
   if(list) list.innerHTML = '';
   var dlist = document.getElementById('me-bk-dates-list');
   if(dlist) dlist.innerHTML = '';
+  _meDateSlotPrefill = {};
   meBkSetToggle('required', false);
   meBkSetToggle('changeable', true);
   meBkSetToggle('walkin', false);
   var g = document.getElementById('me-grace-min'); if(g) g.value = '0';
 }
 
-// ── Date-specific slots (reservation-style: date + time + voucher allocation) ──
-function meBkAddDateRow(date, time, cap){
+// ── Vouchers per date: rows are AUTO-GENERATED from the deal's Start–End dates
+// and valid days, so out-of-range dates can't exist. Time is optional (empty =
+// the happy-hour start); vouchers empty/0 = that date is closed.
+var _meDateSlotPrefill = {};   // 'YYYY-MM-DD' → {time, cap} (from DB when editing)
+function meBkGenDateRows(){
   var list = document.getElementById('me-bk-dates-list');
   if(!list) return;
-  var row = document.createElement('div');
-  row.className = 'me-bk-drow';
-  row.style.cssText = 'display:flex;align-items:center;gap:8px;';
-  row.innerHTML =
-    '<input type="date" class="me-bk-ddate" value="'+(date||'')+'" style="flex:1.2;min-width:0;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:10px 8px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;">'
-    +'<input type="time" class="me-bk-dtime" value="'+(time||'')+'" style="flex:1;min-width:0;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:10px 8px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;">'
-    +'<input type="number" class="me-bk-dcap" min="1" value="'+(cap||'')+'" placeholder="Max" style="width:64px;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:10px 6px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;text-align:center;">'
-    +'<button type="button" onclick="this.parentElement.remove()" title="Remove" style="flex-shrink:0;width:30px;height:30px;border:none;background:rgba(232,25,44,.08);color:#E8192C;border-radius:8px;cursor:pointer;font-size:15px;font-weight:800;">×</button>';
-  list.appendChild(row);
+  // Preserve anything already typed before regenerating
+  var typed = {};
+  list.querySelectorAll('.me-bk-drow').forEach(function(r){
+    var d = r.getAttribute('data-date');
+    if(d) typed[d] = { time:(r.querySelector('.me-bk-dtime')||{}).value||'', cap:(r.querySelector('.me-bk-dcap')||{}).value||'' };
+  });
+  list.innerHTML = '';
+  var sd = (document.getElementById('me-deal-start-date')||{}).value || '';
+  var ed = (document.getElementById('me-deal-end-date')||{}).value || '';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(sd) || !/^\d{4}-\d{2}-\d{2}$/.test(ed)){
+    list.innerHTML = '<div style="font-size:12px;color:#9A9AB0;font-weight:600;padding:8px 2px;">Set the Start and End dates above — your dates will appear here.</div>';
+    return;
+  }
+  var days = (typeof meGetActiveDays==='function') ? meGetActiveDays() : [];
+  var sel = {}; days.forEach(function(x){ sel[String(x).slice(0,3).toLowerCase()] = 1; });
+  var daily = !days.length;
+  var names = ['sun','mon','tue','wed','thu','fri','sat'];
+  var d = new Date(sd+'T12:00:00'), e = new Date(ed+'T12:00:00'), i = 0, made = 0;
+  while(d <= e && i < 366 && made < 92){
+    if(daily || sel[names[d.getDay()]]){
+      var key = d.toISOString().slice(0,10);
+      var pre = typed[key] || _meDateSlotPrefill[key] || {};
+      var lbl = d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      var row = document.createElement('div');
+      row.className = 'me-bk-drow';
+      row.setAttribute('data-date', key);
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;';
+      row.innerHTML =
+        '<div style="flex:1.1;min-width:0;font-size:12.5px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+lbl+'</div>'
+        +'<input type="time" class="me-bk-dtime" value="'+(pre.time||'')+'" style="flex:1;min-width:0;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:9px 8px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;">'
+        +'<input type="number" class="me-bk-dcap" min="0" value="'+(pre.cap||'')+'" placeholder="0" style="width:64px;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:9px 6px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;text-align:center;">'
+        +'<span style="font-size:10.5px;color:#9A9AB0;font-weight:600;flex-shrink:0;">vch</span>';
+      list.appendChild(row);
+      made++;
+    }
+    d.setDate(d.getDate()+1); i++;
+  }
+  if(made >= 92) list.insertAdjacentHTML('beforeend','<div style="font-size:11px;color:#B45309;font-weight:600;padding:6px 2px;">Showing the first 92 days — shorten the deal period to manage later dates.</div>');
+  try { meBkCapPreview(); } catch(e){}
+}
+function meBkFillAll(){
+  var rows = document.querySelectorAll('#me-bk-dates-list .me-bk-drow');
+  if(!rows.length) return;
+  var t = (rows[0].querySelector('.me-bk-dtime')||{}).value||'';
+  var c = (rows[0].querySelector('.me-bk-dcap')||{}).value||'';
+  rows.forEach(function(r,i){
+    if(i===0) return;
+    var ti=r.querySelector('.me-bk-dtime'), ci=r.querySelector('.me-bk-dcap');
+    if(ti) ti.value=t; if(ci) ci.value=c;
+  });
   try { meBkCapPreview(); } catch(e){}
 }
 function meBkCollectDateSlots(){
+  var defTime = (document.getElementById('me-deal-time-start')||{}).value || '17:00';
   var out = {}, rows = document.querySelectorAll('#me-bk-dates-list .me-bk-drow');
   rows.forEach(function(r){
-    var d = (r.querySelector('.me-bk-ddate')||{}).value || '';
-    var t = (r.querySelector('.me-bk-dtime')||{}).value || '';
+    var d = r.getAttribute('data-date') || '';
+    var t = (r.querySelector('.me-bk-dtime')||{}).value || defTime;   // time optional → happy-hour start
     var c = parseInt((r.querySelector('.me-bk-dcap')||{}).value, 10);
     if(/^\d{4}-\d{2}-\d{2}$/.test(d) && /^\d{2}:\d{2}$/.test(t) && c > 0) out[d+'|'+t] = { on_date:d, time_label:t, capacity:c };
   });
@@ -27655,15 +27702,20 @@ async function meSaveDateSlots(dealDbId, slots){
   } catch(e){ console.warn('[meSaveDateSlots] failed:', e); }
 }
 async function meLoadDateSlots(dealDbId){
-  var list = document.getElementById('me-bk-dates-list');
-  if(list) list.innerHTML = '';
+  _meDateSlotPrefill = {};
   try {
     var { data } = await db.from('deal_date_slots')
       .select('on_date,time_label,capacity').eq('deal_id', dealDbId).eq('active', true)
       .order('on_date').order('time_label');
-    (data||[]).forEach(function(s){ meBkAddDateRow(s.on_date, s.time_label, s.capacity); });
+    (data||[]).forEach(function(s){
+      var cur = _meDateSlotPrefill[s.on_date];
+      // One row per date in the editor — merge multiple legacy slots by summing
+      _meDateSlotPrefill[s.on_date] = cur
+        ? { time: cur.time, cap: (parseInt(cur.cap,10)||0) + s.capacity }
+        : { time: s.time_label, cap: s.capacity };
+    });
   } catch(e){ console.warn('[meLoadDateSlots] failed:', e); }
-  try { meBkCapPreview(); } catch(e){}
+  try { meBkGenDateRows(); } catch(e){}
 }
 
 // ── Live capacity summary: slots × valid days vs total vouchers for sale ─────
@@ -27692,19 +27744,21 @@ function meBkCapPreview(){
       d.setDate(d.getDate()+1); i++;
     }
   } else { totBookable = perDay; dayCount = perDay > 0 ? 1 : 0; }
+  var bkOn = (typeof meBkIsOn==='function') && meBkIsOn('required');
   var total = parseInt((document.getElementById('me-deal-total')||{}).value, 10) || 0;
-  var ok = total <= totBookable;
+  var ok = bkOn || total <= totBookable;
   box.style.display = 'block';
   box.style.background = ok ? '#F0FDF4' : '#FFFBEB';
   box.style.border = '1.5px solid ' + (ok ? 'rgba(18,161,80,.3)' : 'rgba(217,119,6,.4)');
   box.style.color = '#374151';
-  box.innerHTML = '📊 ' + (perDay > 0 ? ('Up to <b>' + perDay + ' vouchers/day</b> · ') : '')
-    + '<b>' + dayCount + '</b> bookable day' + (dayCount !== 1 ? 's' : '') + ' → <b>' + totBookable + ' bookable</b>'
-    + ' · <b>' + total + ' for sale</b><br>'
-    + (ok
-        ? '<span style="color:#12A150;font-weight:800;">✓ Sale stops at ' + total + ' — first come, first served.</span>'
-        : '<span style="color:#B45309;font-weight:800;">⚠️ You’re selling ' + total + ' but only ' + totBookable + ' can book a time — lower the total or add slots.</span>'
-          + ' <button type="button" onclick="meBkCapMatch()" style="background:#12A150;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-left:4px;">Match to ' + totBookable + '</button>');
+  box.innerHTML = '📊 <b>' + dayCount + '</b> open day' + (dayCount !== 1 ? 's' : '') + ' → <b>' + totBookable + ' vouchers</b> total'
+    + (bkOn
+        ? '<br><span style="color:#12A150;font-weight:800;">✓ That’s your total for sale — set automatically.</span>'
+        : ' · <b>' + total + ' for sale</b><br>'
+          + (ok
+              ? '<span style="color:#12A150;font-weight:800;">✓ Sale stops at ' + total + ' — first come, first served.</span>'
+              : '<span style="color:#B45309;font-weight:800;">⚠️ You’re selling ' + total + ' but only ' + totBookable + ' can book a time — lower the total or add slots.</span>'
+                + ' <button type="button" onclick="meBkCapMatch()" style="background:#12A150;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-left:4px;">Match to ' + totBookable + '</button>'));
   window._meBkBookable = totBookable;
 }
 function meBkCapMatch(){
@@ -27712,18 +27766,27 @@ function meBkCapMatch(){
   if(t && window._meBkBookable > 0){ t.value = window._meBkBookable; }
   meBkCapPreview();
 }
-// Recalculate whenever anything feeding the math changes (slot rows, dates, total, day chips).
-document.addEventListener('input', function(e){
+// Recalculate whenever anything feeding the math changes; regenerate the
+// per-date rows when the schedule itself (dates / valid days) changes.
+function _meBkOnInput(e){
   var t = e.target; if(!t) return;
-  if((t.closest && (t.closest('#me-bk-times-list') || t.closest('#me-bk-dates-list'))) ||
-     t.id === 'me-deal-total' || t.id === 'me-deal-start-date' || t.id === 'me-deal-end-date'){
+  if(t.id === 'me-deal-start-date' || t.id === 'me-deal-end-date'){
+    if(typeof meBkIsOn==='function' && meBkIsOn('required')){ try { meBkGenDateRows(); } catch(_){} }
+    return;
+  }
+  if((t.closest && (t.closest('#me-bk-times-list') || t.closest('#me-bk-dates-list'))) || t.id === 'me-deal-total'){
     try { meBkCapPreview(); } catch(_){}
   }
-});
+}
+document.addEventListener('input', _meBkOnInput);
+document.addEventListener('change', _meBkOnInput);
 document.addEventListener('click', function(e){
   var t = e.target;
-  if(t && t.closest && (t.closest('.me-day-chip') || t.closest('#me-bk-times-list') || t.closest('#me-bk-dates-list'))){
-    setTimeout(function(){ try { meBkCapPreview(); } catch(_){} }, 0);
+  if(t && t.closest && t.closest('.me-day-chip')){
+    setTimeout(function(){
+      if(typeof meBkIsOn==='function' && meBkIsOn('required')){ try { meBkGenDateRows(); } catch(_){} }
+      else { try { meBkCapPreview(); } catch(_){} }
+    }, 0);
   }
 });
 async function meSaveArrivalTimes(dealDbId, times){
@@ -27999,6 +28062,13 @@ function _mePublishDealInner(){
   // Capture now — meCloseCreate() clears the form before the async save reads it
   var bkTimes = meBkCollectTimes();
   var bkDateSlots = (typeof meBkCollectDateSlots==='function') ? meBkCollectDateSlots() : [];
+  // Booking required → the per-date allocations ARE the inventory: total for
+  // sale is their sum (keeps the sell-cap trigger aligned with booking capacity).
+  if(typeof meBkIsOn==='function' && meBkIsOn('required') && bkDateSlots.length){
+    var _sumAlloc = bkDateSlots.reduce(function(s,x){ return s + x.capacity; }, 0);
+    var _te = document.getElementById('me-deal-total');
+    if(_te && _sumAlloc > 0) _te.value = _sumAlloc;
+  }
   if(bkRequired && bkTimes.length===0){
     showToast('⚠️ Add at least one arrival time (with max guests)'); return;
   }
@@ -32052,7 +32122,7 @@ function _setupDealMap() {
           <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Description <span style="color:#E8192C;">*</span></label>
           <textarea id="me-deal-desc" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:#1A1A1A;outline:none;height:90px;resize:none;box-sizing:border-box;line-height:1.5;" placeholder="Describe what customers get — be specific! e.g. 'Order any 2 cocktails and get a 3rd free. Valid at the bar only.'" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'"></textarea>
         </div>
-        <div>
+        <div id="me-total-wrap">
           <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Total Vouchers Available</label>
           <input id="me-deal-total" type="number" min="1" value="100" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
         </div>
@@ -32149,13 +32219,15 @@ function _setupDealMap() {
               <div style="position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:white;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .2s;"></div>
             </div>
           </div>
-          <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Arrival times &amp; vouchers per time</div>
-          <div id="me-bk-times-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-          <button type="button" onclick="meBkAddTimeRow('','')" style="margin-top:10px;width:100%;background:white;border:1.5px dashed #D1D5DB;color:#6B7280;border-radius:10px;padding:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">+ Add arrival time</button>
-          <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;margin:18px 0 4px;">📆 Date-specific slots (optional)</div>
-          <div style="font-size:11px;color:#9A9AB0;margin-bottom:10px;">Reservation-style: set times &amp; voucher allocation for a specific date. On dates that have their own slots, these replace the weekly times above.</div>
+          <div id="me-bk-weekly-wrap" style="display:none;">
+            <div id="me-bk-times-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;">📆 Vouchers per date</div>
+            <button type="button" onclick="meBkFillAll()" style="background:#F5F5F7;border:1.5px solid #E8E8EC;color:#555;border-radius:8px;padding:4px 10px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Apply first row to all</button>
+          </div>
+          <div style="font-size:11px;color:#9A9AB0;margin-bottom:10px;">Dates come from your Start–End dates &amp; valid days. Time is optional — leave it empty and guests can arrive any time in the happy-hour window. Leave vouchers empty (or 0) to close a date.</div>
           <div id="me-bk-dates-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-          <button type="button" onclick="meBkAddDateRow('','','')" style="margin-top:10px;width:100%;background:white;border:1.5px dashed #D1D5DB;color:#6B7280;border-radius:10px;padding:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">+ Add date slot</button>
           <div id="me-bk-cap-summary" style="display:none;margin-top:14px;border-radius:12px;padding:12px 14px;font-size:12px;font-weight:600;line-height:1.65;font-family:Inter,sans-serif;"></div>
         </div>
       </div>
