@@ -21,6 +21,20 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <style>
+  /* Map city search: kill the browser's blue focus ring — the white pill is the UI. */
+  #map-city-input, #map-city-input:focus {
+    outline: none !important; box-shadow: none !important; border: none !important;
+    -webkit-appearance: none; appearance: none;
+  }
+  /* Bottom-left map corner: zoom +/- on top, attribution UNDERNEATH, compact.
+     (OpenStreetMap's license requires keeping the credit visible, so it stays —
+     tiny, prefix-less, and out of the way.) */
+  .leaflet-bottom.leaflet-left { display: flex; flex-direction: column; align-items: flex-start; }
+  .leaflet-bottom.leaflet-left .leaflet-control-zoom { order: 1; }
+  .leaflet-bottom.leaflet-left .leaflet-control-attribution {
+    order: 2; font-size: 9px; line-height: 1.3; padding: 1px 5px;
+    background: rgba(255,255,255,.65); margin-top: 2px;
+  }
   /* Recolor the deal-map cluster bubbles: red core + purple halo (default green/yellow
      was hard to see on the OSM map). Applies at every size. */
   .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background-color: rgba(123,47,190,.35) !important; }
@@ -5475,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705005111';
+var BUILD_VERSION = '20260705010059';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -31634,6 +31648,7 @@ function _setupDealMap() {
     // belongs to the my-location + city-search buttons, which +/- was covering.
     try { _gmapObj.zoomControl.setPosition('bottomleft'); } catch(e){}
     try { _gmapObj.attributionControl.setPosition('bottomleft'); } catch(e){}
+    try { _gmapObj.attributionControl.setPrefix(''); } catch(e){}   // drop "Leaflet |" — © OSM credit stays (license)
     // Popups must sit IN FRONT: the floating filter chips + my-location button live
     // outside the map's stacking context, so they'd cover popups — hide them while
     // any popup is open and restore on close.
