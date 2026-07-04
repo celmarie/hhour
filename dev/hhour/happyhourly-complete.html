@@ -5467,7 +5467,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704021401';
+var BUILD_VERSION = '20260704024135';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -27611,15 +27611,46 @@ function meBkClear(){
 // ── Vouchers per date: rows are AUTO-GENERATED from the deal's Start–End dates
 // and valid days, so out-of-range dates can't exist. Time is optional (empty =
 // the happy-hour start); vouchers empty/0 = that date is closed.
-var _meDateSlotPrefill = {};   // 'YYYY-MM-DD' → {time, cap} (from DB when editing)
+var _meDateSlotPrefill = {};   // 'YYYY-MM-DD' → [{time, cap}, …] (from DB when editing)
+function _meBkHHWindow(){
+  return {
+    min: (document.getElementById('me-deal-time-start')||{}).value || '',
+    max: (document.getElementById('me-deal-time-end')||{}).value || ''
+  };
+}
+function _meBkDateRowHtml(key, lbl, time, cap, isExtra){
+  var w = _meBkHHWindow();
+  var tAttrs = (w.min?' min="'+w.min+'"':'')+(w.max?' max="'+w.max+'"':'');
+  var row = document.createElement('div');
+  row.className = 'me-bk-drow' + (isExtra ? ' me-bk-drow-extra' : '');
+  row.setAttribute('data-date', key);
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  row.innerHTML =
+    '<div style="flex:1.1;min-width:0;font-size:12.5px;font-weight:'+(isExtra?'600;color:#9A9AB0':'800;color:#1A1A1A')+';font-family:Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'+(isExtra?'text-align:right;padding-right:2px;':'')+'">'+(isExtra?'↳ also at':lbl)+'</div>'
+    +'<input type="time" class="me-bk-dtime"'+tAttrs+' value="'+(time||'')+'" style="flex:1;min-width:0;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:9px 8px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;">'
+    +'<input type="number" class="me-bk-dcap" min="0" value="'+(cap||'')+'" placeholder="0" style="width:64px;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:9px 6px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;text-align:center;">'
+    +(isExtra
+      ? '<button type="button" onclick="this.parentElement.remove();try{meBkCapPreview()}catch(e){}" title="Remove this time" style="flex-shrink:0;width:28px;height:28px;border:none;background:rgba(232,25,44,.08);color:#E8192C;border-radius:8px;cursor:pointer;font-size:14px;font-weight:800;">×</button>'
+      : '<button type="button" onclick="meBkAddTimeFor(\''+key+'\')" title="Add another time on this date" style="flex-shrink:0;width:28px;height:28px;border:none;background:#F0F2F5;color:#555;border-radius:8px;cursor:pointer;font-size:15px;font-weight:800;">+</button>');
+  return row;
+}
+function meBkAddTimeFor(dateKey){
+  var list = document.getElementById('me-bk-dates-list');
+  if(!list) return;
+  var rows = list.querySelectorAll('.me-bk-drow[data-date="'+dateKey+'"]');
+  if(!rows.length) return;
+  var last = rows[rows.length-1];
+  last.insertAdjacentElement('afterend', _meBkDateRowHtml(dateKey, '', '', '', true));
+}
 function meBkGenDateRows(){
   var list = document.getElementById('me-bk-dates-list');
   if(!list) return;
-  // Preserve anything already typed before regenerating
+  // Preserve anything already typed before regenerating (every row per date, in order)
   var typed = {};
   list.querySelectorAll('.me-bk-drow').forEach(function(r){
     var d = r.getAttribute('data-date');
-    if(d) typed[d] = { time:(r.querySelector('.me-bk-dtime')||{}).value||'', cap:(r.querySelector('.me-bk-dcap')||{}).value||'' };
+    if(!d) return;
+    (typed[d] = typed[d] || []).push({ time:(r.querySelector('.me-bk-dtime')||{}).value||'', cap:(r.querySelector('.me-bk-dcap')||{}).value||'' });
   });
   list.innerHTML = '';
   var sd = (document.getElementById('me-deal-start-date')||{}).value || '';
@@ -27636,18 +27667,11 @@ function meBkGenDateRows(){
   while(d <= e && i < 366 && made < 92){
     if(daily || sel[names[d.getDay()]]){
       var key = d.toISOString().slice(0,10);
-      var pre = typed[key] || _meDateSlotPrefill[key] || {};
+      var pres = typed[key] || _meDateSlotPrefill[key] || [{}];
       var lbl = d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-      var row = document.createElement('div');
-      row.className = 'me-bk-drow';
-      row.setAttribute('data-date', key);
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;';
-      row.innerHTML =
-        '<div style="flex:1.1;min-width:0;font-size:12.5px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+lbl+'</div>'
-        +'<input type="time" class="me-bk-dtime" value="'+(pre.time||'')+'" style="flex:1;min-width:0;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:9px 8px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;">'
-        +'<input type="number" class="me-bk-dcap" min="0" value="'+(pre.cap||'')+'" placeholder="0" style="width:64px;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:9px 6px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;text-align:center;">'
-        +'<span style="font-size:10.5px;color:#9A9AB0;font-weight:600;flex-shrink:0;">vch</span>';
-      list.appendChild(row);
+      pres.forEach(function(pre, pi){
+        list.appendChild(_meBkDateRowHtml(key, lbl, pre.time||'', pre.cap||'', pi > 0));
+      });
       made++;
     }
     d.setDate(d.getDate()+1); i++;
@@ -27656,7 +27680,7 @@ function meBkGenDateRows(){
   try { meBkCapPreview(); } catch(e){}
 }
 function meBkFillAll(){
-  var rows = document.querySelectorAll('#me-bk-dates-list .me-bk-drow');
+  var rows = document.querySelectorAll('#me-bk-dates-list .me-bk-drow:not(.me-bk-drow-extra)');
   if(!rows.length) return;
   var t = (rows[0].querySelector('.me-bk-dtime')||{}).value||'';
   var c = (rows[0].querySelector('.me-bk-dcap')||{}).value||'';
@@ -27668,13 +27692,19 @@ function meBkFillAll(){
   try { meBkCapPreview(); } catch(e){}
 }
 function meBkCollectDateSlots(){
-  var defTime = (document.getElementById('me-deal-time-start')||{}).value || '17:00';
+  var w = _meBkHHWindow();
+  var defTime = w.min || '17:00';
   var out = {}, rows = document.querySelectorAll('#me-bk-dates-list .me-bk-drow');
   rows.forEach(function(r){
     var d = r.getAttribute('data-date') || '';
     var t = (r.querySelector('.me-bk-dtime')||{}).value || defTime;   // time optional → happy-hour start
+    if(w.min && t < w.min) t = w.min;                                 // keep times inside the happy-hour window
+    if(w.max && t > w.max) t = w.max;
     var c = parseInt((r.querySelector('.me-bk-dcap')||{}).value, 10);
-    if(/^\d{4}-\d{2}-\d{2}$/.test(d) && /^\d{2}:\d{2}$/.test(t) && c > 0) out[d+'|'+t] = { on_date:d, time_label:t, capacity:c };
+    if(!(/^\d{4}-\d{2}-\d{2}$/.test(d) && /^\d{2}:\d{2}$/.test(t) && c > 0)) return;
+    var k = d+'|'+t;
+    if(out[k]) out[k].capacity += c;                                  // same date+time twice → allocations add up
+    else out[k] = { on_date:d, time_label:t, capacity:c };
   });
   return Object.keys(out).sort().map(function(k){ return out[k]; });
 }
@@ -27708,11 +27738,9 @@ async function meLoadDateSlots(dealDbId){
       .select('on_date,time_label,capacity').eq('deal_id', dealDbId).eq('active', true)
       .order('on_date').order('time_label');
     (data||[]).forEach(function(s){
-      var cur = _meDateSlotPrefill[s.on_date];
-      // One row per date in the editor — merge multiple legacy slots by summing
-      _meDateSlotPrefill[s.on_date] = cur
-        ? { time: cur.time, cap: (parseInt(cur.cap,10)||0) + s.capacity }
-        : { time: s.time_label, cap: s.capacity };
+      // Each saved slot becomes its own row — multiple times per date supported
+      (_meDateSlotPrefill[s.on_date] = _meDateSlotPrefill[s.on_date] || [])
+        .push({ time: s.time_label, cap: s.capacity });
     });
   } catch(e){ console.warn('[meLoadDateSlots] failed:', e); }
   try { meBkGenDateRows(); } catch(e){}
