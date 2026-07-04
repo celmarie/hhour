@@ -5330,7 +5330,7 @@ function _loadGT(){
       <div style="background:var(--red);padding:0 16px 6px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
         <button class="vd-back" onclick="goBack()" style="width:30px;height:30px;font-size:18px;">‹</button>
         <div style="font-size:16px;font-weight:800;color:white;flex:1;display:flex;align-items:center;gap:8px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Deals Near You</div>
-        <div id="map-deal-count" style="background:rgba(255,255,255,.2);color:white;border-radius:12px;padding:3px 9px;font-size:11.5px;font-weight:800;"></div>
+        <button onclick="mapToggleCitySearch()" title="Search city" style="background:rgba(255,255,255,.2);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
       </div>
       <!-- Map area: filters float OVER the map (Google-Maps style); no white strip, so the map sits right under the header. -->
       <div id="map-wrap" style="flex:2.7 1 0;position:relative;width:100%;min-height:200px;">
@@ -5343,7 +5343,6 @@ function _loadGT(){
         <button id="map-loc-btn" onclick="mapGoMyLocation()" title="My location" style="position:absolute;right:12px;bottom:14px;z-index:500;width:46px;height:46px;border-radius:14px;background:white;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
           <span style="display:block;width:22px;height:22px;border-radius:50%;background:rgba(37,99,235,.18);position:relative;"><span style="position:absolute;inset:5px;border-radius:50%;background:#2563EB;"></span></span>
         </button>
-        <button id="map-city-btn" onclick="mapToggleCitySearch()" title="Search city" style="position:absolute;right:12px;bottom:68px;z-index:500;width:46px;height:46px;border-radius:14px;background:white;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-size:19px;">🔍</button>
         <div id="map-city-search" style="display:none;position:absolute;top:12px;left:12px;right:12px;z-index:600;">
           <div style="display:flex;align-items:center;gap:6px;background:white;border-radius:999px;padding:6px 6px 6px 16px;box-shadow:0 10px 30px rgba(0,0,0,.3);">
             <span style="font-size:15px;flex-shrink:0;">🔍</span>
@@ -5476,7 +5475,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704150133';
+var BUILD_VERSION = '20260704150357';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
