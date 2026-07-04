@@ -5327,9 +5327,9 @@ function _loadGT(){
 
     <!-- ══ MAP SCREEN ══ -->
     <div class="screen" id="screen-map" style="overflow:hidden;display:flex;flex-direction:column;">
-      <div style="background:var(--red);padding:0 16px 6px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
-        <button class="vd-back" onclick="goBack()" style="width:30px;height:30px;font-size:18px;">‹</button>
-        <div style="font-size:16px;font-weight:800;color:white;flex:1;display:flex;align-items:center;gap:8px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Deals Near You</div>
+      <div style="background:var(--red);padding:0 16px 3px;display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <button class="vd-back" onclick="goBack()" style="width:26px;height:26px;font-size:17px;">‹</button>
+        <div style="font-size:15px;font-weight:800;color:white;flex:1;display:flex;align-items:center;gap:7px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Deals Near You</div>
         <button onclick="mapToggleCitySearch()" title="Search city" style="background:rgba(255,255,255,.2);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
       </div>
       <!-- Map area: filters float OVER the map (Google-Maps style); no white strip, so the map sits right under the header. -->
@@ -5347,7 +5347,7 @@ function _loadGT(){
           <div style="display:flex;align-items:center;gap:6px;background:white;border-radius:999px;padding:6px 6px 6px 16px;box-shadow:0 10px 30px rgba(0,0,0,.3);">
             <span style="font-size:15px;flex-shrink:0;">🔍</span>
             <input id="map-city-input" placeholder="Search city or place…" enterkeyhint="search" style="flex:1;min-width:0;background:none;border:none;padding:10px 4px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;-webkit-tap-highlight-color:transparent;" onkeydown="if(event.key==='Enter')mapCityGo()">
-            <button id="map-city-go" onclick="mapCityGo()" style="flex-shrink:0;background:#E8192C;color:#fff;border:none;border-radius:999px;padding:10px 18px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Go</button>
+            <button id="map-city-go" onclick="mapCityGo()" style="flex-shrink:0;background:#12A150;color:#fff;border:none;border-radius:999px;padding:10px 18px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Go</button>
             <button onclick="mapToggleCitySearch()" style="flex-shrink:0;background:#F0F2F5;color:#555;border:none;border-radius:50%;width:38px;height:38px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✕</button>
           </div>
         </div>
@@ -5475,7 +5475,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704150357';
+var BUILD_VERSION = '20260704151129';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -31184,7 +31184,9 @@ function _initMapClusterer(){
               else if(m._dealVerified) n.v++;
               else n.c++;
             });
-            if(n.fb > 0 && n.fb >= n.v && n.fb >= n.c) col = '#7B2FBE';   // ⚽ football
+            var hasDeals = (n.v + n.c) > 0;
+            if(n.fb > 0 && hasDeals)                   col = '#6B7280';   // mixed football + deals → gray
+            else if(n.fb > 0)                          col = '#7B2FBE';   // ⚽ football only
             else if(n.c >= n.v)                        col = '#E8192C';   // 👥 community deals
             else                                       col = '#2563EB';   // ✓ verified merchants
           } catch(e){}
