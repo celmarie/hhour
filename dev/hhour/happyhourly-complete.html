@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705012426';
+var BUILD_VERSION = '20260705012934';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -10429,15 +10429,15 @@ function openDeal(deal){
     statsEl.innerHTML=`
       <div class="vds"><div class="vds-val" style="color:var(--red);">${deal.price}</div><div class="vds-lbl">Price</div></div>
       <div class="vds"><div class="vds-val">${deal.timeLeft}</div><div class="vds-lbl">Time left</div></div>
-      <div class="vds"><div class="vds-val">${deal.claimed}</div><div class="vds-lbl">Claimed</div></div>`;
+      <div class="vds"><div class="vds-val">${deal.claimed}</div><div class="vds-lbl">Claimed</div></div>` + _vdValidTile(deal);
     document.getElementById('qty-num').textContent=1;
     document.getElementById('vd-total').textContent=deal.price;
   } else {
-    // Community: Distance · Hours · Days
+    // Community: Distance · Hours · Days (+ Valid dates when the deal has them)
     statsEl.innerHTML=`
       <div class="vds"><div class="vds-val">📍 ${deal.dist}</div><div class="vds-lbl">Distance</div></div>
       <div class="vds"><div class="vds-val" style="font-size:13px;">${deal.hours}</div><div class="vds-lbl">Hours</div></div>
-      <div class="vds"><div class="vds-val" style="font-size:13px;">${deal.days}</div><div class="vds-lbl">Days</div></div>`;
+      <div class="vds"><div class="vds-val" style="font-size:13px;">${deal.days}</div><div class="vds-lbl">Days</div></div>` + _vdValidTile(deal);
   }
 
   // Show buy section only for verified merchant deals
@@ -31072,6 +31072,20 @@ function openAddressOnMaps() {
   var addr = (document.getElementById('pa') || {value:''}).value.trim();
   if (!addr) return;
   _openExternal('https://maps.google.com/?q=' + encodeURIComponent(addr));
+}
+
+// Schedule & Validity tile for the deal detail stats row — only when the deal
+// actually has start/end dates ("4 Jul – 3 Aug", "Until 3 Aug", "From 4 Jul").
+function _vdValidTile(deal){
+  var s = deal.startDate || deal.start_date || '';
+  var e = deal.endDate || deal.end_date || '';
+  var f = function(d){ var x = new Date(String(d).slice(0,10)+'T12:00:00'); return isNaN(x) ? '' : x.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); };
+  var txt = '';
+  if(s && e) txt = f(s)+' – '+f(e);
+  else if(e) txt = 'Until '+f(e);
+  else if(s) txt = 'From '+f(s);
+  if(!txt) return '';
+  return '<div class="vds"><div class="vds-val" style="font-size:13px;">'+txt+'</div><div class="vds-lbl">Valid</div></div>';
 }
 
 function openDirections() {
