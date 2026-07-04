@@ -5467,7 +5467,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704030427';
+var BUILD_VERSION = '20260704032307';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -29521,31 +29521,32 @@ var WC_FIXTURES = [
   { id:'wc86', home:'Winner Group B',        away:'Third place (E/F/G/I/J)',     kickoffUTC:'2026-07-02T00:00:00+02:00' },
   { id:'wc87', home:'Winner Group J',        away:'Runner-up Group H',           kickoffUTC:'2026-07-03T21:00:00+02:00' },
 
-  // ── Round of 16 (4–7 Jul) ──
-  { id:'wc88', home:'Winner Match 73',       away:'Winner Match 75',             kickoffUTC:'2026-07-04T18:00:00+02:00' },
-  { id:'wc89', home:'Winner Match 74',       away:'Winner Match 77',             kickoffUTC:'2026-07-04T21:00:00+02:00' },
-  { id:'wc90', home:'Winner Match 76',       away:'Winner Match 78',             kickoffUTC:'2026-07-05T00:00:00+02:00' },
-  { id:'wc91', home:'Winner Match 79',       away:'Winner Match 80',             kickoffUTC:'2026-07-05T18:00:00+02:00' },
-  { id:'wc92', home:'Winner Match 83',       away:'Winner Match 84',             kickoffUTC:'2026-07-06T21:00:00+02:00' },
-  { id:'wc93', home:'Winner Match 81',       away:'Winner Match 82',             kickoffUTC:'2026-07-06T00:00:00+02:00' },
-  { id:'wc94', home:'Winner Match 85',       away:'Winner Match 87',             kickoffUTC:'2026-07-07T18:00:00+02:00' },
-  { id:'wc95', home:'Winner Match 86',       away:'Winner Match 88',             kickoffUTC:'2026-07-07T21:00:00+02:00' },
+  // ── Round of 16 (4–7 Jul, Madrid times) ──
+  { id:'wc88',  home:'Colombia',                  away:'Ghana',                    kickoffUTC:'2026-07-04T03:30:00+02:00' },
+  { id:'wc89',  home:'Canada',                    away:'Morocco',                  kickoffUTC:'2026-07-04T19:00:00+02:00' },
+  { id:'wc90',  home:'Paraguay',                  away:'France',                   kickoffUTC:'2026-07-04T23:00:00+02:00' },
+  { id:'wc91',  home:'Brazil',                    away:'Norway',                   kickoffUTC:'2026-07-05T22:00:00+02:00' },
+  { id:'wc92',  home:'Mexico',                    away:'England',                  kickoffUTC:'2026-07-06T02:00:00+02:00' },
+  { id:'wc93',  home:'Portugal',                  away:'Spain',                    kickoffUTC:'2026-07-06T21:00:00+02:00' },
+  { id:'wc94',  home:'USA',                       away:'Belgium',                  kickoffUTC:'2026-07-07T02:00:00+02:00' },
+  { id:'wc95',  home:'Argentina',                 away:'Egypt',                    kickoffUTC:'2026-07-07T18:00:00+02:00' },
+  { id:'wc96',  home:'Switzerland',               away:'Colombia / Ghana winner',  kickoffUTC:'2026-07-07T22:00:00+02:00' },
 
-  // ── Quarter-finals (9–11 Jul) ──
-  { id:'wc96', home:'Winner Match 89',       away:'Winner Match 90',             kickoffUTC:'2026-07-09T18:00:00+02:00' },
-  { id:'wc97', home:'Winner Match 91',       away:'Winner Match 92',             kickoffUTC:'2026-07-09T21:00:00+02:00' },
-  { id:'wc98', home:'Winner Match 93',       away:'Winner Match 94',             kickoffUTC:'2026-07-10T18:00:00+02:00' },
-  { id:'wc99', home:'Winner Match 95',       away:'Winner Match 96',             kickoffUTC:'2026-07-10T21:00:00+02:00' },
+  // ── Quarter-finals (9–12 Jul) ──
+  { id:'wc97',  home:'Paraguay / France winner',  away:'Canada / Morocco winner',  kickoffUTC:'2026-07-09T22:00:00+02:00' },  // QF1 · Boston
+  { id:'wc98',  home:'Portugal / Spain winner',   away:'USA / Belgium winner',     kickoffUTC:'2026-07-10T21:00:00+02:00' },  // QF2 · Los Angeles
+  { id:'wc99',  home:'Brazil / Norway winner',    away:'Mexico / England winner',  kickoffUTC:'2026-07-11T23:00:00+02:00' },  // QF3 · Miami
+  { id:'wc100', home:'Argentina / Egypt winner',  away:'Switzerland-side winner',  kickoffUTC:'2026-07-12T03:00:00+02:00' },  // QF4 · Kansas City
 
   // ── Semi-finals (14–15 Jul) ──
-  { id:'wc100', home:'Winner Match 97',      away:'Winner Match 98',             kickoffUTC:'2026-07-14T21:00:00+02:00' },
-  { id:'wc101', home:'Winner Match 99',      away:'Winner Match 100',            kickoffUTC:'2026-07-15T21:00:00+02:00' },
+  { id:'wc101', home:'QF1 winner',                away:'QF2 winner',               kickoffUTC:'2026-07-14T21:00:00+02:00' },  // SF1 · Dallas
+  { id:'wc102', home:'QF3 winner',                away:'QF4 winner',               kickoffUTC:'2026-07-15T21:00:00+02:00' },  // SF2 · Atlanta
 
-  // ── Third place (18 Jul) ──
-  { id:'wc102', home:'Loser Semi-final 1',   away:'Loser Semi-final 2',          kickoffUTC:'2026-07-18T21:00:00+02:00' },
+  // ── Third place (18 Jul · Miami) ──
+  { id:'wc103', home:'SF1 loser',                 away:'SF2 loser',                kickoffUTC:'2026-07-18T23:00:00+02:00' },
 
-  // ── Final (19 Jul) ──
-  { id:'wc103', home:'Winner Semi-final 1',  away:'Winner Semi-final 2',         kickoffUTC:'2026-07-19T21:00:00+02:00' }
+  // ── Final (19 Jul · MetLife Stadium, New Jersey) ──
+  { id:'wc104', home:'SF1 winner',                away:'SF2 winner',               kickoffUTC:'2026-07-19T21:00:00+02:00' }
 ];
 
 function _localDateStr(d){
