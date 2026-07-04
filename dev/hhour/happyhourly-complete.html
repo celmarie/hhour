@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705010637';
+var BUILD_VERSION = '20260705011054';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -20424,8 +20424,7 @@ function adminRenderCredits(){
     var earnFields = [
       ['cc-earn-buyvoucher',    'Buy voucher',     'earnBuyVoucher',    88 ],
       ['cc-earn-redeemvenue',   'Redeem at venue', 'earnRedeemVenue',   25 ],
-      ['cc-earn-postdeal',      'Post a deal',     'earnPostDeal',      35 ],
-      ['cc-earn-dealapproved',  'Deal approved',   'earnDealApproved',  15 ],
+      ['cc-earn-dealapproved',  'Post a deal (paid when approved)', 'earnDealApproved', 15 ],
       ['cc-earn-referfriend',   'Refer friend',    'earnReferFriend',   100],
       ['cc-earn-review',        'Leave review',    'earnLeaveReview',   10 ],
       ['cc-earn-eventapproved', 'Event approved',  'earnEventApproved', 50 ],
@@ -20639,7 +20638,6 @@ function admSaveCreditsConfig(){
     expiryDays:       v('cc-expiry',365),
     earnBuyVoucher:   v('cc-earn-buyvoucher',88),
     earnRedeemVenue:  v('cc-earn-redeemvenue',25),
-    earnPostDeal:     v('cc-earn-postdeal',35),
     earnDealApproved: v('cc-earn-dealapproved',15),
     earnReferFriend:  v('cc-earn-referfriend',100),
     earnLeaveReview:  v('cc-earn-review',10),
@@ -28716,7 +28714,7 @@ function crRenderEarnGrid(){
   var actions=[
     {icon:'🛍️',label:'Buy a voucher',  bonus:'+'+_ccGet('earnBuyVoucher',88),  action:"goScreen('deals');showToast('Browse & buy a voucher!')"},
     {icon:'✅',label:'Redeem at venue', bonus:'+'+_ccGet('earnRedeemVenue',25),  action:"showToast('Redeem your next voucher!')"},
-    {icon:'📣',label:'Post a deal',     bonus:'+'+_ccGet('earnPostDeal',35),      action:"goScreen('post')"},
+    {icon:'📣',label:'Post a deal',     bonus:'+'+_ccGet('earnDealApproved',15),  action:"goScreen('post')"},
     {icon:'🔗',label:'Refer a friend',  bonus:'+'+_ccGet('earnReferFriend',100), action:"showToast('Code: HAPPY-JD3 🔗')"},
     {icon:'⭐',label:'Leave a review',  bonus:'+'+_ccGet('earnLeaveReview',10),  action:"showToast('Visit a venue & review!')"},
     {icon:'🎉',label:'Join an event',   bonus:'+'+_ccGet('earnJoinEvent',10),    action:"goScreen('community')"},
