@@ -5473,7 +5473,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704111934';
+var BUILD_VERSION = '20260704113017';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -31623,8 +31623,9 @@ function _setupDealMap() {
       // WKWebView GPU killer — skip the animations, keep the map.
       zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false })
       .setView([center.lat, center.lng], 14);
-    // Zoom +/- to the lower-right; keep attribution bottom-left so they don't overlap.
-    try { _gmapObj.zoomControl.setPosition('bottomright'); } catch(e){}
+    // Zoom +/- lower-LEFT (stacked above the attribution): the lower-right corner
+    // belongs to the my-location + city-search buttons, which +/- was covering.
+    try { _gmapObj.zoomControl.setPosition('bottomleft'); } catch(e){}
     try { _gmapObj.attributionControl.setPosition('bottomleft'); } catch(e){}
     // Popups must sit IN FRONT: the floating filter chips + my-location button live
     // outside the map's stacking context, so they'd cover popups — hide them while
