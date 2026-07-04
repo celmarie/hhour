@@ -5467,7 +5467,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704032307';
+var BUILD_VERSION = '20260704033257';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -29578,9 +29578,13 @@ function loadWcFixturesFromDB(){
 var _wcFixturesDraft = null;
 function _wcFxEnsureDraft(){
   if(_wcFixturesDraft) return;
-  _wcFixturesDraft = (WC_FIXTURES||[]).map(function(f){
+  var seen = {};
+  _wcFixturesDraft = (WC_FIXTURES||[]).map(function(f, i){
     var d = new Date(f.kickoffUTC);
-    return { id:f.id, home:f.home, away:f.away,
+    var id = String(f.id || ('wcx'+i));
+    if(seen[id]) id = id + '_' + i;   // duplicate ids would break id-based edit/delete
+    seen[id] = 1;
+    return { id:id, home:f.home, away:f.away,
              date: isNaN(d)?'':_localDateStr(d), time: isNaN(d)?'':_localTimeStr(d) };
   });
 }
@@ -29604,21 +29608,35 @@ function _wcFxRowsHtml(){
   _wcFxSortDraft();
   if(!_wcFixturesDraft.length) return '<div style="font-size:12px;color:#9A9AB0;padding:6px 0;">No fixtures yet — add one below.</div>';
   var inp='background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:8px;padding:9px 10px;font-family:Inter,sans-serif;font-size:13px;color:#1A1A1A;outline:none;box-sizing:border-box;';
-  return _wcFixturesDraft.map(function(f,i){
+  return _wcFixturesDraft.map(function(f){
+    var fid = _watchEsc(String(f.id||''));
     return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">'
-      + '<input value="'+_watchEsc(f.home||'')+'" oninput="wcFxUpdate('+i+',\'home\',this.value)" placeholder="Home" style="flex:1;min-width:80px;'+inp+'">'
+      + '<input value="'+_watchEsc(f.home||'')+'" oninput="wcFxUpdate(\''+fid+'\',\'home\',this.value)" placeholder="Home" style="flex:1;min-width:80px;'+inp+'">'
       + '<span style="font-size:11px;color:#9A9AB0;font-weight:700;">vs</span>'
-      + '<input value="'+_watchEsc(f.away||'')+'" oninput="wcFxUpdate('+i+',\'away\',this.value)" placeholder="Away" style="flex:1;min-width:80px;'+inp+'">'
-      + '<input type="date" value="'+(f.date||'')+'" onchange="wcFxUpdate('+i+',\'date\',this.value)" style="'+inp+'">'
-      + '<input type="time" value="'+(f.time||'')+'" onchange="wcFxUpdate('+i+',\'time\',this.value)" style="'+inp+'">'
-      + '<button onclick="wcFxRemoveRow('+i+')" title="Remove" style="background:#FDEDED;border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;color:#E8192C;flex-shrink:0;">✕</button>'
+      + '<input value="'+_watchEsc(f.away||'')+'" oninput="wcFxUpdate(\''+fid+'\',\'away\',this.value)" placeholder="Away" style="flex:1;min-width:80px;'+inp+'">'
+      + '<input type="date" value="'+(f.date||'')+'" onchange="wcFxUpdate(\''+fid+'\',\'date\',this.value)" style="'+inp+'">'
+      + '<input type="time" value="'+(f.time||'')+'" onchange="wcFxUpdate(\''+fid+'\',\'time\',this.value)" style="'+inp+'">'
+      + '<button type="button" onclick="wcFxRemoveRow(\''+fid+'\')" title="Remove" style="background:#FDEDED;border:none;border-radius:8px;width:30px;height:30px;font-size:13px;cursor:pointer;color:#E8192C;flex-shrink:0;">✕</button>'
       + '</div>';
   }).join('');
 }
 function _wcFxRerender(){ var c=document.getElementById('wc-fixtures-rows'); if(c) c.innerHTML=_wcFxRowsHtml(); }
-function wcFxUpdate(i,field,val){ _wcFxEnsureDraft(); if(_wcFixturesDraft[i]) _wcFixturesDraft[i][field]=val; }
-function wcFxAddRow(){ _wcFxEnsureDraft(); _wcFixturesDraft.push({id:'wc'+Date.now(),home:'',away:'',date:'',time:''}); _wcFxRerender(); }
-function wcFxRemoveRow(i){ _wcFxEnsureDraft(); _wcFixturesDraft.splice(i,1); _wcFxRerender(); }
+// Rows are addressed by fixture ID, not index — the list re-sorts on every
+// render, so a baked-in index can point at the wrong (or a vanished) row.
+function _wcFxFind(id){
+  _wcFxEnsureDraft();
+  for(var i=0;i<_wcFixturesDraft.length;i++){ if(String(_wcFixturesDraft[i].id)===String(id)) return i; }
+  return -1;
+}
+function wcFxUpdate(id,field,val){ var i=_wcFxFind(id); if(i>-1) _wcFixturesDraft[i][field]=val; }
+function wcFxAddRow(){ _wcFxEnsureDraft(); _wcFixturesDraft.push({id:'wc'+Date.now()+'_'+_wcFixturesDraft.length,home:'',away:'',date:'',time:''}); _wcFxRerender(); }
+function wcFxRemoveRow(id){
+  var i=_wcFxFind(id);
+  if(i<0){ console.warn('[wcFxRemoveRow] no row for id', id); return; }
+  _wcFixturesDraft.splice(i,1);
+  _wcFxRerender();
+  showToast('Removed — tap 💾 Save fixtures to make it permanent');
+}
 async function wcFxSave(){
   _wcFxEnsureDraft();
   _wcFxSortDraft();
@@ -29663,8 +29681,8 @@ function wcFixturesCardHtml(){
     + '<div id="wcfx-body" style="display:'+(_open?'block':'none')+';padding:16px;">'
       + '<div id="wc-fixtures-rows">' + _wcFxRowsHtml() + '</div>'
       + '<div style="display:flex;gap:8px;margin-top:6px;">'
-        + '<button onclick="wcFxAddRow()" style="flex:1;background:#F5F5F7;color:#1A1A1A;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">+ Add match</button>'
-        + '<button onclick="wcFxSave()" style="flex:1;background:#12A150;color:white;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">💾 Save fixtures</button>'
+        + '<button type="button" onclick="wcFxAddRow()" style="flex:1;background:#F5F5F7;color:#1A1A1A;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">+ Add match</button>'
+        + '<button type="button" onclick="wcFxSave()" style="flex:1;background:#12A150;color:white;border:none;border-radius:10px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">💾 Save fixtures</button>'
       + '</div>'
     + '</div>'
   + '</div>';
