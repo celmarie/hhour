@@ -5327,13 +5327,13 @@ function _loadGT(){
 
     <!-- ══ MAP SCREEN ══ -->
     <div class="screen" id="screen-map" style="overflow:hidden;display:flex;flex-direction:column;">
-      <div style="background:var(--red);padding:14px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+      <div style="background:var(--red);padding:6px 20px 11px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
         <button class="vd-back" onclick="goBack()">‹</button>
         <div style="font-size:18px;font-weight:800;color:white;flex:1;display:flex;align-items:center;gap:9px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>Deals Near You</div>
         <div id="map-deal-count" style="background:rgba(255,255,255,.2);color:white;border-radius:12px;padding:4px 10px;font-size:12px;font-weight:800;"></div>
       </div>
       <!-- Map area: filters float OVER the map (Google-Maps style); no white strip, so the map sits right under the header. -->
-      <div id="map-wrap" style="flex:3 1 0;position:relative;width:100%;min-height:200px;">
+      <div id="map-wrap" style="flex:2.7 1 0;position:relative;width:100%;min-height:200px;">
         <div id="deal-map" style="position:absolute;inset:0;width:100%;height:100%;"></div>
         <div id="map-filter-chips" style="position:absolute;top:12px;left:0;right:0;z-index:500;display:flex;justify-content:center;gap:8px;padding:0 12px;pointer-events:none;flex-wrap:wrap;">
           <button id="filter-verified" onclick="toggleMapFilter('verified')" style="pointer-events:auto;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;border:2px solid #2563EB;background:white;color:#2563EB;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.2);"><div style="width:10px;height:10px;border-radius:50%;background:#2563EB;"></div>Verified</button>
@@ -5344,10 +5344,13 @@ function _loadGT(){
           <span style="display:block;width:22px;height:22px;border-radius:50%;background:rgba(37,99,235,.18);position:relative;"><span style="position:absolute;inset:5px;border-radius:50%;background:#2563EB;"></span></span>
         </button>
         <button id="map-city-btn" onclick="mapToggleCitySearch()" title="Search city" style="position:absolute;right:12px;bottom:68px;z-index:500;width:46px;height:46px;border-radius:14px;background:white;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-size:19px;">🔍</button>
-        <div id="map-city-search" style="display:none;position:absolute;top:56px;left:12px;right:12px;z-index:600;gap:8px;">
-          <input id="map-city-input" placeholder="Search city or place…" enterkeyhint="search" style="flex:1;min-width:0;background:white;border:none;border-radius:14px;padding:13px 16px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-shadow:0 4px 16px rgba(0,0,0,.25);" onkeydown="if(event.key==='Enter')mapCityGo()">
-          <button id="map-city-go" onclick="mapCityGo()" style="flex-shrink:0;background:#E8192C;color:#fff;border:none;border-radius:14px;padding:0 18px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.25);">Go</button>
-          <button onclick="mapToggleCitySearch()" style="flex-shrink:0;background:white;color:#555;border:none;border-radius:14px;width:46px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.25);">✕</button>
+        <div id="map-city-search" style="display:none;position:absolute;top:12px;left:12px;right:12px;z-index:600;">
+          <div style="display:flex;align-items:center;gap:6px;background:white;border-radius:999px;padding:6px 6px 6px 16px;box-shadow:0 10px 30px rgba(0,0,0,.3);">
+            <span style="font-size:15px;flex-shrink:0;">🔍</span>
+            <input id="map-city-input" placeholder="Search city or place…" enterkeyhint="search" style="flex:1;min-width:0;background:none;border:none;padding:10px 4px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;-webkit-tap-highlight-color:transparent;" onkeydown="if(event.key==='Enter')mapCityGo()">
+            <button id="map-city-go" onclick="mapCityGo()" style="flex-shrink:0;background:#E8192C;color:#fff;border:none;border-radius:999px;padding:10px 18px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Go</button>
+            <button onclick="mapToggleCitySearch()" style="flex-shrink:0;background:#F0F2F5;color:#555;border:none;border-radius:50%;width:38px;height:38px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✕</button>
+          </div>
         </div>
         <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;pointer-events:none;">
           <div style="font-size:32px;margin-bottom:8px;">🗺️</div>
@@ -5361,7 +5364,7 @@ function _loadGT(){
         </div>
       </div>
       <!-- Venues within the current map view — like Agoda's map+list. Scrollable, compact cards. -->
-      <div id="map-venue-list" style="flex:1 1 0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-top:1px solid var(--border);"></div>
+      <div id="map-venue-list" style="flex:1.3 1 0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-top:1px solid var(--border);"></div>
       <div id="map-offline" style="display:none;flex:1;width:100%;min-height:0;overflow-y:auto;background:var(--bg);box-sizing:border-box;"></div>
     </div>
 
@@ -5473,7 +5476,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704113017';
+var BUILD_VERSION = '20260704145153';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -31093,7 +31096,10 @@ function mapToggleCitySearch(){
   var b = document.getElementById('map-city-search');
   if(!b) return;
   var open = b.style.display !== 'none';
-  b.style.display = open ? 'none' : 'flex';
+  b.style.display = open ? 'none' : 'block';
+  // The search bar takes the chips' spot at the top — hide them while it's open.
+  var chips = document.getElementById('map-filter-chips');
+  if(chips) chips.style.visibility = open ? '' : 'hidden';
   if(!open){ var i = document.getElementById('map-city-input'); if(i){ i.value = ''; setTimeout(function(){ i.focus(); }, 60); } }
 }
 async function mapCityGo(){
