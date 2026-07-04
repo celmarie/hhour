@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705010059';
+var BUILD_VERSION = '20260705010637';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -28719,7 +28719,7 @@ function crRenderEarnGrid(){
     {icon:'📣',label:'Post a deal',     bonus:'+'+_ccGet('earnPostDeal',35),      action:"goScreen('post')"},
     {icon:'🔗',label:'Refer a friend',  bonus:'+'+_ccGet('earnReferFriend',100), action:"showToast('Code: HAPPY-JD3 🔗')"},
     {icon:'⭐',label:'Leave a review',  bonus:'+'+_ccGet('earnLeaveReview',10),  action:"showToast('Visit a venue & review!')"},
-    {icon:'🎂',label:'Birthday bonus',  bonus:'3×',                               action:"showToast('Auto-applied on your birthday!')"},
+    {icon:'🎉',label:'Join an event',   bonus:'+'+_ccGet('earnJoinEvent',10),    action:"goScreen('community')"},
   ];
   el.innerHTML=actions.map(function(a){
     return '<div onclick="'+a.action+'" style="background:white;border-radius:14px;border:1.5px solid var(--border);padding:14px 12px;cursor:pointer;" onmousedown="this.style.background=\'var(--redl)\'" onmouseup="this.style.background=\'white\'">'+
