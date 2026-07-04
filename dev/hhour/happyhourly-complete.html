@@ -5343,6 +5343,12 @@ function _loadGT(){
         <button id="map-loc-btn" onclick="mapGoMyLocation()" title="My location" style="position:absolute;right:12px;bottom:14px;z-index:500;width:46px;height:46px;border-radius:14px;background:white;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
           <span style="display:block;width:22px;height:22px;border-radius:50%;background:rgba(37,99,235,.18);position:relative;"><span style="position:absolute;inset:5px;border-radius:50%;background:#2563EB;"></span></span>
         </button>
+        <button id="map-city-btn" onclick="mapToggleCitySearch()" title="Search city" style="position:absolute;right:12px;bottom:68px;z-index:500;width:46px;height:46px;border-radius:14px;background:white;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-size:19px;">🔍</button>
+        <div id="map-city-search" style="display:none;position:absolute;top:56px;left:12px;right:12px;z-index:600;gap:8px;">
+          <input id="map-city-input" placeholder="Search city or place…" enterkeyhint="search" style="flex:1;min-width:0;background:white;border:none;border-radius:14px;padding:13px 16px;font-family:Inter,sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-shadow:0 4px 16px rgba(0,0,0,.25);" onkeydown="if(event.key==='Enter')mapCityGo()">
+          <button id="map-city-go" onclick="mapCityGo()" style="flex-shrink:0;background:#E8192C;color:#fff;border:none;border-radius:14px;padding:0 18px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.25);">Go</button>
+          <button onclick="mapToggleCitySearch()" style="flex-shrink:0;background:white;color:#555;border:none;border-radius:14px;width:46px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.25);">✕</button>
+        </div>
         <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10;pointer-events:none;">
           <div style="font-size:32px;margin-bottom:8px;">🗺️</div>
           <div style="font-size:14px;font-weight:700;color:var(--t2);">Loading map…</div>
@@ -5467,7 +5473,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704111706';
+var BUILD_VERSION = '20260704111934';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -31081,6 +31087,34 @@ function openDealByRef(ref){
   goScreen('deals');
 }
 
+// 🔍 City search on the deal map — geocodes via OpenStreetMap's Nominatim
+// (same provider as the map tiles; no API key) and jumps the view there.
+function mapToggleCitySearch(){
+  var b = document.getElementById('map-city-search');
+  if(!b) return;
+  var open = b.style.display !== 'none';
+  b.style.display = open ? 'none' : 'flex';
+  if(!open){ var i = document.getElementById('map-city-input'); if(i){ i.value = ''; setTimeout(function(){ i.focus(); }, 60); } }
+}
+async function mapCityGo(){
+  var i = document.getElementById('map-city-input');
+  var q = (i && i.value || '').trim();
+  if(!q) return;
+  var btn = document.getElementById('map-city-go');
+  if(btn){ btn.textContent = '…'; btn.disabled = true; }
+  try {
+    var r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+    var js = await r.json();
+    if(js && js[0] && _gmapObj){
+      _gmapObj.setView([parseFloat(js[0].lat), parseFloat(js[0].lon)], 12);
+      mapToggleCitySearch();
+    } else {
+      showToast('📍 Place not found — try another spelling');
+    }
+  } catch(e){ showToast('⚠️ Search failed — check your connection'); }
+  if(btn){ btn.textContent = 'Go'; btn.disabled = false; }
+}
+
 // 📍 "My location" button on the deal map — recenter on a fresh GPS fix,
 // falling back to the last remembered position if the fix fails/denied.
 function mapGoMyLocation(){
@@ -31597,7 +31631,7 @@ function _setupDealMap() {
     // any popup is open and restore on close.
     try {
       var _mapOverlayVis = function(hidden){
-        ['map-filter-chips','map-loc-btn'].forEach(function(id){
+        ['map-filter-chips','map-loc-btn','map-city-btn','map-city-search'].forEach(function(id){
           var el = document.getElementById(id);
           if(el) el.style.visibility = hidden ? 'hidden' : '';
         });
