@@ -3505,7 +3505,7 @@ function _loadGT(){
         <div style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:6px;">Invite-Only Deals 🔒</div>
         <div style="font-size:13px;color:var(--t3);font-weight:500;margin-bottom:20px;line-height:1.5;">Enter a private event code from a partner venue to unlock exclusive happy hour deals.</div>
         <div style="font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Event Code</div>
-        <input id="invite-code-inp" type="text" placeholder="e.g. SUNSET2025" style="width:100%;background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:var(--text);outline:none;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;transition:border-color .2s;" oninput="this.value=this.value.toUpperCase()" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
+        <input id="invite-code-inp" type="text" placeholder="Enter your code" style="width:100%;background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:var(--text);outline:none;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;transition:border-color .2s;" oninput="this.value=this.value.toUpperCase()" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
         <button onclick="redeemInviteCode()" style="width:100%;background:var(--red);color:white;border:none;border-radius:12px;padding:16px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;">Unlock Deal</button>
         <button onclick="closeInviteOverlay()" style="width:100%;background:none;border:none;font-size:14px;font-weight:700;color:var(--t3);cursor:pointer;font-family:'Inter',sans-serif;">Cancel</button>
       </div>
@@ -4839,7 +4839,7 @@ function _loadGT(){
         <div style="background:white;border-radius:16px;border:1.5px solid var(--border);padding:20px;margin-bottom:16px;">
           <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px;">Enter an event code</div>
           <div style="font-size:13px;color:var(--t3);font-weight:500;line-height:1.5;margin-bottom:16px;">Get a private code from a partner venue or friend to unlock exclusive deals not listed publicly.</div>
-          <input id="invite-screen-inp" type="text" placeholder="e.g. SUNSET2025" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:18px;font-weight:700;color:var(--text);outline:none;letter-spacing:3px;text-align:center;margin-bottom:12px;transition:border-color .2s;" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
+          <input id="invite-screen-inp" type="text" placeholder="Enter your code" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px 16px;font-family:'Inter',sans-serif;font-size:18px;font-weight:700;color:var(--text);outline:none;letter-spacing:3px;text-align:center;margin-bottom:12px;transition:border-color .2s;" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
           <button onclick="redeemScreenCode()" style="width:100%;background:var(--red);color:white;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">Unlock Deal 🔓</button>
         </div>
         <!-- Active invite deals -->
@@ -4848,7 +4848,7 @@ function _loadGT(){
           <div style="background:white;border-radius:14px;border:1.5px solid var(--border);padding:40px 20px;text-align:center;">
             <div style="font-size:36px;margin-bottom:10px;">🔒</div>
             <div style="font-size:14px;font-weight:700;color:var(--t2);">No invite deals yet</div>
-            <div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:5px;">Try codes: SUNSET2025 · HAPPYHOUR · VIP2025</div>
+            
           </div>
         </div>
         <!-- How it works -->
@@ -5475,7 +5475,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704151129';
+var BUILD_VERSION = '20260705005111';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -14302,7 +14302,7 @@ function redeemScreenCode(){
     if(inp)inp.value='';
     showToast('🎉 Unlocked: '+d.name+'!');
   } else {
-    showToast('Invalid code — try SUNSET2025, HAPPYHOUR or VIP2025');
+    showToast('Invalid or expired code');
   }
 }
 
@@ -14310,7 +14310,7 @@ function renderUnlockedDeals(){
   const el=document.getElementById('invite-unlocked-list');
   if(!el)return;
   if(!unlockedDeals.length){
-    el.innerHTML='<div style="background:white;border-radius:14px;border:1.5px solid var(--border);padding:40px 20px;text-align:center;"><div style="font-size:36px;margin-bottom:10px;">🔒</div><div style="font-size:14px;font-weight:700;color:var(--t2);">No invite deals yet</div><div style="font-size:12px;color:var(--t3);font-weight:500;margin-top:5px;">Try: SUNSET2025 · HAPPYHOUR · VIP2025</div></div>';
+    el.innerHTML='<div style="background:white;border-radius:14px;border:1.5px solid var(--border);padding:40px 20px;text-align:center;"><div style="font-size:36px;margin-bottom:10px;">🔒</div><div style="font-size:14px;font-weight:700;color:var(--t2);">No invite deals yet</div></div>';
     return;
   }
   el.innerHTML=unlockedDeals.map(d=>`
