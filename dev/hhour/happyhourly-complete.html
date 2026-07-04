@@ -5467,7 +5467,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704033257';
+var BUILD_VERSION = '20260704110946';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -29911,6 +29911,15 @@ function _watchMatchesSummaryHtml(s){
 
 // ── Spot detail popup (full match list + all details) ───────────────
 var _watchDetailId = null;
+// Map pin → THIS spot's detail (not the whole list). The watch screen loads its
+// spots on entry; _watchDetailId makes the list renderer re-open the detail as
+// soon as the data is there (see the hook at the end of the list render).
+function mapViewWatchSpot(id){
+  _watchDetailId = id;
+  goScreen('watch');
+  // If spots are already loaded, open straight away.
+  try { if((watchSpots||[]).some(function(x){ return x.id===id; })) watchOpenSpotDetail(id); } catch(e){}
+}
 function watchOpenSpotDetail(id){
   var s=(watchSpots||[]).find(function(x){ return x.id===id; });
   if(!s) return;
@@ -31335,7 +31344,7 @@ function _placeWatchMarker(s, lat, lng) {
         (when ? '<div style="font-size:12px;color:#555;margin:3px 0;">🕒 ' + (_ms.length>1?_watchEsc(when):when) + '</div>' : '') +
         '<div style="font-size:11px;color:#555;margin:3px 0;font-weight:700;">' + resv + '</div>' +
         '<div style="margin-top:10px;display:flex;gap:6px;">' +
-          '<button onclick="goScreen(\'watch\')" style="flex:1;background:#12A150;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">View spots</button>' +
+          '<button onclick="mapViewWatchSpot(\'' + s.id + '\')" style="flex:1;background:#12A150;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">View spot</button>' +
           '<button onclick="watchGoDirections(\'' + s.id + '\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
         '</div>' +
       '</div>';
