@@ -5467,7 +5467,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260704024135';
+var BUILD_VERSION = '20260704025430';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -32558,6 +32558,7 @@ function _setupDealMap() {
       </div>
 
       <div id="login-error" style="color:#E8192C;font-size:13px;font-weight:700;margin-bottom:8px;min-height:0;text-align:center;"></div>
+      <div id="captcha-box" style="display:none;justify-content:center;margin:0 0 12px;"></div>
       <div id="captcha-box" style="display:none;justify-content:center;margin-bottom:10px;"></div>
 
       <!-- Sign In (outline pill; → arrow added via CSS ::after) -->
@@ -32646,6 +32647,7 @@ function _setupDealMap() {
     <div id="captcha-box-merchant" style="display:none;justify-content:center;margin-bottom:14px;"></div>
 
     <div id="m-login-error" style="color:#E8192C;font-size:13.5px;font-weight:700;min-height:18px;margin-bottom:6px;text-align:center;"></div>
+    <div id="captcha-box-merchant" style="display:none;justify-content:center;margin:0 0 10px;"></div>
 
     <button id="m-login-btn" type="button" onclick="doMerchantLogin()" style="width:100%;background:linear-gradient(135deg,#2EA64C,#157A35);color:#fff;border:none;border-radius:28px;padding:18px;font-size:17px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 10px 26px rgba(21,128,53,.32);">Login</button>
 
