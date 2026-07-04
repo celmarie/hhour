@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705014352';
+var BUILD_VERSION = '20260705015255';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -10433,10 +10433,13 @@ function openDeal(deal){
     document.getElementById('qty-num').textContent=1;
     document.getElementById('vd-total').textContent=deal.price;
   } else {
-    // Community: Distance · Hours · Days (+ Valid dates when the deal has them)
+    // Community: Distance · Hours · Days ("Valid until …" under the hours when set).
+    // Distance stays on ONE line — font scales down as the text gets longer.
+    var _dTxt = '📍 ' + (deal.dist || '');
+    var _dSz = _dTxt.length > 10 ? '11.5px' : _dTxt.length > 8 ? '13px' : '15px';
     statsEl.innerHTML=`
-      <div class="vds"><div class="vds-val">📍 ${deal.dist}</div><div class="vds-lbl">Distance</div></div>
-      <div class="vds"><div class="vds-val" style="font-size:13px;">${deal.hours}</div>${_vdValidUntil(deal)}<div class="vds-lbl">Hours</div></div>
+      <div class="vds"><div class="vds-val" style="font-size:${_dSz};white-space:nowrap;">${_dTxt}</div><div class="vds-lbl">Distance</div></div>
+      <div class="vds"><div class="vds-val" style="font-size:13px;">${deal.hours}</div>${_vdValidUntil(deal)}</div>
       <div class="vds"><div class="vds-val" style="font-size:13px;">${deal.days}</div><div class="vds-lbl">Days</div></div>`;
   }
 
