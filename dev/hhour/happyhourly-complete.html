@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705022613';
+var BUILD_VERSION = '20260705023046';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -18698,6 +18698,23 @@ function adminWatchEdit(id){
     if(hit) _aweMatchSel[hit.id] = true;
     else if(m.label) customLabels.push(m.label);
   });
+  // Nothing upcoming selected (all this spot's matches are finished)? Pre-tick
+  // upcoming fixtures at the venue's USUAL times — within ±1h of the hours its
+  // past matches kicked off (e.g. venue showed 16:00/20:00/00:00 games in June
+  // → the same evening slots get suggested for the knockout rounds).
+  if(!Object.keys(_aweMatchSel).length && rawMatches.length){
+    var _hrs=[];
+    rawMatches.forEach(function(m){ if(m && m.kickoffUTC){ var d=new Date(m.kickoffUTC); if(!isNaN(d)) _hrs.push(d.getUTCHours()+d.getUTCMinutes()/60); } });
+    if(_hrs.length){
+      var _n=0;
+      fixtures.forEach(function(f){
+        var d=new Date(f.kickoffUTC); if(isNaN(d)) return;
+        var hh=d.getUTCHours()+d.getUTCMinutes()/60;
+        if(_hrs.some(function(x){ var diff=Math.abs(hh-x); return Math.min(diff,24-diff)<=1; })){ _aweMatchSel[f.id]=true; _n++; }
+      });
+      if(_n) setTimeout(function(){ showToast('✨ Pre-ticked '+_n+' upcoming match'+(_n!==1?'es':'')+' at this venue’s usual times — untick any you don’t want'); }, 300);
+    }
+  }
   var tzHint = document.getElementById('awe-tz-hint');
   if(tzHint) tzHint.textContent = '🕒 Times shown in ' + (typeof _detectTzPhrase==='function'? _detectTzPhrase() : (_detectTzLabel()||'your timezone'));
   // Any matches not in the fixtures list go into the custom field.
