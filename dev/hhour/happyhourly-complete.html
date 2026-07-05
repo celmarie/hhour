@@ -4411,7 +4411,7 @@ function _loadGT(){
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Address</label>
             <input id="watch-location" readonly tabindex="-1" style="width:100%;background:#EFEFF2;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:#6B6B76;outline:none;margin-bottom:12px;cursor:not-allowed;" placeholder="Auto-filled from the venue you select">
 
-            <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Instagram or website <span style="color:#E8192C;">*</span></label>
+            <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Instagram or website <span style="color:#9A9AB0;font-weight:600;text-transform:none;">(optional)</span></label>
             <input id="watch-website" autocomplete="off" autocapitalize="none" inputmode="url" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="instagram.com/venue or venue.com" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E8E8EC'">
 
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Which match(es)? <span style="color:#9A9AB0;font-weight:600;text-transform:none;">— pick one or more</span></label>
@@ -5492,7 +5492,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705024337';
+var BUILD_VERSION = '20260705024557';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -30531,8 +30531,7 @@ async function watchSubmit(){
   var notes=(document.getElementById('watch-notes').value||'').trim();
 
   if(!venue){ showToast('Please enter the venue name'); return; }
-  if(!website){ showToast('Please add the venue’s Instagram or website'); return; }
-  if(!/^https?:\/\//i.test(website)) website = 'https://' + website;
+  if(website && !/^https?:\/\//i.test(website)) website = 'https://' + website;
   // Duplicate checker — the VENUE is the key. One watch spot per venue.
   var _wvn=_normVenue(venue);
   if((watchSpots||[]).some(function(s){ return _normVenue(s.venue_name)===_wvn; })){
