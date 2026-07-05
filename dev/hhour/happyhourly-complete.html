@@ -3579,8 +3579,6 @@ function _loadGT(){
         </div>
         <!-- Venue website / Instagram (optional, set by the merchant) — filled by JS -->
         <a id="vd-link" target="_blank" rel="noopener noreferrer" style="display:none;align-items:center;gap:11px;margin-bottom:14px;text-decoration:none;background:white;border:1.5px solid var(--border);border-radius:14px;padding:9px 12px;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:border-color .15s,box-shadow .15s;" onmouseover="this.style.borderColor='#D8D8E0';this.style.boxShadow='0 2px 10px rgba(0,0,0,.07)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)'"></a>
-        <!-- Venue-local-time note (shown only when the venue tz differs from the viewer's) — filled by JS -->
-        <div id="vd-tznote" style="display:none;font-size:11.5px;font-weight:700;color:#6B6B76;background:#F5F5F7;border-radius:9px;padding:7px 11px;margin-bottom:14px;"></div>
         <!-- Mini Google Map -->
         <div style="border-radius:14px;overflow:hidden;height:150px;margin-bottom:14px;position:relative;border:1.5px solid var(--border);">
           <iframe id="vd-mini-map" style="width:100%;height:100%;border:none;" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src=""></iframe>
@@ -3589,6 +3587,8 @@ function _loadGT(){
         </div>
         <!-- Stats row — filled dynamically by JS based on deal type -->
         <div class="vd-stats" id="vd-stats-row"></div>
+        <!-- Venue-local-time note (shown only when the venue tz differs from the viewer's) — filled by JS -->
+        <div id="vd-tznote" style="display:none;font-size:11.5px;font-weight:700;color:#6B6B76;background:#F5F5F7;border-radius:9px;padding:7px 11px;margin:10px 0 14px;"></div>
         <div class="vd-div"></div>
         <div class="vd-desc" id="vd-desc"></div>
         <div class="vd-perks" id="vd-perks"></div>
@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705020658';
+var BUILD_VERSION = '20260705020839';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
