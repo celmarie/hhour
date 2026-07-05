@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705022134';
+var BUILD_VERSION = '20260705022613';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -18408,6 +18408,7 @@ function adminRenderWorldCup(){
       + '<div style="min-width:0;"><div style="font-size:16px;font-weight:900;color:#1A1A1A;">📍 Submitted spots</div>'
       + '<div style="font-size:12px;color:#9A9AB0;margin-top:4px;">Bars/restaurants shared by the community</div></div>'
       + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
+        + '<span onclick="event.stopPropagation();admBulkRefreshOpen()" style="background:#FFF7ED;border:1.5px solid rgba(217,119,6,.4);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;color:#B45309;">⚡ Bulk refresh</span>'
         + '<span onclick="event.stopPropagation();adminLoadWatchSpots()" style="background:#F0F2F5;border:1.5px solid #E8E8EC;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">🔄 Refresh</span>'
         + '<span id="adm-watch-chev" style="font-size:14px;color:#9A9AB0;transition:transform .2s;transform:rotate(90deg);">›</span>'
       + '</div>'
@@ -18506,6 +18507,113 @@ function adminWatchDelete(id){
 }
 var _awePhotoNew = null; // tracks newly-selected photo for the edit modal
 var _awePhotoRemove = false; // true when admin explicitly removes the photo
+
+// ── ⚡ Bulk refresh: attach upcoming fixtures to many spots in one go ─────────
+// Two modes: "similar times" re-adds future matches at the same time-of-day the
+// venue showed before (±1h); "specific match" adds one chosen fixture (e.g. the
+// Final) to every spot in scope. Scope = optional city text + only-empty toggle.
+function admBulkRefreshOpen(){
+  if(!(_admWatchRows||[]).length){ showToast('Spots are still loading — try again in a second'); adminLoadWatchSpots(); return; }
+  var h=document.getElementById('adm-bulkref-holder');
+  if(!h){ h=document.createElement('div'); h.id='adm-bulkref-holder'; document.body.appendChild(h); }
+  var fut=_watchFutureFixtures();
+  var opts=fut.map(function(f){
+    var d=new Date(f.kickoffUTC);
+    return '<option value="'+_watchEsc(f.id)+'">'+_watchEsc(f.home+' vs '+f.away)+' · '+(isNaN(d)?'':d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' '+d.toTimeString().slice(0,5))+'</option>';
+  }).join('');
+  var inp='background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:10px 12px;font-size:13px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;box-sizing:border-box;';
+  h.innerHTML='<div onclick="if(event.target===this)admBulkRefreshClose()" style="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;padding:28px 16px;box-sizing:border-box;overflow-y:auto;font-family:Inter,sans-serif;">'
+    +'<div style="background:#fff;border-radius:20px;width:100%;max-width:480px;padding:20px;box-shadow:0 24px 64px rgba(0,0,0,.35);">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+        +'<div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚡ Bulk refresh watch spots</div>'
+        +'<button onclick="admBulkRefreshClose()" style="background:#F5F5F7;border:none;border-radius:50%;width:32px;height:32px;font-size:15px;cursor:pointer;color:#555;">✕</button>'
+      +'</div>'
+      +'<div style="font-size:12px;color:#9A9AB0;margin-bottom:14px;">Give whole cities their next matches in one tap.</div>'
+      +'<label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;">City / location contains (empty = everywhere)</label>'
+      +'<input id="abr-city" placeholder="e.g. Barcelona" style="width:100%;'+inp+'margin-bottom:12px;" oninput="window._admBulkPlan=null;">'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1A1A1A;margin-bottom:14px;cursor:pointer;">'
+        +'<input id="abr-onlyempty" type="checkbox" checked style="width:17px;height:17px;accent-color:#12A150;" onchange="window._admBulkPlan=null;"> Only spots with no upcoming match</label>'
+      +'<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;font-weight:700;color:#1A1A1A;margin-bottom:8px;cursor:pointer;">'
+        +'<input type="radio" name="abr-mode" value="times" checked style="margin-top:2px;accent-color:#12A150;" onchange="window._admBulkPlan=null;">'
+        +'<span>Similar times to before<br><span style="font-size:11px;font-weight:600;color:#9A9AB0;">Re-adds upcoming matches kicking off within ±1h of the times each venue showed previously (e.g. 20:00 · 16:00 · 00:00).</span></span></label>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1A1A1A;margin-bottom:6px;cursor:pointer;">'
+        +'<input type="radio" name="abr-mode" value="fixture" style="accent-color:#12A150;" onchange="window._admBulkPlan=null;"> Add one specific match to all:</label>'
+      +'<select id="abr-fixture" style="width:100%;'+inp+'margin-bottom:14px;" onchange="var r=document.querySelector(\'input[name=abr-mode][value=fixture]\'); if(r) r.checked=true; window._admBulkPlan=null;">'+opts+'</select>'
+      +'<div id="abr-preview" style="margin-bottom:14px;"></div>'
+      +'<div style="display:flex;gap:8px;">'
+        +'<button onclick="admBulkPreview()" style="flex:1;background:#F5F5F7;color:#1A1A1A;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">👁 Preview</button>'
+        +'<button onclick="admBulkApply()" style="flex:1;background:#12A150;color:#fff;border:none;border-radius:12px;padding:12px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">⚡ Apply</button>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+}
+function admBulkRefreshClose(){ var h=document.getElementById('adm-bulkref-holder'); if(h) h.innerHTML=''; window._admBulkPlan=null; }
+function _admBulkTargets(){
+  var city=((document.getElementById('abr-city')||{}).value||'').trim().toLowerCase();
+  var onlyEmpty=!!((document.getElementById('abr-onlyempty')||{}).checked);
+  return (_admWatchRows||[]).filter(function(s){
+    if(city && String(s.location||'').toLowerCase().indexOf(city)===-1) return false;
+    if(onlyEmpty && _watchMatchesOf(s).length>0) return false;
+    return true;
+  });
+}
+function _admBulkAddsFor(s, mode, fixtureId){
+  var fut=_watchFutureFixtures();
+  var cur=Array.isArray(s.matches)?s.matches:[];
+  var have={}; cur.forEach(function(m){ have[(m.label||'')+'|'+(m.kickoffUTC||'')]=1; });
+  var picks=[];
+  if(mode==='fixture'){
+    var f=fut.find(function(x){ return String(x.id)===String(fixtureId); });
+    if(f) picks=[f];
+  } else {
+    // Times the venue used before (hour-of-day, absolute time so it's tz-stable)
+    var hours=[];
+    cur.forEach(function(m){ if(m.kickoffUTC){ var d=new Date(m.kickoffUTC); if(!isNaN(d)) hours.push(d.getUTCHours()+d.getUTCMinutes()/60); } });
+    if(!hours.length) return [];
+    picks=fut.filter(function(f){
+      var d=new Date(f.kickoffUTC); if(isNaN(d)) return false;
+      var hh=d.getUTCHours()+d.getUTCMinutes()/60;
+      return hours.some(function(x){ var diff=Math.abs(hh-x); diff=Math.min(diff,24-diff); return diff<=1; });
+    });
+  }
+  return picks.map(function(f){ return { label:(f.home+' vs '+f.away), kickoffUTC:f.kickoffUTC }; })
+    .filter(function(m){ return !have[m.label+'|'+m.kickoffUTC]; });
+}
+function admBulkPreview(){
+  var mode=(document.querySelector('input[name=abr-mode]:checked')||{value:'times'}).value;
+  var fid=((document.getElementById('abr-fixture')||{}).value)||'';
+  var plan=[], tot=0;
+  _admBulkTargets().forEach(function(s){
+    var adds=_admBulkAddsFor(s, mode, fid);
+    if(adds.length){ plan.push({ s:s, adds:adds }); tot+=adds.length; }
+  });
+  window._admBulkPlan=plan;
+  var pv=document.getElementById('abr-preview'); if(!pv) return;
+  pv.innerHTML = plan.length
+    ? '<div style="background:#F0FDF4;border:1.5px solid rgba(18,161,80,.3);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;color:#0B7A3C;margin-bottom:8px;">Will update '+plan.length+' spot'+(plan.length!==1?'s':'')+' · '+tot+' match assignment'+(tot!==1?'s':'')+'</div>'
+      + plan.slice(0,8).map(function(p){ return '<div style="font-size:11px;color:#666;font-weight:600;padding:2px 0;">'+_watchEsc(p.s.venue_name||'')+' <span style="color:#9A9AB0;">→ '+p.adds.map(function(a){ return _watchEsc(a.label); }).join(', ')+'</span></div>'; }).join('')
+      + (plan.length>8 ? '<div style="font-size:11px;color:#9A9AB0;font-weight:600;">…and '+(plan.length-8)+' more spots</div>' : '')
+    : '<div style="background:#FFFBEB;border:1.5px solid rgba(217,119,6,.35);border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;color:#B45309;">Nothing to add for this selection'+(mode==='times'?' — no upcoming fixtures within ±1h of those venues’ previous times.':'.')+'</div>';
+}
+async function admBulkApply(){
+  if(!window._admBulkPlan) admBulkPreview();
+  var plan=window._admBulkPlan||[];
+  if(!plan.length){ showToast('Nothing to update for this selection'); return; }
+  if(!confirm('Update '+plan.length+' spot'+(plan.length!==1?'s':'')+' with new matches?')) return;
+  var ok=0, fail=0;
+  for(var i=0;i<plan.length;i++){
+    var p=plan[i];
+    var merged=(Array.isArray(p.s.matches)?p.s.matches:[]).concat(p.adds);
+    try {
+      var r=await db.from('match_screenings').update({ matches: merged }).eq('id', p.s.id);
+      if(r.error) throw r.error;
+      p.s.matches=merged; ok++;
+    } catch(e){ fail++; console.warn('[admBulkApply] failed for spot', p.s.id, e); }
+  }
+  showToast('✅ Updated '+ok+' spot'+(ok!==1?'s':'')+(fail?(' · ⚠️ '+fail+' failed'):''));
+  admBulkRefreshClose();
+  try { _admWatchRender(); } catch(e){}
+}
 
 function adminWatchEdit(id){
   var s=(_admWatchRows||[]).find(function(x){ return x.id===id; });
