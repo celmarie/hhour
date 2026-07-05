@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705021719';
+var BUILD_VERSION = '20260705022134';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -18450,20 +18450,34 @@ function _admWatchRender(){
   var rows=_admWatchRows||[];
   if(!rows.length){ c.innerHTML='<div style="color:#9A9AB0;font-size:13px;">No spots shared yet.</div>'; return; }
   var _ws=window._admWatchSort||'date';
+  // Spots whose match list has nothing current/upcoming (finished games filtered out)
+  var _noUp=function(sp){ return _watchMatchesOf(sp).length===0; };
+  var _cntNo=rows.filter(_noUp).length;
+  var _wf=window._admWatchFilter||'all';
   var sorted=rows.slice().sort(function(a,b){
     if(_ws==='venue') return String(a.venue_name||'').localeCompare(String(b.venue_name||''));
     if(_ws==='newest'){ var ca=a.created_at||'',cb=b.created_at||''; return ca<cb?1:ca>cb?-1:0; }
     var ma=a.match_date||'',mb=b.match_date||''; return ma<mb?-1:ma>mb?1:0;   // default: match date ↑
   });
-  c.innerHTML='<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">'
+  if(_wf==='noupcoming') sorted=sorted.filter(_noUp);
+  c.innerHTML='<div style="font-size:12.5px;font-weight:800;color:#1A1A1A;margin-bottom:8px;">'
+      +rows.length+' submitted spot'+(rows.length!==1?'s':'')
+      +' · <span style="color:'+(_cntNo?'#B45309':'#12A150')+';">'+_cntNo+' with no upcoming match</span>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">'
       +'<input id="adm-watch-search" type="text" value="'+_watchEsc((window._admQ&&window._admQ['adm-watch-list'])||'')+'" placeholder="🔍 Search spots, venue, match…" oninput="admSearchRows(\'adm-watch-list\',this.value,\'adm-watch-none\')" style="flex:1;min-width:0;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:9px 12px;font-size:13px;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;box-sizing:border-box;">'
       +'<select onchange="window._admWatchSort=this.value;_admWatchRender();setTimeout(function(){admSearchRows(\'adm-watch-list\',(window._admQ&&window._admQ[\'adm-watch-list\'])||\'\',\'adm-watch-none\');},0)" style="background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;cursor:pointer;flex-shrink:0;">'
         +'<option value="date"'+(_ws==='date'?' selected':'')+'>Match date</option>'
         +'<option value="newest"'+(_ws==='newest'?' selected':'')+'>Newest</option>'
         +'<option value="venue"'+(_ws==='venue'?' selected':'')+'>Venue A–Z</option>'
       +'</select>'
+      +'<select onchange="window._admWatchFilter=this.value;_admWatchRender();setTimeout(function(){admSearchRows(\'adm-watch-list\',(window._admQ&&window._admQ[\'adm-watch-list\'])||\'\',\'adm-watch-none\');},0)" style="background:'+(_wf==='noupcoming'?'#FFF7ED':'#F5F5F7')+';border:1.5px solid '+(_wf==='noupcoming'?'rgba(217,119,6,.4)':'#E8E8EC')+';border-radius:10px;padding:9px 8px;font-size:12px;font-weight:700;font-family:Inter,sans-serif;color:#1A1A1A;outline:none;cursor:pointer;flex-shrink:0;">'
+        +'<option value="all"'+(_wf==='all'?' selected':'')+'>All spots</option>'
+        +'<option value="noupcoming"'+(_wf==='noupcoming'?' selected':'')+'>⚠️ No upcoming</option>'
+      +'</select>'
     +'</div>'
     +'<div id="adm-watch-none" style="display:none;padding:18px 0;text-align:center;font-size:13px;color:#9A9AB0;font-weight:600;">No spots match your search</div>'
+    +(!sorted.length?'<div style="padding:18px 0;text-align:center;font-size:13px;color:#12A150;font-weight:700;">🎉 Every spot has an upcoming match</div>':'')
     +'<div id="adm-watch-list">'+sorted.map(function(s){
       var _msx=_watchMatchesOf(s);
       var title=_msx.length>1 ? (_msx.length+' matches: '+_msx.map(function(m){return m.label;}).join(', ')) : ((_msx[0]&&_msx[0].label)||s.match_label||'');
@@ -18474,7 +18488,7 @@ function _admWatchRender(){
         +'<div style="min-width:0;">'
           +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;">⚽ '+_watchEsc(title)+'</div>'
           +'<div style="font-size:12px;color:#12A150;font-weight:700;">'+_watchEsc(s.venue_name||'')+'</div>'
-          +'<div style="font-size:11px;color:#9A9AB0;">'+_watchEsc(meta)+(s.reservation_needed?' · ⚠️ reservation':'')+' · 👥 '+(s.going||0)+'</div>'
+          +'<div style="font-size:11px;color:#9A9AB0;">'+_watchEsc(meta)+(s.reservation_needed?' · ⚠️ reservation':'')+' · 👥 '+(s.going||0)+(_noUp(s)?' · <span style="color:#B45309;font-weight:800;">⚠️ no upcoming match</span>':'')+'</div>'
         +'</div>'
         +'<div style="display:flex;gap:6px;flex-shrink:0;">'
           +'<button onclick="adminWatchEdit('+s.id+')" title="Edit" style="background:#EEF3FF;border:none;border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer;color:#2563EB;">✏️</button>'
