@@ -4411,6 +4411,9 @@ function _loadGT(){
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Address</label>
             <input id="watch-location" readonly tabindex="-1" style="width:100%;background:#EFEFF2;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:#6B6B76;outline:none;margin-bottom:12px;cursor:not-allowed;" placeholder="Auto-filled from the venue you select">
 
+            <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Instagram or website <span style="color:#E8192C;">*</span></label>
+            <input id="watch-website" autocomplete="off" autocapitalize="none" inputmode="url" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="instagram.com/venue or venue.com" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E8E8EC'">
+
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Which match(es)? <span style="color:#9A9AB0;font-weight:600;text-transform:none;">— pick one or more</span></label>
             <div id="watch-tz-hint" style="font-size:11px;color:#9A9AB0;font-weight:600;margin-bottom:8px;"></div>
             <div id="watch-match-slots" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
@@ -5489,7 +5492,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705023046';
+var BUILD_VERSION = '20260705024337';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -18438,7 +18441,14 @@ var _admWatchRows=[];
 function adminLoadWatchSpots(){
   var c=document.getElementById('adm-watch-spots'); if(!c) return;
   if(typeof db==='undefined'||!db.from){ c.innerHTML='<div style="color:#9A9AB0;font-size:13px;">Database not available.</div>'; return; }
-  db.from('match_screenings').select('id,user_id,host_name,venue_name,location,match_label,match_date,kickoff_time,reservation_needed,reservation_info,notes,emoji,image_url,going,status,created_at,timezone,matches,crowd_busy,crowd_ok,crowd_chill,lat,lng,slug').eq('status','approved').order('match_date',{ascending:true}).then(function(r){
+  var _admWSel='id,user_id,host_name,venue_name,location,match_label,match_date,kickoff_time,reservation_needed,reservation_info,notes,emoji,image_url,going,status,created_at,timezone,matches,crowd_busy,crowd_ok,crowd_chill,lat,lng,slug';
+  db.from('match_screenings').select(_admWSel+',website').eq('status','approved').order('match_date',{ascending:true}).then(function(r){
+    if(r&&r.error && /website/i.test(r.error.message||'')){
+      // website column not added yet — load without it.
+      return db.from('match_screenings').select(_admWSel).eq('status','approved').order('match_date',{ascending:true});
+    }
+    return r;
+  }).then(function(r){
     if(r&&r.error){ c.innerHTML='<div style="color:#E8192C;font-size:13px;">'+_watchEsc(r.error.message)+'</div>'; return; }
     _admWatchRows=(r&&r.data)||[];
     _admWatchRender();
@@ -18658,6 +18668,8 @@ function adminWatchEdit(id){
     +'<input id="awe-venue" autocomplete="off" style="'+inp+'" placeholder="Search bar / restaurant…" value="'+_watchEsc(s.venue_name||'')+'" oninput="addrInput(\'awe-venue\')" onfocus="this.style.borderColor=\'#12A150\';addrInput(\'awe-venue\')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor=\'#E8E8EC\'">'
     +'<label style="'+lbl+'">Address</label>'
     +'<input id="awe-addr" readonly tabindex="-1" style="'+inpRO+'" placeholder="Auto-filled from the venue you select" value="'+_watchEsc(s.location||'')+'">'
+    +'<label style="'+lbl+'">Instagram or website</label>'
+    +'<input id="awe-website" autocapitalize="none" style="'+inp+'" placeholder="instagram.com/venue or venue.com" value="'+_watchEsc(s.website||'')+'">'
     +'<label style="'+lbl+'">Which match(es)? <span style="color:#9A9AB0;font-weight:600;text-transform:none;">— pick one or more</span></label>'
     +'<div id="awe-tz-hint" style="font-size:11px;color:#9A9AB0;font-weight:600;margin-bottom:8px;"></div>'
     +'<div id="awe-match-slots" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>'
@@ -18860,6 +18872,7 @@ async function adminWatchSaveEdit(id){
     kickoff_time:matchTime,
     timezone:_detectTzLabel()||null,
     notes:g('awe-notes')||null,
+    website:(function(){ var w=g('awe-website'); if(!w) return null; return /^https?:\/\//i.test(w)?w:'https://'+w; })(),
     reservation_needed:resvNeeded,
     reservation_info:resvNeeded?(g('awe-resv-info')||null):null
   };
@@ -18875,6 +18888,11 @@ async function adminWatchSaveEdit(id){
 
   try{
     var r=await db.from('match_screenings').update(upd).eq('id',id);
+    if(r&&r.error && /website/i.test(r.error.message||'')){
+      // website column not added yet (add_watch_website.sql) — save the rest.
+      delete upd.website;
+      r=await db.from('match_screenings').update(upd).eq('id',id);
+    }
     if(r&&r.error){ showToast('⚠️ '+r.error.message); return; }
     showToast('✅ Spot updated');
     adminWatchEditClose();
@@ -29952,7 +29970,11 @@ function watchSetJoined(arr){
 async function loadWatchSpots(){
   try {
     if(typeof db==='undefined'||!db.from){ watchSpots=[]; return; }
-    var r = await db.from('match_screenings').select('id,user_id,host_name,venue_name,location,match_label,match_date,kickoff_time,reservation_needed,reservation_info,notes,emoji,image_url,going,status,created_at,timezone,matches,crowd_busy,crowd_ok,crowd_chill,lat,lng,slug').eq('status','approved').order('match_date',{ascending:true});
+    var r = await db.from('match_screenings').select('id,user_id,host_name,venue_name,location,match_label,match_date,kickoff_time,reservation_needed,reservation_info,notes,emoji,image_url,going,status,created_at,timezone,matches,crowd_busy,crowd_ok,crowd_chill,lat,lng,slug,website').eq('status','approved').order('match_date',{ascending:true});
+    if(r && r.error && /website/i.test(r.error.message||'')){
+      // website column not added yet (add_watch_website.sql) — load without it.
+      r = await db.from('match_screenings').select('id,user_id,host_name,venue_name,location,match_label,match_date,kickoff_time,reservation_needed,reservation_info,notes,emoji,image_url,going,status,created_at,timezone,matches,crowd_busy,crowd_ok,crowd_chill,lat,lng,slug').eq('status','approved').order('match_date',{ascending:true});
+    }
     if(r && r.error){ console.warn('[watch] load:', r.error.message); return; }
     watchSpots = (r && r.data) ? r.data : [];
     try { localStorage.setItem('hh_watch_cache', JSON.stringify({s:watchSpots,time:Date.now()})); } catch(e){}
@@ -30121,6 +30143,7 @@ function watchOpenSpotDetail(id){
       + '</div>'
       + '<div style="font-size:15px;font-weight:800;color:#12A150;margin-top:4px;">'+_watchEsc(s.venue_name)+'</div>'
       + (s.location ? '<a href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent((s.venue_name?s.venue_name+', ':'')+s.location)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#9A9AB0;font-weight:600;margin-top:6px;margin-bottom:10px;text-decoration:none;">📍 <span style="flex:1;min-width:0;">'+_watchEsc(s.location)+'</span><span style="flex-shrink:0;color:#12A150;font-weight:800;white-space:nowrap;">Directions ›</span></a>' : '<div style="height:10px;"></div>')
+      + (s.website ? '<a href="'+_watchEsc(/^https?:\/\//i.test(s.website)?s.website:'https://'+s.website)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#2563EB;font-weight:700;margin-bottom:10px;text-decoration:none;">'+(/instagram\./i.test(s.website)?'📸 Instagram':'🌐 Website')+' <span style="color:#9A9AB0;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_watchEsc(String(s.website).replace(/^https?:\/\//i,''))+'</span></a>' : '')
       + '<div style="margin-bottom:'+((s.notes||s.reservation_info)?'10px':'12px')+';">'+resvBadge+'</div>'
       + (s.reservation_info ? '<div style="font-size:12px;color:#B86E00;font-weight:600;margin-bottom:8px;">🎟️ '+_watchEsc(s.reservation_info)+'</div>' : '')
       + (s.notes ? '<div style="font-size:13px;color:#666;font-weight:500;line-height:1.5;margin-bottom:10px;">'+_watchEsc(s.notes)+'</div>' : '')
@@ -30502,11 +30525,14 @@ async function watchSubmit(){
   matches.sort(function(a,b){ return new Date(a.kickoffUTC||8.64e15) - new Date(b.kickoffUTC||8.64e15); });
 
   var loc=(document.getElementById('watch-location').value||'').trim();
+  var website=((document.getElementById('watch-website')||{}).value||'').trim();
   var resvNeeded=!!(document.getElementById('watch-resv')||{}).checked;
   var resvInfo=(document.getElementById('watch-resv-info').value||'').trim();
   var notes=(document.getElementById('watch-notes').value||'').trim();
 
   if(!venue){ showToast('Please enter the venue name'); return; }
+  if(!website){ showToast('Please add the venue’s Instagram or website'); return; }
+  if(!/^https?:\/\//i.test(website)) website = 'https://' + website;
   // Duplicate checker — the VENUE is the key. One watch spot per venue.
   var _wvn=_normVenue(venue);
   if((watchSpots||[]).some(function(s){ return _normVenue(s.venue_name)===_wvn; })){
@@ -30542,6 +30568,7 @@ async function watchSubmit(){
     match_label:match, matches:matches, match_date:date||null, kickoff_time:time||null, timezone:_detectTzLabel()||null,
     reservation_needed:resvNeeded, reservation_info:resvNeeded?(resvInfo||null):null,
     notes:notes||null, emoji:'⚽', image_url:photo||null,
+    website:website||null,
     going:0, status:'approved',
     submitter_ip:ip||null, submitter_location:geoLoc||null,
     lat:(_watchPickLat!=null?_watchPickLat:null), lng:(_watchPickLng!=null?_watchPickLng:null)
@@ -30550,8 +30577,9 @@ async function watchSubmit(){
   try {
     var r=await db.from('match_screenings').insert(payload).select('*').single();
     if(r && r.error){
-      // lat/lng columns may not exist yet — retry without them so submit still works.
-      if(/lat|lng|column/i.test(r.error.message||'')){
+      // lat/lng/website columns may not exist yet — retry without them so submit still works.
+      if(/lat|lng|website|column/i.test(r.error.message||'')){
+        if(/website/i.test(r.error.message||'')) delete payload.website;
         delete payload.lat; delete payload.lng;
         r=await db.from('match_screenings').insert(payload).select('*').single();
       }
@@ -30561,7 +30589,7 @@ async function watchSubmit(){
   } catch(e){ console.warn('[watch] submit failed', e); showToast('⚠️ '+(e && e.message ? e.message : 'submit failed')); return; }
 
   // Reset form
-  ['watch-venue','watch-match-custom','watch-location','watch-resv-info','watch-notes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['watch-venue','watch-match-custom','watch-location','watch-website','watch-resv-info','watch-notes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   _watchMatchSel={};
   var cuR=document.getElementById('watch-match-custom'); if(cuR) cuR.style.display='none';
   var sumR=document.getElementById('watch-match-summary'); if(sumR) sumR.textContent='';
