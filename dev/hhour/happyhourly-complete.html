@@ -5489,7 +5489,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705020839';
+var BUILD_VERSION = '20260705021719';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -29874,7 +29874,12 @@ function _watchTimeLabel(s){
 // Normalize a spot's match(es) into [{label,dateStr,timeStr,tz}] for display.
 function _watchMatchesOf(s){
   if(s && Array.isArray(s.matches) && s.matches.length){
-    return s.matches.map(function(m){
+    // CURRENT + FUTURE matches only — finished games (~2.5h after kickoff) drop
+    // off everywhere (spot cards, detail sheet, counts). Entries without a
+    // kickoff time can't be judged, so they stay.
+    return s.matches.filter(function(m){
+      return !(m && m.kickoffUTC) || !_wcIsFinished(m);
+    }).map(function(m){
       var out={ label:m.label||'' };
       if(m.kickoffUTC){ var d=new Date(m.kickoffUTC); if(!isNaN(d)){ out.dateStr=_localDateStr(d); out.timeStr=_localTimeStr(d); out.tz=_detectTzLabel(); } }
       return out;
@@ -29885,7 +29890,7 @@ function _watchMatchesOf(s){
 }
 function _watchMatchesBlockHtml(s){
   var ms=_watchMatchesOf(s);
-  if(!ms.length) return '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚽ Match</div>';
+  if(!ms.length) return '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚽ No upcoming matches yet</div>';
   if(ms.length===1){
     var m=ms[0], meta=[];
     if(m.dateStr) meta.push('📅 '+_watchEsc(_watchFmtDate(m.dateStr)));
@@ -29919,7 +29924,7 @@ function watchToggleMatches(btn,total){
 // Compact match summary for the collapsed card (count + soonest match only).
 function _watchMatchesSummaryHtml(s){
   var ms=_watchMatchesOf(s);
-  if(!ms.length) return '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚽ Match</div>';
+  if(!ms.length) return '<div style="font-size:16px;font-weight:900;color:#1A1A1A;">⚽ No upcoming matches yet</div>';
   if(ms.length===1){
     var m=ms[0], meta=[];
     if(m.dateStr) meta.push('📅 '+_watchEsc(_watchFmtDate(m.dateStr)));
