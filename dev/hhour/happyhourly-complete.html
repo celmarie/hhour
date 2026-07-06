@@ -5496,7 +5496,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706154905';
+var BUILD_VERSION = '20260706161545';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -6425,6 +6425,10 @@ async function loadDealsFromSupabase() {
     if (typeof renderCoupons === 'function') renderCoupons('all');
     if (typeof renderUC === 'function') renderUC('all');
     if (typeof recomputeDealDistances === 'function') recomputeDealDistances();
+    // Refresh the hero stats HERE, unconditionally: renderCoupons also calls this,
+    // but it returns early when there are no verified deals — which froze the
+    // "deals available" counter at whatever localStorage last cached.
+    try { if (typeof updateWebHeroStats === 'function') updateWebHeroStats(); } catch(e){}
 
     // Fetch reviews in background and silently update ratings once they arrive
     db.from('reviews').select('deal_id,deal_kind,rating').then(function(rr){
@@ -7964,7 +7968,10 @@ document.addEventListener('DOMContentLoaded', async function(){
 var _GEO_CACHE_KEY = 'hh_geo_cache';
 function _geoCached(){
   try { var c = JSON.parse(localStorage.getItem(_GEO_CACHE_KEY) || 'null');
-    if(c && typeof c.lat==='number' && (Date.now()-c.t) < 86400000) return c; } catch(e){}
+    // Last-known position never really "expires" (30-day cap is just hygiene):
+    // it's only the instant fallback — getUserLocation silently refreshes any
+    // fix older than 10 minutes, so a stale position self-corrects.
+    if(c && typeof c.lat==='number' && (Date.now()-c.t) < 2592000000) return c; } catch(e){}
   return null;
 }
 function _geoSave(lat,lng){ try { localStorage.setItem(_GEO_CACHE_KEY, JSON.stringify({lat:lat,lng:lng,t:Date.now()})); } catch(e){} }
@@ -32095,12 +32102,21 @@ function _setupDealMap() {
     // Attribution: bottom-RIGHT corner, tucked under the my-location blue-dot
     // button — compact ⓘ that expands only when tapped (© OSM credit required).
     try { _gmapObj.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right'); } catch(e){}
+    // Start the attribution COLLAPSED (just the ⓘ) — MapLibre auto-expands it on
+    // every map open, covering pins. Tapping ⓘ still shows the full credits.
+    var _attCollapse = function(){
+      try {
+        var a = _gmapObj.getContainer().querySelector('.maplibregl-ctrl-attrib.maplibregl-compact');
+        if(a) a.classList.remove('maplibregl-compact-show');
+      } catch(e){}
+    };
+    setTimeout(_attCollapse, 0);
     // The map area's flex height settles AFTER the screen becomes visible (the
     // venue list renders below it). A canvas sized too early paints only the TOP
     // of the map area and iOS can miss the container resize — nudge the size
     // again once the style loads and after layout settles.
     var _kickResize = function(){ try { _gmapObj.resize(); } catch(e){} };
-    try { _gmapObj.on('load', _kickResize); } catch(e){}
+    try { _gmapObj.on('load', function(){ _kickResize(); _attCollapse(); }); } catch(e){}
     setTimeout(_kickResize, 400);
     setTimeout(_kickResize, 1200);
     // Re-cluster + refresh the "venues in view" list when pan/zoom/rotate settles —
