@@ -5505,7 +5505,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706191840';
+var BUILD_VERSION = '20260706195404';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -31733,7 +31733,8 @@ function _mapVenueCard(deal){
   var raw = deal.img || '';
   var img = (typeof raw==='string' && raw.charAt(0)==='[') ? (function(){ try{ return JSON.parse(raw)[0]||''; }catch(e){ return ''; } })() : raw;
   var emoji = deal.emoji || (isWatch ? '⚽' : '📍');
-  var onclick = isWatch ? "goScreen('watch')" : ("openDealById('" + deal.id + "','" + (isV?'v':'uc') + "')");
+  // Watch rows open THAT spot's page (not the general Where to Watch list).
+  var onclick = isWatch ? ("mapViewWatchSpot(" + Number(deal.id) + ")") : ("openDealById('" + deal.id + "','" + (isV?'v':'uc') + "')");
   // Football/match rows are dark-purple (matching the map pin) so they're never confused
   // with the red-priced deal rows.
   var thumbBg = isWatch ? '#7B2FBE' : '#F0F0F4';
