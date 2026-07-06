@@ -4450,8 +4450,7 @@ function _loadGT(){
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Notes <span style="color:#9A9AB0;font-weight:600;">(optional)</span></label>
             <textarea id="watch-notes" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:15px;color:var(--text);outline:none;height:64px;resize:none;margin-bottom:18px;" placeholder="Big screen, outdoor seating, sound on..."></textarea>
 
-            <button onclick="watchSubmit()" style="width:100%;background:linear-gradient(135deg,#12A150,#0B7A3C);color:white;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:8px;">📤 Share with community</button>
-            <button onclick="watchCloseCreateSheet()" style="width:100%;background:var(--bg);color:var(--text);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Cancel</button>
+            <button onclick="watchSubmit()" style="width:100%;background:linear-gradient(135deg,#12A150,#0B7A3C);color:white;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">📤 Share with community</button>
           </div>
         </div>
       </div>
@@ -5505,7 +5504,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706195404';
+var BUILD_VERSION = '20260706200336';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
