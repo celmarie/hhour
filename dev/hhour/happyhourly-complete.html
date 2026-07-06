@@ -5493,7 +5493,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706133817';
+var BUILD_VERSION = '20260706134514';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -7118,7 +7118,19 @@ function addrInput(inputId) {
 function _addrFetch(inputId, q, seq, d, inputEl) {
   // Bias + sort by the viewer's location so the nearest match is on top (like
   // Google Maps): "The James Joyce" in your city beats the one an ocean away.
-  if (!_userLoc) { try { getUserLocation(function(la,ln){ _userLoc={lat:la,lng:ln}; }, function(){}); } catch(e){} }
+  if (!_userLoc) {
+    var _syncPhase = true;
+    try {
+      getUserLocation(function(la,ln){
+        _userLoc = {lat:la, lng:ln};
+        // Cached location returns synchronously and the bias below picks it up;
+        // if it arrived LATE (permission prompt / GPS), redo the lookup so the
+        // distances show on this first search, not the next keystroke.
+        if (!_syncPhase && _addrDropInputId === inputId) addrInput(inputId);
+      }, function(){});
+    } catch(e){}
+    _syncPhase = false;
+  }
   var bias = _userLoc ? '&lat='+_userLoc.lat+'&lon='+_userLoc.lng : '';
   fetch('https://photon.komoot.io/api/?limit=8&lang=en'+bias+'&q=' + encodeURIComponent(q))
     .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
@@ -7208,7 +7220,7 @@ function _addrRender(inputId, items, d, inputEl) {
       +'<div style="font-size:14px;font-weight:500;color:#111;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+main+'</div>'
       +(sec?'<div style="font-size:12px;color:#777;margin-top:3px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sec+'</div>':'')
       +'</div>'
-      +(p.distKm!=null?'<div style="font-size:11px;font-weight:700;color:#12A150;white-space:nowrap;margin-top:3px;flex-shrink:0;">'+_watchDistLabel(p.distKm)+'</div>':'')
+      +(p.distKm!=null?'<div style="font-size:11px;font-weight:700;color:#12A150;white-space:nowrap;margin-top:3px;flex-shrink:0;">'+(p.distKm>=100?Math.round(p.distKm)+' km':_watchDistLabel(p.distKm))+'</div>':'')
       +'</div>';
   }).join('');
   _addrPosition(d, inputEl);
