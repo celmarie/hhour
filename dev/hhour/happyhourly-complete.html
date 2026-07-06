@@ -503,6 +503,9 @@ textarea.finput{resize:none;height:80px;}
 
 /* BOTTOM NAV */
 .bnav{position:absolute;bottom:0;left:0;right:0;height:var(--nav);background:white;border-top:1px solid var(--border);display:flex;align-items:center;z-index:100;padding-bottom:8px;touch-action:none;}
+/* Keyboard up → hide the bottom nav: with the on-screen keyboard the shrunken
+   viewport leaves it floating mid-screen, covering the form being typed in. */
+body.kb-open .bnav{display:none !important;}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding-top:6px;position:relative;transition:transform .15s;}
 .ni:active{transform:scale(.9);}
 .niw{position:relative;width:44px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:14px;transition:background .18s;}
@@ -4048,12 +4051,12 @@ function _loadGT(){
           <div style="padding:16px;display:grid;gap:14px;">
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Venue Name <span style="color:#E8192C;">*</span></label>
-              <input id="uc-venue" type="text" autocomplete="off" placeholder="Search bar / restaurant…" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" oninput="addrInput('uc-venue');ucCheckVenueDup()" onfocus="this.style.borderColor='#E8192C';addrInput('uc-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC';setTimeout(ucCheckVenueDup,220)">
+              <input id="uc-venue" type="text" autocomplete="off" autocorrect="off" spellcheck="false" name="venue-search" placeholder="Search bar / restaurant…" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" oninput="addrInput('uc-venue');ucCheckVenueDup()" onfocus="this.style.borderColor='#E8192C';addrInput('uc-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC';setTimeout(ucCheckVenueDup,220)">
               <div id="uc-venue-dup" style="display:none;font-size:12px;font-weight:700;color:#E8192C;margin-top:6px;line-height:1.4;"></div>
             </div>
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Address <span style="color:#E8192C;">*</span></label>
-              <input id="uc-addr" type="text" autocomplete="off" placeholder="Start typing the address…" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" oninput="addrInput('uc-addr')" onfocus="this.style.borderColor='#E8192C';addrInput('uc-addr')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC';if(this.value.trim().length>4){try{suggestCurrencyFromAddress(this.value.trim());}catch(e){}}">
+              <input id="uc-addr" type="text" autocomplete="off" autocorrect="off" spellcheck="false" name="place-search" placeholder="Start typing the address…" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" oninput="addrInput('uc-addr')" onfocus="this.style.borderColor='#E8192C';addrInput('uc-addr')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC';if(this.value.trim().length>4){try{suggestCurrencyFromAddress(this.value.trim());}catch(e){}}">
             </div>
             <div>
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Website / Instagram <span style="font-size:9px;font-weight:600;color:#9A9AB0;text-transform:none;letter-spacing:0;">— optional</span></label>
@@ -4406,7 +4409,7 @@ function _loadGT(){
             <div style="font-size:13px;color:#9A9AB0;margin-bottom:18px;">Let the community know where to catch the game</div>
 
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Venue</label>
-            <input id="watch-venue" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="Search bar / restaurant…" oninput="var _wl=document.getElementById('watch-location');if(_wl)_wl.value='';_watchPickLat=null;_watchPickLng=null;var _wd=document.getElementById('watch-dist-hint');if(_wd)_wd.style.display='none';addrInput('watch-venue')" onfocus="this.style.borderColor='#12A150';addrInput('watch-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
+            <input id="watch-venue" autocomplete="off" autocorrect="off" spellcheck="false" name="venue-search" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="Search bar / restaurant…" oninput="var _wl=document.getElementById('watch-location');if(_wl)_wl.value='';_watchPickLat=null;_watchPickLng=null;var _wd=document.getElementById('watch-dist-hint');if(_wd)_wd.style.display='none';addrInput('watch-venue')" onfocus="this.style.borderColor='#12A150';addrInput('watch-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
 
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Address</label>
             <input id="watch-location" readonly tabindex="-1" style="width:100%;background:#EFEFF2;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:#6B6B76;outline:none;margin-bottom:12px;cursor:not-allowed;" placeholder="Auto-filled from the venue you select">
@@ -5493,7 +5496,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706140116';
+var BUILD_VERSION = '20260706140904';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -5708,6 +5711,30 @@ function _revealLoginField(el){
   try { if(!el) return; var ot = el.getAttribute('data-ot'); if(ot && el.type !== ot) el.type = ot; el.disabled = false; } catch(e){}
 }
 function _revealLoginFields(ids){ try { (ids||[]).forEach(function(id){ _revealLoginField(document.getElementById(id)); }); } catch(e){} }
+// Track "is the user typing?" — while any text field has focus the on-screen
+// keyboard is (about to be) up, so the bottom nav gets hidden via body.kb-open.
+// The 250ms release delay stops it flashing when focus jumps field-to-field.
+(function(){
+  var _kbT=null;
+  function _isTyping(el){
+    if(!el) return false;
+    var t=(el.tagName||'').toLowerCase();
+    if(t==='textarea') return true;
+    if(t==='input'){
+      var ty=(el.type||'text').toLowerCase();
+      return !/^(checkbox|radio|button|submit|range|file|color|hidden)$/.test(ty);
+    }
+    return el.isContentEditable===true;
+  }
+  document.addEventListener('focusin', function(e){
+    if(_isTyping(e.target)){ if(_kbT){clearTimeout(_kbT);_kbT=null;} document.body.classList.add('kb-open'); }
+  });
+  document.addEventListener('focusout', function(){
+    if(_kbT) clearTimeout(_kbT);
+    _kbT=setTimeout(function(){ if(!_isTyping(document.activeElement)) document.body.classList.remove('kb-open'); }, 250);
+  });
+})();
+
 // HIDE-ONLY guard. iOS offers to fill a saved password whenever it sees a login
 // form (type=password / autocomplete) in the DOM — even hidden or disabled. So we
 // keep every off-screen login field as type="hidden" (iOS ignores hidden inputs:
