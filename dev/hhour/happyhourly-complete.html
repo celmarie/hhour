@@ -5496,7 +5496,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706161545';
+var BUILD_VERSION = '20260706162033';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -32069,9 +32069,28 @@ function _setupDealMap() {
         zoom: 14,
         maxZoom: 19,
         fadeDuration: 0,
+        // WebKit GPU-memory safety (Safari on Mac AND iPhone): render at max 2x —
+        // 3x Retina framebuffers cost 2.25× the memory — and disable 3D tilt,
+        // which multiplies the tile/geometry workload. Under GPU pressure WebKit
+        // kills the whole page ("this web page was reloaded because a problem
+        // occurred"). Two-finger ROTATION stays.
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        maxPitch: 0,
+        touchPitch: false,
+        pitchWithRotate: false,
         attributionControl: false
       });
     } catch(e){ console.error('[_setupDealMap] map init failed', e); return; }
+    // If WebKit reclaims the GPU context anyway, rebuild the map cleanly on the
+    // spot instead of leaving a dead white canvas (or taking the page down).
+    try {
+      _gmapObj.getCanvas().addEventListener('webglcontextlost', function(){
+        try { _gmapObj.remove(); } catch(e){}
+        _gmapObj = null; _gmapMarkers = []; _gmapClusterPins = [];
+        var s = document.getElementById('screen-map');
+        if (s && s.classList.contains('active') && typeof initDealMap === 'function') setTimeout(initDealMap, 250);
+      }, false);
+    } catch(e){}
     // Zoom +/- lower-LEFT. NO built-in compass: its reset-north spins the camera
     // with an ANIMATION, and animated camera moves are a known iOS WKWebView
     // killer here (same reason the old map disabled all animations) — the custom
