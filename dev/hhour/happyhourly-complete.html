@@ -5496,7 +5496,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706153725';
+var BUILD_VERSION = '20260706154905';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -20017,8 +20017,8 @@ function adminPage(page,btn){
     var _approvedAll = pendingCommunityDeals.filter(function(d){ return d.status==='approved'; }).sort(byRecent);
     // Live = approved AND not past its end date (same rule customers see);
     // expired approved deals get their own section below.
-    var approved     = _approvedAll.filter(function(d){ return !isDealExpired(d); });
-    var expiredDeals = _approvedAll.filter(function(d){ return  isDealExpired(d); });
+    var approved     = _approvedAll.filter(function(d){ return !isDealExpired(d) && !d.deletedAt; });
+    var expiredDeals = _approvedAll.filter(function(d){ return  isDealExpired(d) && !d.deletedAt; });
     var paused   = pendingCommunityDeals.filter(function(d){ return d.status==='paused';   }).sort(byRecent);
     var rejected = pendingCommunityDeals.filter(function(d){ return d.status==='rejected'; }).sort(byRecent);
     var scheduled = pendingCommunityDeals.filter(function(d){ return d.deletedAt; }).sort(byRecent);
@@ -32041,7 +32041,14 @@ function _setupDealMap() {
 
   function build(center) {
     document.getElementById('map-loading').style.display = 'none';
-    if (_gmapObj) { try { _gmapObj.jumpTo({ center: [center.lng, center.lat] }); } catch(e){} setTimeout(function(){ try{ _gmapObj.resize(); _renderMapVenueList(); }catch(e){} }, 60); return; }
+    if (_gmapObj) {
+      try { _gmapObj.jumpTo({ center: [center.lng, center.lat] }); } catch(e){}
+      // Re-entry after the screen was hidden: resize once now and once after the
+      // flex layout settles, or the canvas keeps the stale (shorter) height.
+      setTimeout(function(){ try{ _gmapObj.resize(); _renderMapVenueList(); }catch(e){} }, 60);
+      setTimeout(function(){ try{ _gmapObj.resize(); }catch(e){} }, 450);
+      return;
+    }
     if (typeof maplibregl === 'undefined' || !maplibregl.Map) { console.warn('[_setupDealMap] MapLibre not ready'); return; }
 
     // MapLibre GL + OpenFreeMap vector tiles: modern look, smooth pinch zoom, and
@@ -32088,6 +32095,14 @@ function _setupDealMap() {
     // Attribution: bottom-RIGHT corner, tucked under the my-location blue-dot
     // button — compact ⓘ that expands only when tapped (© OSM credit required).
     try { _gmapObj.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right'); } catch(e){}
+    // The map area's flex height settles AFTER the screen becomes visible (the
+    // venue list renders below it). A canvas sized too early paints only the TOP
+    // of the map area and iOS can miss the container resize — nudge the size
+    // again once the style loads and after layout settles.
+    var _kickResize = function(){ try { _gmapObj.resize(); } catch(e){} };
+    try { _gmapObj.on('load', _kickResize); } catch(e){}
+    setTimeout(_kickResize, 400);
+    setTimeout(_kickResize, 1200);
     // Re-cluster + refresh the "venues in view" list when pan/zoom/rotate settles —
     // DEBOUNCED: a pinch fires several moveends; run once, after it settles.
     try { _gmapObj.on('moveend', function(){ clearTimeout(window._mvlT); window._mvlT = setTimeout(_mapSyncClusters, 300); }); } catch(e){}
