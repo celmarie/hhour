@@ -5511,7 +5511,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706233608';
+var BUILD_VERSION = '20260706235312';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -30380,7 +30380,13 @@ function watchOpenSpotDetail(id){
       + '</div>'
       + '<div style="font-size:15px;font-weight:800;color:#12A150;margin-top:4px;">'+_watchEsc(s.venue_name)+'</div>'
       + (s.location ? '<a href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent((s.venue_name?s.venue_name+', ':'')+s.location)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#9A9AB0;font-weight:600;margin-top:6px;margin-bottom:10px;text-decoration:none;">📍 <span style="flex:1;min-width:0;">'+_watchEsc(s.location)+'</span><span style="flex-shrink:0;color:#12A150;font-weight:800;white-space:nowrap;">Directions ›</span></a>' : '<div style="height:10px;"></div>')
-      + (s.website ? '<a href="'+_watchEsc(/^https?:\/\//i.test(s.website)?s.website:'https://'+s.website)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#2563EB;font-weight:700;margin-bottom:10px;text-decoration:none;">'+(/instagram\./i.test(s.website)?'📸 Instagram':'🌐 Website')+' <span style="color:#9A9AB0;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_watchEsc(String(s.website).replace(/^https?:\/\//i,''))+'</span></a>' : '')
+      + (s.website ? (function(){
+          // _openExternal, NOT a raw target=_blank link: inside the installed
+          // app/PWA a plain link navigates the app shell itself off to Instagram
+          // (no tabs, no way back). The helper opens it outside the app.
+          var wurl = (/^https?:\/\//i.test(s.website) ? s.website : 'https://' + s.website).replace(/'/g,'%27').replace(/"/g,'%22');
+          return '<a href="'+_watchEsc(wurl)+'" onclick="event.stopPropagation();event.preventDefault();_openExternal(\''+wurl+'\')" style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#2563EB;font-weight:700;margin-bottom:10px;text-decoration:none;">'+(/instagram\./i.test(s.website)?'📸 Instagram':'🌐 Website')+' <span style="color:#9A9AB0;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+_watchEsc(String(s.website).replace(/^https?:\/\//i,''))+'</span></a>';
+        })() : '')
       + '<div style="margin-bottom:'+((s.notes||s.reservation_info)?'10px':'12px')+';">'+resvBadge+'</div>'
       + (s.reservation_info ? '<div style="font-size:12px;color:#B86E00;font-weight:600;margin-bottom:8px;">🎟️ '+_watchEsc(s.reservation_info)+'</div>' : '')
       + (s.notes ? '<div style="font-size:13px;color:#666;font-weight:500;line-height:1.5;margin-bottom:10px;">'+_watchEsc(s.notes)+'</div>' : '')
