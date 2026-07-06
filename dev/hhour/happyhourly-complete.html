@@ -28,7 +28,9 @@
      attribution UNDERNEATH, compact. (OpenStreetMap's license requires keeping
      the credit visible, so it stays — tiny and out of the way.) */
   .maplibregl-ctrl-bottom-left { display: flex; flex-direction: column; align-items: flex-start; }
-  .maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib { font-size: 9px; line-height: 1.3; background: rgba(255,255,255,.65); }
+  .maplibregl-ctrl-attrib { font-size: 9px; line-height: 1.3; background: rgba(255,255,255,.65); }
+  /* Attribution sits at the very bottom-right, under the my-location button. */
+  .maplibregl-ctrl-bottom-right { z-index: 400; }
   /* Popups match the app's card look. */
   .maplibregl-popup-content { font-family: Inter, sans-serif; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.2); padding: 12px 14px 10px; }
   .maplibregl-popup-close-button { font-size: 18px; padding: 0 6px; color: #9A9AB0; }
@@ -5494,7 +5496,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706152932';
+var BUILD_VERSION = '20260706153725';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -31627,7 +31629,8 @@ function _mapSyncClusters(){
     g.forEach(function(m){ var ll = m.getLngLat(); la += ll.lat; lo += ll.lng; });
     var center = [lo/g.length, la/g.length];
     var cm = new maplibregl.Marker({ element: _clusterPinEl(col, function(){
-      try { _gmapObj.easeTo({ center: center, zoom: Math.min(_gmapObj.getZoom() + 2, 17) }); } catch(e){}
+      // jumpTo (instant), never easeTo: animated camera moves crash iOS WKWebView.
+      try { _gmapObj.jumpTo({ center: center, zoom: Math.min(_gmapObj.getZoom() + 2, 17) }); } catch(e){}
     }), anchor: 'bottom' }).setLngLat(center);
     try { cm.addTo(_gmapObj); _gmapClusterPins.push(cm); } catch(e){}
   });
@@ -32051,13 +32054,40 @@ function _setupDealMap() {
         center: [center.lng, center.lat],
         zoom: 14,
         maxZoom: 19,
+        fadeDuration: 0,
         attributionControl: false
       });
     } catch(e){ console.error('[_setupDealMap] map init failed', e); return; }
-    // Zoom +/- and compass (tap to reset rotation) lower-LEFT, attribution beneath:
-    // the lower-right corner belongs to the my-location + city-search buttons.
-    try { _gmapObj.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), 'bottom-left'); } catch(e){}
-    try { _gmapObj.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left'); } catch(e){}
+    // Zoom +/- lower-LEFT. NO built-in compass: its reset-north spins the camera
+    // with an ANIMATION, and animated camera moves are a known iOS WKWebView
+    // killer here (same reason the old map disabled all animations) — the custom
+    // button below resets rotation/tilt with an instant jump instead.
+    try { _gmapObj.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-left'); } catch(e){}
+    try {
+      var _northCtl = {
+        onAdd: function(map){
+          var d = document.createElement('div');
+          d.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+          var b = document.createElement('button');
+          b.type = 'button'; b.title = 'Reset rotation';
+          b.style.fontSize = '15px';
+          b.textContent = '🧭';
+          b.onclick = function(){ try { map.jumpTo({ bearing: 0, pitch: 0 }); } catch(e){} };
+          d.appendChild(b);
+          // Google-Maps style: only visible while the map is rotated or tilted.
+          var sync = function(){ d.style.display = (Math.abs(map.getBearing()) > 0.5 || map.getPitch() > 0.5) ? 'block' : 'none'; };
+          map.on('rotateend', sync); map.on('pitchend', sync); map.on('moveend', sync);
+          sync();
+          this._el = d;
+          return d;
+        },
+        onRemove: function(){ try { this._el.remove(); } catch(e){} }
+      };
+      _gmapObj.addControl(_northCtl, 'bottom-left');
+    } catch(e){}
+    // Attribution: bottom-RIGHT corner, tucked under the my-location blue-dot
+    // button — compact ⓘ that expands only when tapped (© OSM credit required).
+    try { _gmapObj.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right'); } catch(e){}
     // Re-cluster + refresh the "venues in view" list when pan/zoom/rotate settles —
     // DEBOUNCED: a pinch fires several moveends; run once, after it settles.
     try { _gmapObj.on('moveend', function(){ clearTimeout(window._mvlT); window._mvlT = setTimeout(_mapSyncClusters, 300); }); } catch(e){}
