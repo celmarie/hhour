@@ -5511,7 +5511,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706203808';
+var BUILD_VERSION = '20260706233608';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -19193,6 +19193,17 @@ async function adminOpenDupVenues(){
         (wg[k]=wg[k]||[]).push(s);
       });
       watchDups=Object.keys(wg).map(function(k){ return wg[k]; }).filter(function(g){ return g.length>1; });
+      // Same NAME at DIFFERENT addresses is usually a chain — but often it's the
+      // same venue with its address typed two ways (the Flaherty case), which the
+      // strict name+address key can't see. Surface those name-only groups too;
+      // the admin sees both addresses side by side and decides.
+      var ng={};
+      (wr.data||[]).forEach(function(s){ if(s.status==='rejected') return; var nk=_admVenueNorm(s.venue_name); if(!nk) return; (ng[nk]=ng[nk]||[]).push(s); });
+      Object.keys(ng).forEach(function(k){
+        var g=ng[k]; if(g.length<2) return;
+        var addrs={}; g.forEach(function(s){ addrs[String(s.location||'').trim().toLowerCase().replace(/\s+/g,' ')]=1; });
+        if(Object.keys(addrs).length>1) watchDups.push(g);
+      });
     } catch(e){}
     // 🍸 Possible duplicate community deals — several live deals at the SAME venue
     // name AND address (name alone isn't enough: chains like Hard Rock Cafe exist

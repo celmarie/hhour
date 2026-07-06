@@ -3,7 +3,7 @@
    cache the app already maintains (last-loaded deals), so users can browse what
    they last saw while offline. Private/dynamic data (Supabase REST/auth, our API)
    is NEVER cached — only the shell, libraries, fonts and public deal photos. */
-var CACHE = 'hh-offline-v4';   // v4: portal routes (/merchant, /fireclay) bypass the SW entirely
+var CACHE = 'hh-offline-v5';   // v5: navigations always rebuilt from the shell file (kills "A problem repeatedly occurred")
 var SHELL = ['/', '/happyhourly-complete.html', '/version.json'];
 
 // Merchant + admin portals must NEVER be answered from this cache — always network.
@@ -55,28 +55,36 @@ self.addEventListener('fetch', function(e){
     return;
   }
 
-  // App navigation (customer SPA paths only — portals returned above) → network-first,
-  // fall back to the cached shell when offline.
+  // App navigation (customer SPA paths only — portals returned above). ALWAYS
+  // answer with a freshly-REBUILT 200 of the app shell. Passing the navigation
+  // request itself to fetch() can yield a redirected or opaque-redirect response
+  // (non-www→www 308 etc.); WebKit fails a navigation answered that way, retries,
+  // fails again — and bricks the tab with "A problem repeatedly occurred". Fetching
+  // the shell FILE directly and rebuilding the body makes that class of failure
+  // impossible. Cache the clean copy; fall back to it offline.
   if(req.mode === 'navigate' ||
      (url.origin === self.location.origin && (url.pathname === '/' || url.pathname.indexOf('happyhourly-complete.html') !== -1))){
     e.respondWith(
-      fetch(req).then(function(res){
-        // iOS/WebKit throws a network error if a service worker returns a REDIRECTED
-        // response to a navigation (our domain 308-redirects non-www→www). Repeated
-        // navigation errors show "A problem repeatedly occurred". Rebuild a clean,
-        // non-redirected response and cache THAT (never cache a redirect/non-OK).
-        if(res && res.redirected){
+      fetch('/happyhourly-complete.html', { redirect: 'follow', credentials: 'same-origin' })
+        .then(function(res){
+          if(!res || !res.ok) throw new Error('shell ' + (res && res.status));
           return res.blob().then(function(b){
-            var clean = new Response(b, { status: res.status, statusText: res.statusText, headers: res.headers });
-            if(res.ok){ var cc = clean.clone(); caches.open(CACHE).then(function(c){ c.put('/happyhourly-complete.html', cc); }); }
+            var clean = new Response(b, { status: 200, statusText: 'OK',
+              headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+            try { var cp = clean.clone(); caches.open(CACHE).then(function(c){ c.put('/happyhourly-complete.html', cp); }); } catch(_){}
             return clean;
           });
-        }
-        if(res && res.ok){ var cp = res.clone(); caches.open(CACHE).then(function(c){ c.put('/happyhourly-complete.html', cp); }); }
-        return res;
-      }).catch(function(){
-        return caches.match('/happyhourly-complete.html').then(function(m){ return m || caches.match('/'); });
-      })
+        })
+        .catch(function(){
+          return caches.match('/happyhourly-complete.html').then(function(m){
+            if(m) return m;
+            return caches.match('/').then(function(m2){
+              return m2 || new Response(
+                '<meta http-equiv="refresh" content="1;url=/"><body style="font-family:sans-serif;padding:40px;text-align:center;color:#555;">Reconnecting…</body>',
+                { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+            });
+          });
+        })
     );
     return;
   }
