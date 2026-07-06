@@ -5506,7 +5506,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706201419';
+var BUILD_VERSION = '20260706201847';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -5750,7 +5750,20 @@ try {
   });
   document.addEventListener('focusout', function(){
     if(_kbT) clearTimeout(_kbT);
-    _kbT=setTimeout(function(){ if(!_isTyping(document.activeElement)) document.body.classList.remove('kb-open'); }, 250);
+    _kbT=setTimeout(function(){
+      if(!_isTyping(document.activeElement)){
+        document.body.classList.remove('kb-open');
+        // iOS scrolls the whole shell up to keep the focused field above the
+        // keyboard and does NOT scroll back on dismiss — the app is a fixed
+        // shell (screens scroll internally), so any leftover window scroll is
+        // keyboard residue that shows a big empty band. Undo it.
+        try {
+          if(window.scrollY) window.scrollTo(0, 0);
+          var se = document.scrollingElement;
+          if(se && se.scrollTop) se.scrollTop = 0;
+        } catch(e){}
+      }
+    }, 250);
   });
 })();
 
