@@ -5496,7 +5496,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706140904';
+var BUILD_VERSION = '20260706141956';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -14262,7 +14262,14 @@ function goBack(){
 }
 
 // SEARCH
-function openSearch(){document.getElementById('soverlay').classList.add('open');setTimeout(()=>document.getElementById('sinp').focus(),320);doSearch('');}
+function openSearch(){
+  document.getElementById('soverlay').classList.add('open');
+  // Focus synchronously, inside the tap gesture: iOS only opens the keyboard for a
+  // focus() made during a user gesture — the old 320ms delay forced a second tap.
+  var _si=document.getElementById('sinp');
+  try{ _si.focus({preventScroll:true}); }catch(e){ _si.focus(); }
+  doSearch('');
+}
 function closeSearch(){document.getElementById('soverlay').classList.remove('open');}
 function doSearch(q){
   const res=document.getElementById('sres');
