@@ -5493,7 +5493,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706134514';
+var BUILD_VERSION = '20260706140116';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -7087,6 +7087,8 @@ function _addrPosition(d, inputEl) {
   d.style.position     = 'static';
   d.style.top = ''; d.style.left = ''; d.style.right = ''; d.style.bottom = '';
   d.style.width        = '100%';
+  d.style.maxWidth     = '100%';       // never grow wider than the form/screen
+  d.style.overflowX    = 'hidden';
   d.style.boxSizing    = 'border-box';
   d.style.marginTop    = '4px';
   d.style.maxHeight    = '240px';           // ~3 rows; scrolls if needed
@@ -7211,16 +7213,21 @@ function _addrRender(inputId, items, d, inputEl) {
     var mainEsc = main.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var secEsc = (sec||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var clickHandler = (inputId === 'uc-venue') ? "ucAddrPick('"+secEsc+"','"+mainEsc+"')" : (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'edit-m-address') ? "adminAddrPick('"+esc+"')" : (inputId === 'watch-venue') ? "watchVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'awe-venue') ? "aweVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'adm-edit-venue') ? "admEditVenuePick('"+mainEsc+"','"+esc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
+    // Distance goes UNDER the pin icon (like Google Maps): the left column is
+    // always on-screen, while the row's right edge can clip on narrow phones.
+    var distLbl = p.distKm!=null ? (p.distKm>=100?Math.round(p.distKm)+' km':_watchDistLabel(p.distKm)) : '';
     return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'" ontouchend="'+clickHandler+'"'
       +' style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;cursor:pointer;background:#fff;'
       +'border-top:'+(i?'1px solid #F0F0F0':'none')+'"'
       +' onmouseover="this.style.background=\'#F5F5F5\'" onmouseout="this.style.background=\'#fff\'">'
+      +'<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:34px;">'
       +pin
+      +(distLbl?'<div style="font-size:10px;font-weight:800;color:#12A150;margin-top:3px;white-space:nowrap;">'+distLbl+'</div>':'')
+      +'</div>'
       +'<div style="min-width:0;flex:1">'
       +'<div style="font-size:14px;font-weight:500;color:#111;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+main+'</div>'
       +(sec?'<div style="font-size:12px;color:#777;margin-top:3px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sec+'</div>':'')
       +'</div>'
-      +(p.distKm!=null?'<div style="font-size:11px;font-weight:700;color:#12A150;white-space:nowrap;margin-top:3px;flex-shrink:0;">'+(p.distKm>=100?Math.round(p.distKm)+' km':_watchDistLabel(p.distKm))+'</div>':'')
       +'</div>';
   }).join('');
   _addrPosition(d, inputEl);
