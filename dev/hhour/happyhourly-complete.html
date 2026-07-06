@@ -4406,10 +4406,11 @@ function _loadGT(){
             <div style="font-size:13px;color:#9A9AB0;margin-bottom:18px;">Let the community know where to catch the game</div>
 
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Venue</label>
-            <input id="watch-venue" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="Search bar / restaurant…" oninput="addrInput('watch-venue')" onfocus="this.style.borderColor='#12A150';addrInput('watch-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
+            <input id="watch-venue" autocomplete="off" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="Search bar / restaurant…" oninput="var _wl=document.getElementById('watch-location');if(_wl)_wl.value='';_watchPickLat=null;_watchPickLng=null;var _wd=document.getElementById('watch-dist-hint');if(_wd)_wd.style.display='none';addrInput('watch-venue')" onfocus="this.style.borderColor='#12A150';addrInput('watch-venue')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC'">
 
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Address</label>
             <input id="watch-location" readonly tabindex="-1" style="width:100%;background:#EFEFF2;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:#6B6B76;outline:none;margin-bottom:12px;cursor:not-allowed;" placeholder="Auto-filled from the venue you select">
+            <div id="watch-dist-hint" style="display:none;font-size:12px;font-weight:800;margin:-6px 2px 12px;"></div>
 
             <label style="font-size:11px;font-weight:800;color:#4A4A5A;text-transform:uppercase;display:block;margin-bottom:6px;">Instagram or website <span style="color:#9A9AB0;font-weight:600;text-transform:none;">(optional)</span></label>
             <input id="watch-website" autocomplete="off" autocapitalize="none" inputmode="url" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:Inter,sans-serif;font-size:16px;color:var(--text);outline:none;margin-bottom:12px;" placeholder="instagram.com/venue or venue.com" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E8E8EC'">
@@ -5492,7 +5493,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260705024557';
+var BUILD_VERSION = '20260706132612';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -10491,13 +10492,13 @@ function openDeal(deal){
   const saveBtn=document.getElementById('vd-save-btn');
   if(saveBtn) saveBtn.textContent=isSaved?'❤️':'🤍';
 
-  // Store venue for directions + mini-map. Prefer the ADDRESS as the maps query:
-  // venue names (chains, generic bar names) match many places on Google Maps.
+  // Store venue for directions + mini-map. Query with "Name, Address" combined:
+  // the name alone matches other cities' branches; the address alone can be vague.
   _currentVenueName = deal.name || '';
   _currentVenueAddr = deal.address || '';
   var miniMap = document.getElementById('vd-mini-map');
   if (miniMap) {
-    var src = _buildMiniMapSrc(_currentVenueAddr || _currentVenueName);
+    var src = _buildMiniMapSrc(_mapsQuery(_currentVenueName, _currentVenueAddr));
     if (src && miniMap.src !== src) miniMap.src = src;
     miniMap.closest('div').style.display = src ? 'block' : 'none';
   }
@@ -14661,7 +14662,7 @@ function showToast(m){
 function showVenueDupError(venue, kind){
   var old=document.getElementById('venue-dup-ov'); if(old) old.remove();
   var safeV=_watchEsc(venue||'This venue');
-  var what = (kind==='watch') ? 'is already listed as a watch spot'
+  var what = (kind==='watch') ? 'is already listed as a watch spot at this address'
                               : 'already has a community deal';
   var ov=document.createElement('div');
   ov.id='venue-dup-ov';
@@ -18968,7 +18969,14 @@ async function adminOpenDupVenues(){
     try {
       var wr = await db.from('match_screenings').select('id,venue_name,location,status,going').order('venue_name');
       var wg={};
-      (wr.data||[]).forEach(function(s){ if(s.status==='rejected') return; var k=_admVenueNorm(s.venue_name); if(!k) return; (wg[k]=wg[k]||[]).push(s); });
+      (wr.data||[]).forEach(function(s){
+        if(s.status==='rejected') return;
+        // Group by name + address (like community deals): same-named venues in
+        // different cities are NOT duplicates and must never be merge candidates.
+        var nk=_admVenueNorm(s.venue_name); if(!nk) return;
+        var k=nk+'@'+String(s.location||'').trim().toLowerCase().replace(/\s+/g,' ');
+        (wg[k]=wg[k]||[]).push(s);
+      });
       watchDups=Object.keys(wg).map(function(k){ return wg[k]; }).filter(function(g){ return g.length>1; });
     } catch(e){}
     // 🍸 Possible duplicate community deals — several live deals at the SAME venue
@@ -30466,6 +30474,7 @@ function watchVenuePick(name, addr){
   if(typeof _addrHideDrop==='function') _addrHideDrop();
   // Geocode the chosen venue so we can show distance + sort by nearest.
   _watchPickLat=null; _watchPickLng=null;
+  _watchDistHintUpdate();
   try{
     if(window.google && google.maps && google.maps.Geocoder){
       new google.maps.Geocoder().geocode({ address:(name?name+', ':'')+(addr||'') }, function(res,status){
@@ -30473,9 +30482,30 @@ function watchVenuePick(name, addr){
           _watchPickLat=res[0].geometry.location.lat();
           _watchPickLng=res[0].geometry.location.lng();
         }
+        _watchDistHintUpdate();
       });
     }
   }catch(e){}
+}
+
+// "Distance from you" line under the address — a sanity check that the picked
+// venue is the right branch (a same-named venue in another city shows a huge
+// distance, so a wrong pick is obvious before submitting).
+function _watchDistHintUpdate(){
+  var el=document.getElementById('watch-dist-hint'); if(!el) return;
+  if(_watchPickLat==null || _watchPickLng==null){ el.style.display='none'; el.textContent=''; return; }
+  if(!_userLoc){
+    // Viewer location not loaded yet — fetch it (cached + permission-aware) and retry.
+    el.style.display='none';
+    try{ getUserLocation(function(lat,lng){ _userLoc={lat:lat,lng:lng}; _watchDistHintUpdate(); }, function(){}); }catch(e){}
+    return;
+  }
+  var km=_haversineKm(_userLoc.lat,_userLoc.lng,_watchPickLat,_watchPickLng);
+  if(!isFinite(km)){ el.style.display='none'; return; }
+  var far=km>100;
+  el.style.color=far?'#E8891A':'#12A150';
+  el.textContent='📍 '+_watchDistLabel(km)+' from your location'+(far?' — double-check this is the right venue':'');
+  el.style.display='block';
 }
 
 function watchOpenCreateSheet(){
@@ -30532,10 +30562,16 @@ async function watchSubmit(){
 
   if(!venue){ showToast('Please enter the venue name'); return; }
   if(website && !/^https?:\/\//i.test(website)) website = 'https://' + website;
-  // Duplicate checker — the VENUE is the key. One watch spot per venue.
-  var _wvn=_normVenue(venue);
-  if((watchSpots||[]).some(function(s){ return _normVenue(s.venue_name)===_wvn; })){
-    showVenueDupError(venue, 'watch'); return;
+  // Duplicate checker — venue NAME + ADDRESS together (chains like The James Joyce
+  // share a name across cities; only the same name AT the same address is a dup).
+  var _wvn=_normVenue(venue), _wva=_normAddr(loc);
+  if(_wva){
+    if((watchSpots||[]).some(function(s){ return _normVenue(s.venue_name)===_wvn && _normAddr(s.location)===_wva; })){
+      showVenueDupError(venue, 'watch'); return;
+    }
+  } else if((watchSpots||[]).some(function(s){ return _normVenue(s.venue_name)===_wvn; })){
+    showToast('📍 “'+venue+'” already exists — pick your venue from the search suggestions to confirm the address');
+    return;
   }
   if(!matches.length){ showToast('Please pick at least one match'); return; }
 
@@ -30589,6 +30625,8 @@ async function watchSubmit(){
 
   // Reset form
   ['watch-venue','watch-match-custom','watch-location','watch-website','watch-resv-info','watch-notes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  _watchPickLat=null; _watchPickLng=null;
+  var _wdh=document.getElementById('watch-dist-hint'); if(_wdh){ _wdh.style.display='none'; _wdh.textContent=''; }
   _watchMatchSel={};
   var cuR=document.getElementById('watch-match-custom'); if(cuR) cuR.style.display='none';
   var sumR=document.getElementById('watch-match-summary'); if(sumR) sumR.textContent='';
@@ -31267,8 +31305,8 @@ function _vdValidUntil(deal){
 }
 
 function openDirections() {
-  // Address first — venue names are ambiguous on Google Maps (chains, common names).
-  var query = encodeURIComponent(_currentVenueAddr || _currentVenueName || '');
+  // "Name, Address" combined — name alone is ambiguous (chains), address alone imprecise.
+  var query = encodeURIComponent(_mapsQuery(_currentVenueName, _currentVenueAddr));
   if (!query) { showToast('No venue info available'); return; }
   _openExternal('https://maps.google.com/?q=' + query);
 }
@@ -31356,6 +31394,15 @@ function _buildHomeMapSrc(lat, lng) {
   if (GMAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') return '';
   return 'https://www.google.com/maps/embed/v1/view?key=' + GMAPS_KEY +
     '&center=' + lat + ',' + lng + '&zoom=14&maptype=roadmap';
+}
+
+// Combine "Name, Address" for external/embedded map queries: the name pins the
+// exact business at that address; the address anchors Google to the right street
+// and city (name alone matched same-name venues elsewhere; address alone could
+// land mid-street). Falls back to whichever half exists.
+function _mapsQuery(name, addr){
+  name = (name||'').toString().trim(); addr = (addr||'').toString().trim();
+  return (name && addr) ? (name + ', ' + addr) : (addr || name);
 }
 
 function _buildMiniMapSrc(venueName) {
@@ -31539,7 +31586,7 @@ function _placeDealPin(deal, lat, lng) {
       '</div>' +
       '<div style="margin-top:10px;display:flex;gap:6px;">' +
         '<button onclick="openDealById(\'' + deal.id + '\',\'' + (isVerified?'v':'uc') + '\')" style="flex:1;background:#E8192C;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">View Deal</button>' +
-        '<button onclick="_openExternal(\'https://maps.google.com/?q=' + encodeURIComponent(addr || deal.name) + '\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
+        '<button onclick="_openExternal(\'https://maps.google.com/?q=' + encodeURIComponent(_mapsQuery(deal.name, addr)).replace(/'/g,'%27') + '\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
       '</div></div>';
     marker.bindPopup(infoHtml, { maxWidth: 260 });
     _mapPlaceMarker(marker);
@@ -31649,6 +31696,11 @@ function _geocodePlaceDeals(deals, placeFn) {
   var FALLBACK = { lat: 41.3851, lng: 2.1734 };
   var uncached = [];
   deals.forEach(function(deal){
+    // Pre-seeded exact coordinates (watch spots geocoded at submission) skip the
+    // geocode queue entirely — the pin lands on the venue itself.
+    if (typeof deal._lat === 'number' && isFinite(deal._lat) && typeof deal._lng === 'number' && isFinite(deal._lng)) {
+      placeFn(deal, deal._lat, deal._lng); return;
+    }
     var addr = deal.address || 'Carrer de Sòria 11, Ciutat Vella, 08003 Barcelona';
     var key = String(addr).toLowerCase().trim();
     if (_geoCache[key]) { placeFn(deal, _geoCache[key].lat, _geoCache[key].lng); }
@@ -31671,7 +31723,13 @@ function _geocodePlaceDeals(deals, placeFn) {
 function _watchMapItems() {
   if (!_watchFeatureOn || !Array.isArray(watchSpots)) return [];
   return watchSpots.filter(function(s){ return s && s.location; }).map(function(s){
-    return { _isWatch: true, _spot: s, id: s.id, name: s.venue_name, address: s.location };
+    // Prefer the exact coords stored at submission (autocomplete pick); else
+    // geocode "Name, Address" — the address alone can land mid-street.
+    var la = parseFloat(s.lat), ln = parseFloat(s.lng);
+    var ok = isFinite(la) && isFinite(ln);
+    return { _isWatch: true, _spot: s, id: s.id, name: s.venue_name,
+             address: (s.venue_name ? s.venue_name + ', ' : '') + s.location,
+             _lat: ok ? la : null, _lng: ok ? ln : null };
   });
 }
 
