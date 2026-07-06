@@ -5505,7 +5505,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706165407';
+var BUILD_VERSION = '20260706191840';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -13705,8 +13705,8 @@ function mcFilter(status, btn) {
     return;
   }
 
-  list.innerHTML = '<div style="display:flex;flex-direction:column;gap:0;">'
-    + filtered.map(function(d, idx) {
+  // Row builder — shared by the grouped (All) and flat (filtered tab) views.
+  function _mcRowHtml(d, idx, total) {
     var statusMap = {
       approved: { label: '✅ Live',         dot: '#12A150', bg: 'rgba(18,161,80,.1)',   col: '#12A150' },
       pending:  { label: '⏳ Under Review', dot: '#d97706', bg: 'rgba(217,119,6,.1)',   col: '#d97706' },
@@ -13723,7 +13723,7 @@ function mcFilter(status, btn) {
       : isEditable
         ? 'mcEditDeal(' + d.id + ')'
         : 'mcOpenRejectedDetail(' + d.id + ')';
-    var isLast = idx === filtered.length - 1;
+    var isLast = idx === total - 1;
     var trailing = isEditable
       ? '<div style="flex-shrink:0;background:rgba(217,119,6,.1);color:#B45309;font-size:11px;font-weight:800;padding:6px 11px;border-radius:9px;">✏️ Edit</div>'
       : '<div style="font-size:18px;color:#C7C7CC;flex-shrink:0;font-weight:300;">›</div>';
@@ -13745,7 +13745,49 @@ function mcFilter(status, btn) {
       // Trailing action — "✏️ Edit" for under-review deals, chevron otherwise
       +trailing
     +'</div>';
-  }).join('') + '</div>';
+  }
+
+  if (status === 'all') {
+    // Grouped + COLLAPSIBLE by status: Under Review open by default (it needs the
+    // user's attention), Live and Not Approved start collapsed so a long list of
+    // approved deals doesn't bury everything. Open/closed choice is remembered
+    // for the session.
+    var _norm = function(d){ return d.status === 'approved' ? 'approved' : d.status === 'rejected' ? 'rejected' : 'pending'; };
+    var groups = [
+      ['pending',  '⏳ Under Review', '#d97706', true ],
+      ['approved', '✅ Live',         '#12A150', false],
+      ['rejected', '✕ Not Approved',  '#E8192C', false]
+    ];
+    list.innerHTML = groups.map(function(g){
+      var rows = filtered.filter(function(d){ return _norm(d) === g[0]; });
+      if(!rows.length) return '';
+      var open = (window._mcGrpOpen && (g[0] in window._mcGrpOpen)) ? window._mcGrpOpen[g[0]] : g[3];
+      return '<div style="background:white;border-radius:14px;margin-bottom:12px;overflow:hidden;border:1px solid #F0F0F4;">'
+        +'<button onclick="mcToggleGroup(\''+g[0]+'\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border:none;background:none;cursor:pointer;font-family:Inter,sans-serif;">'
+          +'<span style="font-size:13px;font-weight:800;color:'+g[2]+';">'+g[1]+' <span style="color:#9A9AB0;font-weight:700;">('+rows.length+')</span></span>'
+          +'<span id="mc-grp-chev-'+g[0]+'" style="font-size:15px;color:#9A9AB0;transition:transform .2s;transform:rotate('+(open?90:0)+'deg);display:inline-block;">›</span>'
+        +'</button>'
+        +'<div id="mc-grp-'+g[0]+'" style="display:'+(open?'block':'none')+';border-top:1px solid #F0F0F4;">'
+          + rows.map(function(d,i){ return _mcRowHtml(d, i, rows.length); }).join('')
+        +'</div>'
+      +'</div>';
+    }).join('');
+    return;
+  }
+
+  list.innerHTML = '<div style="display:flex;flex-direction:column;gap:0;">'
+    + filtered.map(function(d, idx){ return _mcRowHtml(d, idx, filtered.length); }).join('') + '</div>';
+}
+
+// Collapse/expand a My-Contributions status group; remembered for the session.
+function mcToggleGroup(key){
+  window._mcGrpOpen = window._mcGrpOpen || {};
+  var b = document.getElementById('mc-grp-'+key), c = document.getElementById('mc-grp-chev-'+key);
+  if(!b) return;
+  var open = b.style.display !== 'none';
+  b.style.display = open ? 'none' : 'block';
+  window._mcGrpOpen[key] = !open;
+  if(c) c.style.transform = 'rotate('+(open?0:90)+'deg)';
 }
 var dealReports = [];    // customer reports: {dealId, type, name, reportedAt}
 var adminMistakeReports = [];  // deal mistake reports from customers
