@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /merchant
+Disallow: /fireclay
+
+Sitemap: https://www.appiehour.com/sitemap.xml
