@@ -5496,7 +5496,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706162033';
+var BUILD_VERSION = '20260706163439';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -14226,6 +14226,15 @@ function goScreen(name){
   if(name==='watch') setTimeout(function(){ initAddressAutocomplete(); watchInitList(); },50);
   if(name==='credits') setTimeout(crMaybeInit,50);
   if(name==='map') setTimeout(initDealMap,50);
+  // Leaving the map → tear the WebGL map down COMPLETELY. A live GL context +
+  // tile cache held in the background is what pushes Safari over its per-page
+  // graphics budget ("this web page was reloaded because a problem occurred").
+  // The view (center/zoom) is remembered and restored on the next map open.
+  else if(typeof _gmapObj !== 'undefined' && _gmapObj){
+    try { var _c=_gmapObj.getCenter(); window._mapLastView={ lng:_c.lng, lat:_c.lat, zoom:_gmapObj.getZoom() }; } catch(e){}
+    try { _gmapObj.remove(); } catch(e){}
+    _gmapObj = null; _gmapMarkers = []; _gmapClusterPins = [];
+  }
   if(name==='post') setTimeout(initAddressAutocomplete,100);
   if(name==='terms'){ var tb=document.getElementById('screen-terms-body'); if(tb) tb.textContent=adminContent.termsGeneral||''; }
   if(name==='privacy'){ var pb=document.getElementById('screen-privacy-body'); if(pb) pb.textContent=adminContent.privacyPolicy||''; }
@@ -22263,7 +22272,10 @@ function getCurrencySymbol(currency) {
     'CHF': 'CHF', 'JPY': '¥', 'SEK': 'kr', 'NOK': 'kr', 'DKK': 'kr',
     'MXN': 'MX$', 'BRL': 'R$', 'SGD': 'S$', 'AED': 'د.إ', 'FREE': '🆓',
     'KRW': '₩', 'CNY': '¥', 'THB': '฿', 'VND': '₫', 'PHP': '₱',
-    'MYR': 'RM', 'IDR': 'Rp', 'INR': '₹', 'PKR': '₨', 'BDT': '৳'
+    'MYR': 'RM', 'IDR': 'Rp', 'INR': '₹', 'PKR': '₨', 'BDT': '৳',
+    'BYN': 'Br', 'PLN': 'zł', 'CZK': 'Kč', 'HUF': 'Ft', 'RON': 'lei',
+    'UAH': '₴', 'TRY': '₺', 'ILS': '₪', 'ZAR': 'R', 'RUB': '₽',
+    'NZD': 'NZ$', 'HKD': 'HK$', 'TWD': 'NT$', 'ISK': 'kr'
   };
   return symbols[currency] || currency || '€';
 }
@@ -31237,10 +31249,11 @@ var _countryCurrencyMap = {
   // Eurozone
   ES:'EUR',PT:'EUR',FR:'EUR',DE:'EUR',IT:'EUR',NL:'EUR',BE:'EUR',AT:'EUR',FI:'EUR',
   GR:'EUR',IE:'EUR',LU:'EUR',MT:'EUR',CY:'EUR',SK:'EUR',SI:'EUR',EE:'EUR',LV:'EUR',
-  LT:'EUR',HR:'EUR',
+  LT:'EUR',HR:'EUR',MC:'EUR',AD:'EUR',SM:'EUR',VA:'EUR',ME:'EUR',XK:'EUR',
   // Non-euro Europe
-  GB:'GBP',CH:'CHF',SE:'SEK',NO:'NOK',DK:'DKK',PL:'PLN',CZ:'CZK',HU:'HUF',RO:'RON',
-  BG:'BGN',RS:'RSD',UA:'UAH',
+  GB:'GBP',CH:'CHF',LI:'CHF',SE:'SEK',NO:'NOK',DK:'DKK',PL:'PLN',CZ:'CZK',HU:'HUF',RO:'RON',
+  BG:'BGN',RS:'RSD',UA:'UAH',BY:'BYN',RU:'RUB',IS:'ISK',AL:'ALL',BA:'BAM',MK:'MKD',
+  MD:'MDL',GE:'GEL',AM:'AMD',AZ:'AZN',KZ:'KZT',
   // Americas
   US:'USD',CA:'CAD',MX:'MXN',BR:'BRL',AR:'ARS',CL:'CLP',CO:'COP',PE:'PEN',
   // Asia-Pacific
@@ -31290,7 +31303,11 @@ function suggestCurrencyFromCountryCode(countryCode){
   var old = document.getElementById('currency-mismatch-banner');
   if(old) old.remove();
   if(typeof ucUpdateCurrencyPreview === 'function') ucUpdateCurrencyPreview();
-  var countryName = _countryNameMap[code] || code;
+  // Full country name (built into the browser) — the short map only covered a few
+  // countries, so e.g. Finland showed as bare "FI" in the toast.
+  var countryName;
+  try { countryName = new Intl.DisplayNames(['en'], { type:'region' }).of(code) || code; }
+  catch(e){ countryName = _countryNameMap[code] || code; }
   showToast('📍 Currency auto-set to '+suggestedCurrency+' ('+countryName+')');
 }
 
@@ -32062,13 +32079,15 @@ function _setupDealMap() {
     // TWO-FINGER ROTATION + tilt (on by default). OpenFreeMap is keyless and free
     // for commercial use; the © OpenStreetMap credit is required by the data license.
     try {
+      var _lv = window._mapLastView;   // restore where the user left the map
       _gmapObj = new maplibregl.Map({
         container: 'deal-map',
         style: 'https://tiles.openfreemap.org/styles/liberty',
-        center: [center.lng, center.lat],
-        zoom: 14,
+        center: _lv ? [_lv.lng, _lv.lat] : [center.lng, center.lat],
+        zoom: _lv ? _lv.zoom : 14,
         maxZoom: 19,
         fadeDuration: 0,
+        maxTileCacheSize: 64,
         // WebKit GPU-memory safety (Safari on Mac AND iPhone): render at max 2x —
         // 3x Retina framebuffers cost 2.25× the memory — and disable 3D tilt,
         // which multiplies the tile/geometry workload. Under GPU pressure WebKit
