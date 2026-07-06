@@ -17,34 +17,23 @@
      the Google Maps JS SDK, so it can zoom out fully without the WebKit memory crash.
      Leaflet.markercluster merges nearby pins into cluster bubbles at low zoom. SW-cached.
      (Google Maps JS is still lazy-loaded elsewhere, but only for address geocoding.) -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
   /* Map city search: kill the browser's blue focus ring — the white pill is the UI. */
   #map-city-input, #map-city-input:focus {
     outline: none !important; box-shadow: none !important; border: none !important;
     -webkit-appearance: none; appearance: none;
   }
-  /* Bottom-left map corner: zoom +/- on top, attribution UNDERNEATH, compact.
-     (OpenStreetMap's license requires keeping the credit visible, so it stays —
-     tiny, prefix-less, and out of the way.) */
-  .leaflet-bottom.leaflet-left { display: flex; flex-direction: column; align-items: flex-start; }
-  .leaflet-bottom.leaflet-left .leaflet-control-zoom { order: 1; }
-  .leaflet-bottom.leaflet-left .leaflet-control-attribution {
-    order: 2; font-size: 9px; line-height: 1.3; padding: 1px 5px;
-    background: rgba(255,255,255,.65); margin-top: 2px;
-  }
-  /* Recolor the deal-map cluster bubbles: red core + purple halo (default green/yellow
-     was hard to see on the OSM map). Applies at every size. */
-  .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background-color: rgba(123,47,190,.35) !important; }
-  .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
-    background-color: #E8192C !important; color: #fff !important; font-weight: 800 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,.25);
-  }
+  /* Bottom-left map corner: zoom +/- and compass (tap to reset rotation) on top,
+     attribution UNDERNEATH, compact. (OpenStreetMap's license requires keeping
+     the credit visible, so it stays — tiny and out of the way.) */
+  .maplibregl-ctrl-bottom-left { display: flex; flex-direction: column; align-items: flex-start; }
+  .maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib { font-size: 9px; line-height: 1.3; background: rgba(255,255,255,.65); }
+  /* Popups match the app's card look. */
+  .maplibregl-popup-content { font-family: Inter, sans-serif; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.2); padding: 12px 14px 10px; }
+  .maplibregl-popup-close-button { font-size: 18px; padding: 0 6px; color: #9A9AB0; }
 </style>
-<script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <!-- Vercel Web Analytics (cookieless, privacy-friendly — counts all visitors, pages,
      referrers; tracks SPA route changes via the History API). Requires Web Analytics
      to be ENABLED in the Vercel project dashboard (Analytics tab → Enable). -->
@@ -5505,7 +5494,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706145547';
+var BUILD_VERSION = '20260706152932';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -31169,7 +31158,7 @@ window.addEventListener('orientationchange', function(){
   _rotT = setTimeout(function(){
     try {
       var ms = document.getElementById('screen-map');
-      if(_gmapObj && ms && ms.style.display !== 'none') _gmapObj.invalidateSize({ animate:false });
+      if(_gmapObj && ms && ms.style.display !== 'none') _gmapObj.resize();
     } catch(e){}
   }, 400);
 });
@@ -31193,15 +31182,15 @@ window.addEventListener('resize', function(){
 // ══ GOOGLE MAPS ══════════════════════════════════════════════════════════════
 
 var _gmapInited = false;
-var _gmapObj = null;        // the Leaflet map (name kept for compatibility with existing checks)
-var _gmapMarkers = [];      // array of Leaflet circleMarkers
-var _gmapCluster = null;    // Leaflet.markercluster group
-// Leaflet binds a popup per marker (bindPopup); this helper stays for any legacy callers.
-function _gmapOpenInfo(marker, html){ try { if(marker && marker.openPopup) marker.openPopup(); } catch(e){} }
-function _ensureLeaflet(cb){
-  if(typeof L !== 'undefined' && L.map){ cb(); return; }
+var _gmapObj = null;         // the MapLibre map (name kept for compatibility with existing checks)
+var _gmapMarkers = [];       // all deal/watch markers (maplibregl.Marker; off-map while clustered)
+var _gmapClusterPins = [];   // the "•••" cluster bubbles currently on the map
+// Each marker carries its own popup (setPopup); this helper stays for legacy callers.
+function _gmapOpenInfo(marker, html){ try { if(marker && marker.togglePopup) marker.togglePopup(); } catch(e){} }
+function _ensureMapLib(cb){
+  if(typeof maplibregl !== 'undefined' && maplibregl.Map){ cb(); return; }
   var tries = 0;
-  (function w(){ if(typeof L !== 'undefined' && L.map){ cb(); return; } if(tries++ > 60) return; setTimeout(w, 100); })();
+  (function w(){ if(typeof maplibregl !== 'undefined' && maplibregl.Map){ cb(); return; } if(tries++ > 60) return; setTimeout(w, 100); })();
 }
 var _gmapMarkersAt = 0;            // when pins were last placed (map cache freshness)
 var MAP_STALE_MS = 5 * 60 * 1000;  // re-fetch/re-place only after 5 min, not every visit
@@ -31508,7 +31497,7 @@ async function mapCityGo(){
     var r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
     var js = await r.json();
     if(js && js[0] && _gmapObj){
-      _gmapObj.setView([parseFloat(js[0].lat), parseFloat(js[0].lon)], 12);
+      _gmapObj.jumpTo({ center: [parseFloat(js[0].lon), parseFloat(js[0].lat)], zoom: 12 });
       mapToggleCitySearch();
     } else {
       showToast('📍 Place not found — try another spelling');
@@ -31525,7 +31514,7 @@ function mapGoMyLocation(){
   function done(lat, lng){
     if(btn) btn.style.opacity = '1';
     _geoSave(lat, lng);
-    if(_gmapObj){ try { _gmapObj.setView([lat, lng], Math.max(_gmapObj.getZoom(), 14)); } catch(e){} }
+    if(_gmapObj){ try { _gmapObj.jumpTo({ center: [lng, lat], zoom: Math.max(_gmapObj.getZoom(), 14) }); } catch(e){} }
   }
   function fail(){
     if(btn) btn.style.opacity = '1';
@@ -31568,45 +31557,12 @@ function initHomeMap(lat, lng) {
   if (el && src && !el.src) el.src = src;
 }
 
-// ── Deal-map marker clustering (Leaflet) ─────────────────────────────────────
-// Pins are lightweight Leaflet circleMarkers (canvas-rendered) handed to
-// _mapPlaceMarker. Leaflet.markercluster groups them into cluster bubbles at low zoom,
-// so zooming all the way out renders a handful of bubbles — no iOS memory crash.
-function _initMapClusterer(){
-  _gmapCluster = null;
-  try {
-    if(typeof L !== 'undefined' && L.markerClusterGroup && _gmapObj){
-      _gmapCluster = L.markerClusterGroup({
-        chunkedLoading: true, maxClusterRadius: 55, spiderfyOnMaxZoom: true,
-        // Multiple pins grouped together → a "•••" pin (Agoda-style) colored by what's
-        // inside: purple = football, red = community happy hours, blue = verified
-        // merchants. Mixed clusters take the majority (football wins ties).
-        iconCreateFunction: function(cluster){
-          var col = '#6B6B76';
-          try {
-            var n = { fb:0, v:0, c:0 };
-            cluster.getAllChildMarkers().forEach(function(m){
-              if(m._isWatch) n.fb++;
-              else if(m._dealVerified) n.v++;
-              else n.c++;
-            });
-            var hasDeals = (n.v + n.c) > 0;
-            if(n.fb > 0 && hasDeals)                   col = '#6B7280';   // mixed football + deals → gray
-            else if(n.fb > 0)                          col = '#7B2FBE';   // ⚽ football only
-            else if(n.c >= n.v)                        col = '#E8192C';   // 👥 community deals
-            else                                       col = '#2563EB';   // ✓ verified merchants
-          } catch(e){}
-          var html = '<div style="position:relative;transform:translate(-50%,-100%);width:max-content;">'
-            + '<div style="background:'+col+';color:#fff;padding:6px 13px;border-radius:14px;font-family:Inter,sans-serif;font-weight:900;font-size:12px;line-height:1;letter-spacing:2px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid #fff;">•••</div>'
-            + '<div style="width:0;height:0;margin:-1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid '+col+';filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));"></div>'
-            + '</div>';
-          return L.divIcon({ className:'hh-cluster-pin', html: html, iconSize:[0,0], iconAnchor:[0,0] });
-        }
-      });
-      _gmapObj.addLayer(_gmapCluster);
-    }
-  } catch(e){ _gmapCluster = null; console.warn('[map] clusterer init failed', e); }
-}
+// ── Deal-map marker clustering (MapLibre) ────────────────────────────────────
+// Pins are DOM markers handed to _mapPlaceMarker. A lightweight screen-space grid
+// (same idea as Leaflet.markercluster, ~55px cells) groups nearby pins into "•••"
+// bubbles at low zoom, so zooming all the way out renders a handful of bubbles —
+// no iOS memory crash. Re-grouped after every pan/zoom/rotate settles.
+function _initMapClusterer(){ /* grid clustering lives in _mapSyncClusters */ }
 function _markerPassesFilter(marker){
   if(marker._isWatch) return !!mapFilters.football;
   if(marker._dealVerified) return !!mapFilters.verified;
@@ -31620,20 +31576,61 @@ function _mapPlaceMarker(marker){
   clearTimeout(_clusterTimer);
   _clusterTimer = setTimeout(_mapSyncClusters, 300);
 }
+// Hide the floating chips/buttons while a popup is open (they live outside the map
+// canvas and would cover it); restore on close.
+function _mapOverlayVis(hidden){
+  ['map-filter-chips','map-loc-btn','map-city-btn','map-city-search'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.style.visibility = hidden ? 'hidden' : '';
+  });
+}
+function _mapMakePopup(html){
+  var p = new maplibregl.Popup({ maxWidth: '260px', offset: 34 });
+  p.setHTML(html);
+  p.on('open',  function(){ _mapOverlayVis(true);  });
+  p.on('close', function(){ _mapOverlayVis(false); });
+  return p;
+}
+// "•••" cluster bubble (Agoda-style) colored by what's inside; tap zooms in on it.
+function _clusterPinEl(col, onTap){
+  var el = document.createElement('div');
+  el.innerHTML =
+    '<div style="background:'+col+';color:#fff;padding:6px 13px;border-radius:14px;font-family:Inter,sans-serif;font-weight:900;font-size:12px;line-height:1;letter-spacing:2px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid #fff;">•••</div>'
+   +'<div style="width:0;height:0;margin:-1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid '+col+';filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));"></div>';
+  el.style.cursor = 'pointer';
+  el.addEventListener('click', function(e){ e.stopPropagation(); onTap(); });
+  return el;
+}
 function _mapSyncClusters(){
   if(!_gmapObj) return;
-  var show = _gmapMarkers.filter(_markerPassesFilter);
-  if(_gmapCluster){
-    try { _gmapCluster.clearLayers(); _gmapCluster.addLayers(show); } catch(e){}
-  } else {
-    // Fallback (no cluster lib): add/remove markers directly on the map.
-    _gmapMarkers.forEach(function(m){
-      try {
-        if(_markerPassesFilter(m)){ if(!_gmapObj.hasLayer(m)) m.addTo(_gmapObj); }
-        else if(_gmapObj.hasLayer(m)) _gmapObj.removeLayer(m);
-      } catch(e){}
-    });
-  }
+  (_gmapClusterPins||[]).forEach(function(m){ try{ m.remove(); }catch(e){} });
+  _gmapClusterPins = [];
+  // Group filtered pins by ~55px screen cells at the current view.
+  var CELL = 55, groups = {};
+  _gmapMarkers.forEach(function(m){
+    if(!_markerPassesFilter(m)){ try{ m.remove(); }catch(e){} return; }
+    var p; try { p = _gmapObj.project(m.getLngLat()); } catch(e){ return; }
+    var k = Math.round(p.x/CELL) + ':' + Math.round(p.y/CELL);
+    (groups[k]=groups[k]||[]).push(m);
+  });
+  Object.keys(groups).forEach(function(k){
+    var g = groups[k];
+    if(g.length === 1){ try{ g[0].addTo(_gmapObj); }catch(e){} return; }
+    g.forEach(function(m){ try{ m.remove(); }catch(e){} });
+    // Bubble color: purple = football, red = community, blue = verified merchants,
+    // gray = mixed football + deals (majority wins ties → football).
+    var n = { fb:0, v:0, c:0 };
+    g.forEach(function(m){ if(m._isWatch) n.fb++; else if(m._dealVerified) n.v++; else n.c++; });
+    var hasDeals = (n.v + n.c) > 0;
+    var col = (n.fb > 0 && hasDeals) ? '#6B7280' : (n.fb > 0) ? '#7B2FBE' : (n.c >= n.v) ? '#E8192C' : '#2563EB';
+    var la = 0, lo = 0;
+    g.forEach(function(m){ var ll = m.getLngLat(); la += ll.lat; lo += ll.lng; });
+    var center = [lo/g.length, la/g.length];
+    var cm = new maplibregl.Marker({ element: _clusterPinEl(col, function(){
+      try { _gmapObj.easeTo({ center: center, zoom: Math.min(_gmapObj.getZoom() + 2, 17) }); } catch(e){}
+    }), anchor: 'bottom' }).setLngLat(center);
+    try { cm.addTo(_gmapObj); _gmapClusterPins.push(cm); } catch(e){}
+  });
   try { _renderMapVenueList(); } catch(e){}
 }
 
@@ -31648,7 +31645,7 @@ function _renderMapVenueList(){
   var items = [];
   (_gmapMarkers||[]).forEach(function(m){
     if(!m || !m._deal || !_markerPassesFilter(m)) return;
-    var ll; try { ll = m.getLatLng(); } catch(e){ return; }
+    var ll; try { ll = m.getLngLat(); } catch(e){ return; }
     if(!b.contains(ll)) return;
     items.push({ deal: m._deal, d: (c ? c.distanceTo(ll) : 0) });
   });
@@ -31700,19 +31697,23 @@ function _mapVenueCard(deal){
 }
 function _mapClearMarkers(){
   clearTimeout(_clusterTimer);
-  if(_gmapCluster){ try { _gmapCluster.clearLayers(); } catch(e){} }
-  (_gmapMarkers||[]).forEach(function(m){ try { if(_gmapObj && _gmapObj.hasLayer(m)) _gmapObj.removeLayer(m); } catch(e){} });
+  (_gmapClusterPins||[]).forEach(function(m){ try { m.remove(); } catch(e){} });
+  _gmapClusterPins = [];
+  (_gmapMarkers||[]).forEach(function(m){ try { m.remove(); } catch(e){} });
   _gmapMarkers = [];
 }
 
 // Agoda-style price pin: a colored pill (with a downward pointer) showing the price,
 // anchored so the pointer tip sits on the coordinate. divIcon markers cluster fine.
-function _pricePinIcon(color, label){
-  var html = '<div style="position:relative;transform:translate(-50%,-100%);width:max-content;">'
-    + '<div style="background:'+color+';color:#fff;padding:3px 8px;border-radius:13px;font-family:Inter,sans-serif;font-weight:800;font-size:12px;line-height:1.35;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid #fff;text-align:center;">'+esc(String(label||''))+'</div>'
-    + '<div style="width:0;height:0;margin:-1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid '+color+';filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));"></div>'
-    + '</div>';
-  return L.divIcon({ className:'hh-price-pin', html: html, iconSize:[0,0], iconAnchor:[0,0] });
+function _pricePinEl(color, label){
+  // MapLibre positions the element itself (anchor:'bottom' puts the pointer tip on
+  // the coordinate) — the element only draws the pill + pointer.
+  var el = document.createElement('div');
+  el.innerHTML =
+    '<div style="background:'+color+';color:#fff;padding:3px 8px;border-radius:13px;font-family:Inter,sans-serif;font-weight:800;font-size:12px;line-height:1.35;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid #fff;text-align:center;">'+esc(String(label||''))+'</div>'
+   +'<div style="width:0;height:0;margin:-1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid '+color+';filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));"></div>';
+  el.style.cursor = 'pointer';
+  return el;
 }
 
 // Place one deal (or watch spot) as a Leaflet price-pin marker with a popup.
@@ -31724,7 +31725,7 @@ function _placeDealPin(deal, lat, lng) {
   try {
     var isVerified = deal.verified === true;
     var pinColor = isVerified ? '#2563EB' : '#E8192C';   // verified = blue, community = red
-    var marker = L.marker([lat, lng], { icon: _pricePinIcon(pinColor, _dealPriceLabel(deal) || 'Deal'), riseOnHover: true });
+    var marker = new maplibregl.Marker({ element: _pricePinEl(pinColor, _dealPriceLabel(deal) || 'Deal'), anchor: 'bottom' }).setLngLat([lng, lat]);
     marker._dealVerified = isVerified;
     marker._deal = deal;   // powers the "venues in view" list under the map
     var infoHtml = '<div style="font-family:Inter,sans-serif;max-width:240px;">' +
@@ -31739,7 +31740,7 @@ function _placeDealPin(deal, lat, lng) {
         '<button onclick="openDealById(\'' + deal.id + '\',\'' + (isVerified?'v':'uc') + '\')" style="flex:1;background:#E8192C;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">View Deal</button>' +
         '<button onclick="_openExternal(\'https://maps.google.com/?q=' + encodeURIComponent(_mapsQuery(deal.name, addr)).replace(/'/g,'%27') + '\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
       '</div></div>';
-    marker.bindPopup(infoHtml, { maxWidth: 260 });
+    marker.setPopup(_mapMakePopup(infoHtml));
     _mapPlaceMarker(marker);
   } catch(e) { console.error('[_placeDealPin]', deal.name, e); }
 }
@@ -31773,7 +31774,7 @@ function refreshDealMapMarkers() {
 function _placeWatchMarker(s, lat, lng) {
   if (!_gmapObj || !isFinite(lat) || !isFinite(lng)) return;
   try {
-    var marker = L.marker([lat, lng], { icon: _pricePinIcon('#7B2FBE', '⚽'), riseOnHover: true });   // football/watch = purple
+    var marker = new maplibregl.Marker({ element: _pricePinEl('#7B2FBE', '⚽'), anchor: 'bottom' }).setLngLat([lng, lat]);   // football/watch = purple
     marker._dealVerified = false;
     marker._isWatch = true;
     // FUTURE (or live) matches only in the popup — a wall of finished group games
@@ -31804,7 +31805,7 @@ function _placeWatchMarker(s, lat, lng) {
           '<button onclick="watchGoDirections(\'' + s.id + '\')" style="flex:1;background:#1A1A1A;color:white;border:none;border-radius:8px;padding:6px 0;font-size:11px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🗺️ Go</button>' +
         '</div>' +
       '</div>';
-    marker.bindPopup(infoHtml, { maxWidth: 260 });
+    marker.setPopup(_mapMakePopup(infoHtml));
     _mapPlaceMarker(marker);
   } catch(e) { console.error('[_placeWatchMarker]', e); }
 }
@@ -31926,7 +31927,7 @@ window.addEventListener('online', function(){
   var o=document.getElementById('map-offline'); if(o) o.style.display='none';
   var m=document.getElementById('map-wrap'); if(m) m.style.display='';
   var vl=document.getElementById('map-venue-list'); if(vl) vl.style.display='';
-  try { if(typeof _gmapObj!=='undefined' && _gmapObj && _gmapObj.invalidateSize) _gmapObj.invalidateSize(); } catch(e){}
+  try { if(typeof _gmapObj!=='undefined' && _gmapObj && _gmapObj.resize) _gmapObj.resize(); } catch(e){}
   if(typeof initDealMap==='function') initDealMap();
 });
 
@@ -31970,7 +31971,7 @@ function initDealMap() {
   if (_gmapInited && _gmapObj) { refreshDealMapMarkers(); return; }
   _gmapInited = true;
   _gmapMarkersAt = Date.now();
-  _ensureLeaflet(_setupDealMap);   // Leaflet map (Google API is lazy-loaded only for geocoding)
+  _ensureMapLib(_setupDealMap);   // MapLibre map (Google API is lazy-loaded only for geocoding)
 }
 
 // Map filter state
@@ -32037,48 +32038,36 @@ function _setupDealMap() {
 
   function build(center) {
     document.getElementById('map-loading').style.display = 'none';
-    if (_gmapObj) { _gmapObj.setView([center.lat, center.lng]); setTimeout(function(){ try{ _gmapObj.invalidateSize(); _renderMapVenueList(); }catch(e){} }, 60); return; }
-    if (typeof L === 'undefined' || !L.map) { console.warn('[_setupDealMap] Leaflet not ready'); return; }
+    if (_gmapObj) { try { _gmapObj.jumpTo({ center: [center.lng, center.lat] }); } catch(e){} setTimeout(function(){ try{ _gmapObj.resize(); _renderMapVenueList(); }catch(e){} }, 60); return; }
+    if (typeof maplibregl === 'undefined' || !maplibregl.Map) { console.warn('[_setupDealMap] MapLibre not ready'); return; }
 
-    // Leaflet + OpenStreetMap raster tiles (canvas-rendered markers) — light on iOS,
-    // no zoom limit, no WebKit memory crash on zoom-out.
-    _gmapObj = L.map('deal-map', { zoomControl: true, attributionControl: true, preferCanvas: true,
-      // iOS memory safety: zoom/fade compositing over a big tile layer is a known
-      // WKWebView GPU killer — skip the animations, keep the map.
-      zoomAnimation: false, fadeAnimation: false, markerZoomAnimation: false })
-      .setView([center.lat, center.lng], 14);
-    // Zoom +/- lower-LEFT (stacked above the attribution): the lower-right corner
-    // belongs to the my-location + city-search buttons, which +/- was covering.
-    try { _gmapObj.zoomControl.setPosition('bottomleft'); } catch(e){}
-    try { _gmapObj.attributionControl.setPosition('bottomleft'); } catch(e){}
-    try { _gmapObj.attributionControl.setPrefix(''); } catch(e){}   // drop "Leaflet |" — © OSM credit stays (license)
-    // Popups must sit IN FRONT: the floating filter chips + my-location button live
-    // outside the map's stacking context, so they'd cover popups — hide them while
-    // any popup is open and restore on close.
+    // MapLibre GL + OpenFreeMap vector tiles: modern look, smooth pinch zoom, and
+    // TWO-FINGER ROTATION + tilt (on by default). OpenFreeMap is keyless and free
+    // for commercial use; the © OpenStreetMap credit is required by the data license.
     try {
-      var _mapOverlayVis = function(hidden){
-        ['map-filter-chips','map-loc-btn','map-city-btn','map-city-search'].forEach(function(id){
-          var el = document.getElementById(id);
-          if(el) el.style.visibility = hidden ? 'hidden' : '';
-        });
-      };
-      _gmapObj.on('popupopen',  function(){ _mapOverlayVis(true);  });
-      _gmapObj.on('popupclose', function(){ _mapOverlayVis(false); });
-    } catch(e){}
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors',
-      // iOS memory safety: keep almost no off-screen tiles and only load tiles once
-      // panning/zooming settles — zooming far out otherwise stacks hundreds of tiles
-      // across zoom levels and WebKit kills the page ("crashes while doing nothing").
-      keepBuffer: 1, updateWhenIdle: true, updateWhenZooming: false
-    }).addTo(_gmapObj);
-    _initMapClusterer();
-    // Refresh the "venues in view" list whenever the map is panned/zoomed —
-    // DEBOUNCED: a pinch-zoom fires several moveends; render once, after it settles.
-    try { _gmapObj.on('moveend', function(){ clearTimeout(window._mvlT); window._mvlT = setTimeout(_renderMapVenueList, 300); }); } catch(e){}
+      _gmapObj = new maplibregl.Map({
+        container: 'deal-map',
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        center: [center.lng, center.lat],
+        zoom: 14,
+        maxZoom: 19,
+        attributionControl: false
+      });
+    } catch(e){ console.error('[_setupDealMap] map init failed', e); return; }
+    // Zoom +/- and compass (tap to reset rotation) lower-LEFT, attribution beneath:
+    // the lower-right corner belongs to the my-location + city-search buttons.
+    try { _gmapObj.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), 'bottom-left'); } catch(e){}
+    try { _gmapObj.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left'); } catch(e){}
+    // Re-cluster + refresh the "venues in view" list when pan/zoom/rotate settles —
+    // DEBOUNCED: a pinch fires several moveends; run once, after it settles.
+    try { _gmapObj.on('moveend', function(){ clearTimeout(window._mvlT); window._mvlT = setTimeout(_mapSyncClusters, 300); }); } catch(e){}
 
     // User location dot (kept directly on the map, not clustered)
-    try { L.circleMarker([center.lat, center.lng], { radius: 7, color: '#ffffff', weight: 2, fillColor: '#4285F4', fillOpacity: 1 }).addTo(_gmapObj).bindPopup('You are here'); } catch(e){}
+    try {
+      var _locDot = document.createElement('div');
+      _locDot.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#4285F4;border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);';
+      new maplibregl.Marker({ element: _locDot, anchor: 'center' }).setLngLat([center.lng, center.lat]).addTo(_gmapObj);
+    } catch(e){}
 
     var verifiedDeals = (typeof vouchers !== 'undefined' ? vouchers : []).filter(function(v){ return v.verified !== false; });
     var communityDeals = (typeof ucDeals !== 'undefined' ? ucDeals : []).filter(function(d){ return d.id; });
