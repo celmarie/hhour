@@ -5505,7 +5505,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706142941';
+var BUILD_VERSION = '20260706144521';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -5720,6 +5720,15 @@ function _revealLoginField(el){
   try { if(!el) return; var ot = el.getAttribute('data-ot'); if(ot && el.type !== ot) el.type = ot; el.disabled = false; } catch(e){}
 }
 function _revealLoginFields(ids){ try { (ids||[]).forEach(function(id){ _revealLoginField(document.getElementById(id)); }); } catch(e){} }
+// Native app only (Capacitor): hide the keyboard accessory bar — the strip with
+// "AutoFill Contact" + arrows above the keyboard. Native apps (Wolt etc.) don't
+// show it; Apple doesn't let plain web pages remove it, but the store app can.
+// No-op in the browser / PWA where the bridge doesn't exist.
+try {
+  var _capKb = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Keyboard;
+  if (_capKb && _capKb.setAccessoryBarVisible) _capKb.setAccessoryBarVisible({ isVisible: false });
+} catch(e){}
+
 // Track "is the user typing?" — while any text field has focus the on-screen
 // keyboard is (about to be) up, so the bottom nav gets hidden via body.kb-open.
 // The 250ms release delay stops it flashing when focus jumps field-to-field.
