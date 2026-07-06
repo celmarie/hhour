@@ -5493,7 +5493,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706133015';
+var BUILD_VERSION = '20260706133817';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -13696,15 +13696,23 @@ function ucCheckVenueDup(){
       warn.style.display = 'block';
       inp.style.background = 'rgba(232,25,44,.07)'; inp.style.borderColor = '#E8192C';
     } else if(_venueNameExists(v)){
-      // The NAME already exists. With no/different address we can't confirm it's
-      // the same place (could be another branch) — warn softly either way so a
-      // name match never goes silent.
-      warn.textContent = addr
-        ? 'ℹ️ “'+v+'” already exists — make sure this is a different location.'
-        : 'ℹ️ “'+v+'” already exists — pick the address to confirm it’s the same place.';
-      warn.style.color = '#B45309';
-      warn.style.display = 'block';
-      inp.style.background = 'rgba(245,158,11,.1)'; inp.style.borderColor = '#F59E0B';
+      if(addr){
+        // Name matches but THIS address differs from every existing entry — it's
+        // another branch (chains share names). Reassure instead of nagging.
+        var other = _allDealsForDup().filter(function(x){ return _dealName(x)===_normVenue(v); })
+                      .map(function(x){ return (x.address || x.location || '').toString().trim(); })
+                      .filter(Boolean)[0] || '';
+        warn.textContent = '✓ Different address — the existing “'+v+'”'+(other?' is at '+other:' is elsewhere')+'. You’re good to post this one.';
+        warn.style.color = '#12A150';
+        warn.style.display = 'block';
+        inp.style.background = 'rgba(18,161,80,.06)'; inp.style.borderColor = '#12A150';
+      } else {
+        // No address yet, so we can't tell if it's the same place or a branch.
+        warn.textContent = 'ℹ️ “'+v+'” already exists — pick your address; a different branch is fine.';
+        warn.style.color = '#B45309';
+        warn.style.display = 'block';
+        inp.style.background = 'rgba(245,158,11,.1)'; inp.style.borderColor = '#F59E0B';
+      }
     } else {
       warn.style.display = 'none';
       _resetInp();
