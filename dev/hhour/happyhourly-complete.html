@@ -515,6 +515,9 @@ textarea.finput{resize:none;height:80px;}
 /* Keyboard up → hide the bottom nav: with the on-screen keyboard the shrunken
    viewport leaves it floating mid-screen, covering the form being typed in. */
 body.kb-open .bnav{display:none !important;}
+/* Bottom sheets (e.g. Share a watch spot) paint below the nav's layer — hide the
+   nav while one is open so it can't cover the sheet's submit button. */
+body.sheet-open .bnav{display:none !important;}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding-top:6px;position:relative;transition:transform .15s;}
 .ni:active{transform:scale(.9);}
 .niw{position:relative;width:44px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:14px;transition:background .18s;}
@@ -5508,7 +5511,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706203432';
+var BUILD_VERSION = '20260706203808';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -30735,9 +30738,14 @@ function watchOpenCreateSheet(){
   watchPopulateFixtures();
   var hint=document.getElementById('watch-tz-hint');
   if(hint) hint.textContent = '🕒 Times shown in ' + _detectTzPhrase();
+  // Hide the bottom nav while the sheet is open: the nav paints in a HIGHER
+  // stacking layer than the watch screen (no z-index inside the screen can beat
+  // it), so it was overlapping the submit button and stealing its taps.
+  document.body.classList.add('sheet-open');
   ov.style.display='flex';setTimeout(function(){sh.style.transform='translateY(0)';},10);
 }
 function watchCloseCreateSheet(){
+  document.body.classList.remove('sheet-open');
   var sh=document.getElementById('watch-create-sheet');if(sh)sh.style.transform='translateY(100%)';
   setTimeout(function(){var ov=document.getElementById('watch-create-sheet-ov');if(ov)ov.style.display='none';},320);
 }
