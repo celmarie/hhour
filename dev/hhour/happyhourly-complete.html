@@ -4409,7 +4409,9 @@ function _loadGT(){
       </div>
 
       <!-- Create sheet -->
-      <div id="watch-create-sheet-ov" style="position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:60;display:none;align-items:flex-end;" onclick="if(event.target===this)watchCloseCreateSheet()">
+      <!-- z-index must beat the bottom nav (100), or the nav overlaps the sheet's
+           submit button and steals its taps. -->
+      <div id="watch-create-sheet-ov" style="position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:5000;display:none;align-items:flex-end;" onclick="if(event.target===this)watchCloseCreateSheet()">
         <div id="watch-create-sheet" style="background:white;border-radius:22px 22px 0 0;width:100%;max-height:92%;overflow-y:auto;scrollbar-width:none;transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);">
           <!-- Bottom padding = home-indicator inset + a small gap: submit button stays
                fully visible without a big empty band under it. -->
@@ -5506,7 +5508,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706201847';
+var BUILD_VERSION = '20260706203432';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
