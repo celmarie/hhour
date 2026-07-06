@@ -5493,7 +5493,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706132612';
+var BUILD_VERSION = '20260706133015';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -7116,11 +7116,15 @@ function addrInput(inputId) {
 // or errors, fall back to Google predictions — but only if its API is ALREADY loaded
 // (we never block on that load, which was the old source of lag).
 function _addrFetch(inputId, q, seq, d, inputEl) {
-  fetch('https://photon.komoot.io/api/?limit=8&lang=en&q=' + encodeURIComponent(q))
+  // Bias + sort by the viewer's location so the nearest match is on top (like
+  // Google Maps): "The James Joyce" in your city beats the one an ocean away.
+  if (!_userLoc) { try { getUserLocation(function(la,ln){ _userLoc={lat:la,lng:ln}; }, function(){}); } catch(e){} }
+  var bias = _userLoc ? '&lat='+_userLoc.lat+'&lon='+_userLoc.lng : '';
+  fetch('https://photon.komoot.io/api/?limit=8&lang=en'+bias+'&q=' + encodeURIComponent(q))
     .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
     .then(function(json){
       if (seq !== _addrSeq || _addrDropInputId !== inputId) return;   // superseded / left field
-      var items = _addrPhotonItems(json);
+      var items = _addrSortByDist(_addrPhotonItems(json));
       if (items.length) _addrRender(inputId, items, d, inputEl);
       else _addrGoogleFallback(inputId, q, seq, d, inputEl);
     })
@@ -7129,6 +7133,7 @@ function _addrFetch(inputId, q, seq, d, inputEl) {
 function _addrPhotonItems(json) {
   return ((json && json.features) || []).map(function(f){
     var p = f.properties || {};
+    var g = (f.geometry && f.geometry.coordinates) || null;   // GeoJSON order: [lon, lat]
     var line1 = [p.housenumber, p.street].filter(Boolean).join(' ');
     var main = p.name || line1 || p.city || p.country || '';
     var bits = [];
@@ -7137,21 +7142,49 @@ function _addrPhotonItems(json) {
     if (p.state && p.state !== p.city) bits.push(p.state);
     if (p.country) bits.push(p.country);
     var sec = bits.join(', ');
-    return { description: [main, sec].filter(Boolean).join(sec ? ', ' : ''), main: main, sec: sec };
+    return { description: [main, sec].filter(Boolean).join(sec ? ', ' : ''), main: main, sec: sec,
+             lat: g ? g[1] : null, lng: g ? g[0] : null };
   }).filter(function(x){ return x.main; });
+}
+// Closest first; suggestions without coordinates keep their order at the bottom.
+function _addrSortByDist(items) {
+  if (!_userLoc) return items;
+  items.forEach(function(x){
+    if (x.distKm == null && x.lat != null && x.lng != null) {
+      var km = _haversineKm(_userLoc.lat, _userLoc.lng, x.lat, x.lng);
+      if (isFinite(km)) x.distKm = km;
+    }
+  });
+  return items.slice().sort(function(a,b){
+    if (a.distKm == null && b.distKm == null) return 0;
+    if (a.distKm == null) return 1;
+    if (b.distKm == null) return -1;
+    return a.distKm - b.distKm;
+  });
 }
 function _addrGoogleFallback(inputId, q, seq, d, inputEl) {
   if (seq !== _addrSeq || _addrDropInputId !== inputId) return;
   var svc = _addrGetSvc();
   if (!svc) { _addrHideDrop(); return; }   // Google not loaded — don't block, just show nothing
-  svc.getPlacePredictions({ input: q }, function(preds, status){
+  var req = { input: q };
+  if (_userLoc) {
+    // origin → Google returns distance_meters per prediction; location+radius biases
+    // the ranking toward the viewer (matches the Photon path's behavior).
+    try {
+      req.origin = new google.maps.LatLng(_userLoc.lat, _userLoc.lng);
+      req.location = new google.maps.LatLng(_userLoc.lat, _userLoc.lng);
+      req.radius = 30000;
+    } catch(e){}
+  }
+  svc.getPlacePredictions(req, function(preds, status){
     if (seq !== _addrSeq || _addrDropInputId !== inputId) return;
     if (!preds || status !== google.maps.places.PlacesServiceStatus.OK) { _addrHideDrop(); return; }
-    _addrRender(inputId, preds.map(function(p){
+    _addrRender(inputId, _addrSortByDist(preds.map(function(p){
       return { description: p.description,
                main: (p.structured_formatting||{}).main_text || p.description.split(',')[0],
-               sec:  (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim() };
-    }), d, inputEl);
+               sec:  (p.structured_formatting||{}).secondary_text || p.description.split(',').slice(1).join(',').trim(),
+               distKm: (typeof p.distance_meters === 'number') ? p.distance_meters/1000 : null };
+    })), d, inputEl);
   });
 }
 
@@ -7174,7 +7207,9 @@ function _addrRender(inputId, items, d, inputEl) {
       +'<div style="min-width:0;flex:1">'
       +'<div style="font-size:14px;font-weight:500;color:#111;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+main+'</div>'
       +(sec?'<div style="font-size:12px;color:#777;margin-top:3px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sec+'</div>':'')
-      +'</div></div>';
+      +'</div>'
+      +(p.distKm!=null?'<div style="font-size:11px;font-weight:700;color:#12A150;white-space:nowrap;margin-top:3px;flex-shrink:0;">'+_watchDistLabel(p.distKm)+'</div>':'')
+      +'</div>';
   }).join('');
   _addrPosition(d, inputEl);
   d.style.display = 'block';
