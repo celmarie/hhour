@@ -5505,7 +5505,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260706144521';
+var BUILD_VERSION = '20260706145547';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -7978,22 +7978,53 @@ function _geoCached(){
 }
 function _geoSave(lat,lng){ try { localStorage.setItem(_GEO_CACHE_KEY, JSON.stringify({lat:lat,lng:lng,t:Date.now()})); } catch(e){} }
 function getUserLocation(onOk, onFail, opts){
+  // Answer instantly from the saved position (up to 24h old) so nothing waits on
+  // GPS — but if that fix is older than 10 minutes, silently fetch a fresh one in
+  // the background so distances track where the user actually IS, not where they
+  // were this morning. The refresh never re-prompts: native app permission is
+  // remembered by iOS/Android until uninstall, and on the web it only runs when
+  // the browser reports the site permission as already granted.
   var cached = _geoCached();
-  if(cached){ onOk(cached.lat, cached.lng, true); return; }            // remembered → no prompt
-  if(!navigator.geolocation){ if(onFail) onFail(); return; }
+  var fresh  = cached && (Date.now() - cached.t) < 600000;   // 10 min
+  if(cached) onOk(cached.lat, cached.lng, true);
+  if(fresh) return;
+  var done = function(la, ln){
+    _geoSave(la, ln);
+    try { if(typeof _userLoc !== 'undefined' && _userLoc){
+      // Position moved meaningfully → update the live location + deal distances.
+      var moved = _haversineKm(_userLoc.lat, _userLoc.lng, la, ln);
+      _userLoc = { lat: la, lng: ln };
+      if(moved > 0.25 && typeof recomputeDealDistances === 'function') recomputeDealDistances();
+    } } catch(e){}
+    if(!cached) onOk(la, ln, false);
+  };
+  var fail = function(){ if(!cached && onFail) onFail(); };
+  // Native app (Capacitor): the plugin asks ONCE per install, then iOS/Android
+  // remember the choice — no repeated "Allow location" popups.
+  var nat = null;
+  try { nat = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation; } catch(e){}
+  if(nat && nat.getCurrentPosition){
+    nat.getCurrentPosition({ enableHighAccuracy:false, timeout:8000, maximumAge:60000 })
+      .then(function(p){ done(p.coords.latitude, p.coords.longitude); })
+      .catch(fail);
+    return;
+  }
+  if(!navigator.geolocation){ fail(); return; }
   function ask(){
     navigator.geolocation.getCurrentPosition(
-      function(p){ _geoSave(p.coords.latitude, p.coords.longitude); onOk(p.coords.latitude, p.coords.longitude, false); },
-      function(){ if(onFail) onFail(); },
-      opts || { enableHighAccuracy:false, timeout:5000, maximumAge:600000 }
+      function(p){ done(p.coords.latitude, p.coords.longitude); },
+      fail,
+      opts || { enableHighAccuracy:false, timeout:5000, maximumAge:60000 }
     );
   }
-  // If the user already chose "Don't Allow", don't fire the prompt again.
+  // If the user already chose "Don't Allow", don't fire the prompt again. And if
+  // we already answered from a stale cache, only refresh when no prompt is needed.
   if(navigator.permissions && navigator.permissions.query){
     navigator.permissions.query({ name:'geolocation' }).then(function(st){
-      if(st.state === 'denied'){ if(onFail) onFail(); return; }
+      if(st.state === 'denied'){ fail(); return; }
+      if(cached && st.state !== 'granted') return;
       ask();
-    }).catch(ask);
+    }).catch(function(){ if(!cached) ask(); });
   } else { ask(); }
 }
 
