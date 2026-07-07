@@ -5546,7 +5546,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707031432';
+var BUILD_VERSION = '20260707123551';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -7237,15 +7237,19 @@ function _addrFetch(inputId, q, seq, d, inputEl) {
     _syncPhase = false;
   }
   var bias = _userLoc ? '&lat='+_userLoc.lat+'&lon='+_userLoc.lng : '';
-  fetch('https://photon.komoot.io/api/?limit=8&lang=en'+bias+'&q=' + encodeURIComponent(q))
-    .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+  // 2.5s cap: when Photon (a free public service) hangs, fail over to Google
+  // quickly instead of leaving the user staring at no suggestions.
+  var _ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var _tmr = _ctl ? setTimeout(function(){ try { _ctl.abort(); } catch(e){} }, 2500) : null;
+  fetch('https://photon.komoot.io/api/?limit=8&lang=en'+bias+'&q=' + encodeURIComponent(q), _ctl ? { signal: _ctl.signal } : undefined)
+    .then(function(r){ if (_tmr) clearTimeout(_tmr); return r.ok ? r.json() : Promise.reject(); })
     .then(function(json){
       if (seq !== _addrSeq || _addrDropInputId !== inputId) return;   // superseded / left field
       var items = _addrSortByDist(_addrPhotonItems(json));
       if (items.length) _addrRender(inputId, items, d, inputEl);
       else _addrGoogleFallback(inputId, q, seq, d, inputEl);
     })
-    .catch(function(){ _addrGoogleFallback(inputId, q, seq, d, inputEl); });
+    .catch(function(){ if (_tmr) clearTimeout(_tmr); _addrGoogleFallback(inputId, q, seq, d, inputEl); });
 }
 function _addrPhotonItems(json) {
   return ((json && json.features) || []).map(function(f){
@@ -7282,7 +7286,17 @@ function _addrSortByDist(items) {
 function _addrGoogleFallback(inputId, q, seq, d, inputEl) {
   if (seq !== _addrSeq || _addrDropInputId !== inputId) return;
   var svc = _addrGetSvc();
-  if (!svc) { _addrHideDrop(); return; }   // Google not loaded — don't block, just show nothing
+  if (!svc) {
+    // Google Maps loads lazily (seconds after boot) — load it NOW and retry this
+    // same query once ready, so "Photon down + Google not loaded yet" no longer
+    // means the user gets zero suggestions early in a session.
+    try {
+      if (typeof _loadGMapsAPI === 'function') _loadGMapsAPI(function(){
+        if (seq === _addrSeq && _addrDropInputId === inputId) _addrGoogleFallback(inputId, q, seq, d, inputEl);
+      });
+    } catch(e){}
+    return;
+  }
   var req = { input: q };
   if (_userLoc) {
     // origin → Google returns distance_meters per prediction; location+radius biases
