@@ -5580,7 +5580,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707145328';
+var BUILD_VERSION = '20260707150932';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -5840,6 +5840,13 @@ try {
     }, 250);
   });
 })();
+
+// iOS sometimes restores a killed/backgrounded page from a half-dead snapshot
+// (blank hero, frozen embeds, stale layout). A restore from that snapshot gets
+// one clean reload so the app always comes back whole.
+window.addEventListener('pageshow', function(e){
+  if(e && e.persisted){ try { location.reload(); } catch(err){} }
+});
 
 // Status-bar probe: when running full-screen (home-screen app) the status bar
 // draws OVER the page; if env(safe-area-inset-top) wrongly resolves to 0, set
