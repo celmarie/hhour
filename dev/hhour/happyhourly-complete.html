@@ -5571,7 +5571,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707140554';
+var BUILD_VERSION = '20260707141206';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -32695,7 +32695,9 @@ function _setupDealMap() {
 }
 /* Merchant portal header — keep it tidy on phones */
 @media (max-width:600px){
-  .merch-hdr-bar{ padding:11px 13px !important; gap:8px !important; }
+  /* padding shorthand must KEEP the status-bar clearance — this rule loads after
+     the safe-area rules and was silently erasing them on phones. */
+  .merch-hdr-bar{ padding:calc(11px + max(env(safe-area-inset-top, 0px), var(--sat-fix, 0px))) 13px 11px !important; gap:8px !important; }
   .merch-hdr-title{ font-size:15px !important; }
   .merch-hdr-sub{ display:none !important; }
   .merch-btn-label{ display:none !important; }        /* buttons become icon-only */
