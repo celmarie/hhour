@@ -544,6 +544,11 @@ textarea.finput{resize:none;height:80px;}
 /* Date & time fields: iOS renders them with a centered value and inflated
    height — normalize to match the app's text inputs (left-aligned, compact,
    never wider than the screen). */
+/* Merchant Create/Edit Deal overlay sits OUTSIDE #merch-root, so it missed its
+   box-sizing reset — width:100% + padding made every field wider than the screen. */
+#me-create-sheet-ov, #me-create-sheet-ov *{ box-sizing: border-box; }
+#me-create-sheet-ov{ max-width: 100vw; overflow-x: hidden; }
+
 /* GLOBAL: every date/time field in the app (customer post, merchant create/edit,
    admin edit modal, signup, booking rows). iOS renders them with a centered value
    and inflated height — normalize to the app's text-input look. */
@@ -5575,7 +5580,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707145012';
+var BUILD_VERSION = '20260707145328';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
