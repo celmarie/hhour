@@ -5546,7 +5546,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707125102';
+var BUILD_VERSION = '20260707125627';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -7333,7 +7333,12 @@ function _addrRender(inputId, items, d, inputEl) {
     // Distance goes UNDER the pin icon (like Google Maps): the left column is
     // always on-screen, while the row's right edge can clip on narrow phones.
     var distLbl = p.distKm!=null ? (p.distKm>=100?Math.round(p.distKm)+' km':_watchDistLabel(p.distKm)) : '';
-    return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'" ontouchend="'+clickHandler+'"'
+    // TAP selects; a SCROLL never does: touchend also fires when a scroll gesture
+    // ends on a row, which was auto-selecting venues while the user scrolled the
+    // list. Track the finger's travel — only a near-stationary touch counts.
+    return '<div onmousedown="event.preventDefault()" onclick="'+clickHandler+'"'
+      +' ontouchstart="this._ty=event.touches[0].clientY"'
+      +' ontouchend="if(Math.abs(event.changedTouches[0].clientY-(this._ty==null?event.changedTouches[0].clientY:this._ty))<10){event.preventDefault();'+clickHandler+'}"'
       +' style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;cursor:pointer;background:#fff;'
       +'border-top:'+(i?'1px solid #F0F0F0':'none')+'"'
       +' onmouseover="this.style.background=\'#F5F5F5\'" onmouseout="this.style.background=\'#fff\'">'
