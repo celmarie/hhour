@@ -5571,7 +5571,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707140021';
+var BUILD_VERSION = '20260707140554';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -5836,17 +5836,25 @@ try {
 // draws OVER the page; if env(safe-area-inset-top) wrongly resolves to 0, set
 // --sat-fix so portal headers still clear the clock (see CSS max() rules).
 (function(){
-  try {
-    var standalone = (navigator.standalone === true) ||
-      (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-    if(!standalone) return;
-    var probe = document.createElement('div');
-    probe.style.cssText = 'position:fixed;top:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none;';
-    (document.body || document.documentElement).appendChild(probe);
-    var v = parseFloat(getComputedStyle(probe).paddingTop) || 0;
-    probe.remove();
-    if(v < 1) document.documentElement.style.setProperty('--sat-fix', '54px');
-  } catch(e){}
+  function _satApply(){
+    try {
+      var probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;top:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none;';
+      (document.body || document.documentElement).appendChild(probe);
+      var v = parseFloat(getComputedStyle(probe).paddingTop) || 0;
+      probe.remove();
+      // Full-screen = the page occupies the whole screen height, so the clock
+      // draws over it — measured directly instead of trusting iOS's flags.
+      var fullscreen = (navigator.standalone === true) ||
+        (window.matchMedia && matchMedia('(display-mode: standalone)').matches) ||
+        (window.screen && Math.abs(screen.height - window.innerHeight) < 6);
+      if(v < 1 && fullscreen) document.documentElement.style.setProperty('--sat-fix', '54px');
+      else if(v >= 1) document.documentElement.style.setProperty('--sat-fix', '0px');
+    } catch(e){}
+  }
+  _satApply();
+  window.addEventListener('load', _satApply);
+  setTimeout(_satApply, 800);
 })();
 
 // HIDE-ONLY guard. iOS offers to fill a saved password whenever it sees a login
