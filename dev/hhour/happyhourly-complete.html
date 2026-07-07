@@ -5546,7 +5546,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707130216';
+var BUILD_VERSION = '20260707131451';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -22631,7 +22631,7 @@ function _admShowPreviewBar(){
   if(bar){ bar.style.display = 'flex'; return; }
   bar = document.createElement('div');
   bar.id = 'adm-cust-preview-bar';
-  bar.setAttribute('style','position:fixed;top:0;left:0;right:0;z-index:1000000;background:#1A1A1A;color:white;padding:11px 16px;font-family:Inter,sans-serif;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.35);');
+  bar.setAttribute('style','position:fixed;top:0;left:0;right:0;z-index:1000000;background:#1A1A1A;color:white;padding:calc(11px + env(safe-area-inset-top, 0px)) 16px 11px;font-family:Inter,sans-serif;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.35);');
   bar.innerHTML = '👁️ Previewing as a customer · <span style="text-decoration:underline;">← Back to Admin</span>';
   bar.onclick = _admExitCustomerPreview;
   document.body.appendChild(bar);
@@ -32712,8 +32712,9 @@ function _setupDealMap() {
 <!-- CREATE DEAL — FULL SCREEN -->
 <div id="me-create-sheet-ov" style="display:none;position:fixed;inset:0;z-index:999997;background:#F0F2F5;flex-direction:column;overflow:hidden;font-family:'Inter',sans-serif;">
 
-  <!-- Header -->
-  <div style="background:linear-gradient(135deg,#E8192C,#FF5533);padding:0;flex-shrink:0;">
+  <!-- Header (safe-area padding: the translucent status bar draws OVER the page,
+       so without it the Publish/back buttons sit under the clock) -->
+  <div style="background:linear-gradient(135deg,#E8192C,#FF5533);padding:env(safe-area-inset-top, 0px) 0 0;flex-shrink:0;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;">
       <button onclick="meCloseCreate()" style="background:none;border:none;border-radius:10px;width:36px;height:36px;color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
       <div style="text-align:center;">
