@@ -5546,7 +5546,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707123551';
+var BUILD_VERSION = '20260707123846';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -19550,7 +19550,7 @@ function adminPage(page,btn){
     } else {
       html += pendingDeals.slice(0,3).map(function(d){
         return '<div onclick="adminPreviewDeal('+d.id+')" style="'+row+'cursor:pointer;" onmouseenter="this.style.background=\'#fafafa\'" onmouseleave="this.style.background=\'\'">'
-          +'<div style="width:42px;height:42px;border-radius:12px;background:rgba(232,25,44,.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">'+(d.img?'<img src="'+esc(d.img)+'" style="width:42px;height:42px;object-fit:cover;border-radius:12px;" onerror="this.outerHTML=\'📣\'">':'📣')+'</div>'
+          +'<div style="width:42px;height:42px;border-radius:12px;background:rgba(232,25,44,.08);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">'+(d.img?'<img src="'+esc(_imgThumb(d.img,100)||d.img)+'" loading="lazy" decoding="async" style="width:42px;height:42px;object-fit:cover;border-radius:12px;" onerror="this.outerHTML=\'📣\'">':'📣')+'</div>'
           +'<div style="flex:1;min-width:0;">'
             +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.venue)+'</div>'
             +'<div style="font-size:12px;color:#555;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.desc)+'</div>'
@@ -25639,7 +25639,7 @@ function meOpenDealPreview(dealId){
   var statusLbl = d.status==='active' ? 'Active' : d.status==='scheduled' ? 'Scheduled' : 'Paused';
 
   var hero = img
-    ? '<div style="height:200px;background:#000;position:relative;"><img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block;"><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 50%,rgba(0,0,0,.55));"></div>'
+    ? '<div style="height:200px;background:#000;position:relative;"><img src="'+(_imgThumb(img,600)||img)+'" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;"><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 50%,rgba(0,0,0,.55));"></div>'
     : '<div style="height:200px;background:linear-gradient(135deg,#1a0408,#4a1020);position:relative;display:flex;align-items:center;justify-content:center;"><div style="font-size:80px;">'+(d.emoji||'🎉')+'</div>';
   hero += '<div style="position:absolute;top:14px;left:14px;background:#E8192C;color:white;font-size:13px;font-weight:800;padding:6px 12px;border-radius:20px;font-family:Inter,sans-serif;">'+offText+'</div>'
     + '<div style="position:absolute;top:14px;right:14px;background:rgba(0,0,0,.55);color:white;font-size:10px;font-weight:800;padding:5px 11px;border-radius:20px;letter-spacing:.6px;font-family:Inter,sans-serif;">👁 PREVIEW</div>'
@@ -29352,7 +29352,7 @@ function comCard(m,showJoin){
   // Meetup-style: image-forward card, title, date, organizer
   return '<div class="com-evcard" onclick="comOpenDetail('+m.id+')" style="cursor:pointer;background:transparent;">'
     + '<div class="com-evimg" style="position:relative;width:100%;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:linear-gradient(135deg,'+bg+');display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.08);">'
-      + (img?'<img src="'+img+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">':'<span style="font-size:46px;">'+m.emoji+'</span>')
+      + (img?'<img src="'+(_imgThumb(img,600)||img)+'" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'">':'<span style="font-size:46px;">'+m.emoji+'</span>')
       + priceBadge + goingBadge
     + '</div>'
     + '<div style="padding:11px 3px 4px;">'
