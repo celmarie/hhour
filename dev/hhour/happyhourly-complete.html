@@ -5546,7 +5546,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707131451';
+var BUILD_VERSION = '20260707132246';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -30808,12 +30808,50 @@ function _watchDistHintUpdate(){
   el.style.display='block';
 }
 
+// ── Watch-form draft: nothing typed is ever lost. Saved on every keystroke,
+// restored when the sheet reopens (even after a crash or tab kill), cleared on
+// successful share. Expires after 48h. Free: lives in the phone's localStorage.
+function _watchDraftSave(){
+  try {
+    var g = function(id){ var el=document.getElementById(id); return el ? el.value : ''; };
+    localStorage.setItem('hh_watch_draft', JSON.stringify({
+      venue: g('watch-venue'), loc: g('watch-location'), website: g('watch-website'),
+      notes: g('watch-notes'), custom: g('watch-match-custom'), resvInfo: g('watch-resv-info'),
+      resv: !!(document.getElementById('watch-resv')||{}).checked,
+      sel: Object.keys(_watchMatchSel||{}).filter(function(k){ return _watchMatchSel[k]; }),
+      t: Date.now()
+    }));
+  } catch(e){}
+}
+function _watchDraftClear(){ try { localStorage.removeItem('hh_watch_draft'); } catch(e){} }
+function _watchDraftRestore(){
+  try {
+    var d = JSON.parse(localStorage.getItem('hh_watch_draft')||'null');
+    if(!d || (Date.now()-(d.t||0)) > 172800000) return false;
+    if((document.getElementById('watch-venue')||{value:''}).value.trim()) return false; // mid-typing — don't clobber
+    if(!d.venue && !d.notes && !(d.sel||[]).length && !d.custom) return false;           // empty draft
+    var s = function(id,v){ var el=document.getElementById(id); if(el) el.value = v||''; };
+    s('watch-venue', d.venue); s('watch-location', d.loc); s('watch-website', d.website);
+    s('watch-notes', d.notes); s('watch-match-custom', d.custom); s('watch-resv-info', d.resvInfo);
+    var rc = document.getElementById('watch-resv'); if(rc){ rc.checked = !!d.resv; try { watchToggleReservation(); } catch(e){} }
+    _watchMatchSel = {}; (d.sel||[]).forEach(function(id){ _watchMatchSel[id] = true; });
+    return true;
+  } catch(e){ return false; }
+}
 function watchOpenCreateSheet(){
   if(!currentUser){ showToast('🔒 Please sign in to share a spot'); return; }
   var ov=document.getElementById('watch-create-sheet-ov'),sh=document.getElementById('watch-create-sheet');
   if(!ov||!sh)return;
   _watchPickLat=null; _watchPickLng=null;   // fresh coords for this submission
+  var _hadDraft = _watchDraftRestore();     // BEFORE populate, so ticked matches render
   watchPopulateFixtures();
+  if(_hadDraft) showToast('📝 Your unsaved draft was restored');
+  // Save the draft on every keystroke / toggle inside the sheet (wired once).
+  if(!sh._draftWired){
+    sh._draftWired = true;
+    sh.addEventListener('input', _watchDraftSave);
+    sh.addEventListener('change', _watchDraftSave);
+  }
   var hint=document.getElementById('watch-tz-hint');
   if(hint) hint.textContent = '🕒 Times shown in ' + _detectTzPhrase();
   // Hide the bottom nav while the sheet is open: the nav paints in a HIGHER
@@ -30929,6 +30967,7 @@ async function watchSubmit(){
   } catch(e){ console.warn('[watch] submit failed', e); showToast('⚠️ '+(e && e.message ? e.message : 'submit failed')); return; }
 
   // Reset form
+  _watchDraftClear();   // shared successfully — wipe the crash-recovery draft
   ['watch-venue','watch-match-custom','watch-location','watch-website','watch-resv-info','watch-notes'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   _watchPickLat=null; _watchPickLng=null;
   var _wdh=document.getElementById('watch-dist-hint'); if(_wdh){ _wdh.style.display='none'; _wdh.textContent=''; }
