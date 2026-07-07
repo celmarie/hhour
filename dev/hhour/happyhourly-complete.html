@@ -5575,7 +5575,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707143926';
+var BUILD_VERSION = '20260707144641';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -6539,9 +6539,15 @@ async function loadDealsFromSupabase() {
 
     // Render immediately — no longer waiting for reviews
     _dealsLoading = false;
+    // Sort correctly on the FIRST paint: seed the viewer's last-known position and
+    // compute distances from the geocode cache BEFORE rendering — otherwise the
+    // deck draws unsorted and visibly reshuffles seconds later when the location
+    // arrives (looked like a glitch). Known venues resolve synchronously from the
+    // cache; only genuinely-new addresses still update (and re-sort) async.
+    try { if (!_userLoc) { var _gc0 = _geoCached(); if (_gc0) _userLoc = { lat: _gc0.lat, lng: _gc0.lng }; } } catch(e){}
+    try { if (typeof recomputeDealDistances === 'function') recomputeDealDistances(); } catch(e){}
     if (typeof renderCoupons === 'function') renderCoupons('all');
     if (typeof renderUC === 'function') renderUC('all');
-    if (typeof recomputeDealDistances === 'function') recomputeDealDistances();
     // Refresh the hero stats HERE, unconditionally: renderCoupons also calls this,
     // but it returns early when there are no verified deals — which froze the
     // "deals available" counter at whatever localStorage last cached.
