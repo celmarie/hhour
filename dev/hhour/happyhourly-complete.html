@@ -5558,7 +5558,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707134210';
+var BUILD_VERSION = '20260707135301';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -14443,6 +14443,16 @@ function syncWebChrome(name){
 var _admPreviewMode = false;
 function goBack(){
   if(Date.now() < _navSettleUntil) return;   // a Back this soon after navigating is a stray/ghost tap — ignore it
+  // "Previewing as a customer" (the black top bar): Back returns straight to the
+  // admin portal instead of walking deeper into the customer UI.
+  try {
+    var _pb = document.getElementById('adm-cust-preview-bar');
+    if(_pb && _pb.style.display !== 'none'){
+      goScreen('deals');                       // reset the customer app for next preview
+      _admExitCustomerPreview();
+      return;
+    }
+  } catch(e){}
   if(_admPreviewMode){
     _admPreviewMode = false;
     var adminEl = document.getElementById('admin-root');
