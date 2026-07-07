@@ -4102,7 +4102,7 @@ function _loadGT(){
               <div id="uc-venue-dup" style="display:none;font-size:12px;font-weight:700;color:#E8192C;margin-top:6px;line-height:1.4;"></div>
             </div>
             <div>
-              <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Address <span style="color:#E8192C;">*</span></label>
+              <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Address <span style="color:#E8192C;">*</span> <span id="uc-addr-dist" style="color:#12A150;font-weight:800;text-transform:none;"></span></label>
               <input id="uc-addr" type="text" autocomplete="off" autocorrect="off" spellcheck="false" name="place-search" placeholder="Start typing the address…" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" oninput="addrInput('uc-addr')" onfocus="this.style.borderColor='#E8192C';addrInput('uc-addr')" onblur="setTimeout(_addrHideDrop,150);this.style.borderColor='#E8E8EC';if(this.value.trim().length>4){try{suggestCurrencyFromAddress(this.value.trim());}catch(e){}}">
             </div>
             <div>
@@ -5546,7 +5546,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707125627';
+var BUILD_VERSION = '20260707130216';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -7329,7 +7329,14 @@ function _addrRender(inputId, items, d, inputEl) {
     var esc  = (p.description||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var mainEsc = main.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     var secEsc = (sec||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    var clickHandler = (inputId === 'uc-venue') ? "ucAddrPick('"+secEsc+"','"+mainEsc+"')" : (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'edit-m-address') ? "adminAddrPick('"+esc+"')" : (inputId === 'watch-venue') ? "watchVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'awe-venue') ? "aweVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'adm-edit-venue') ? "admEditVenuePick('"+mainEsc+"','"+esc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')";
+    // Deal form: carry the suggestion's distance onto the Address label ("2.5 km")
+    // so the picked venue's distance stays visible after selection.
+    var distSet = '';
+    if ((inputId === 'uc-venue' || inputId === 'uc-addr') && p.distKm != null) {
+      var _dl = p.distKm < 1 ? Math.round(p.distKm*1000)+' m' : (p.distKm >= 100 ? Math.round(p.distKm)+' km' : p.distKm.toFixed(1)+' km');
+      distSet = "var _ud=document.getElementById('uc-addr-dist');if(_ud)_ud.textContent='📍 "+_dl+" from you';";
+    }
+    var clickHandler = distSet + ((inputId === 'uc-venue') ? "ucAddrPick('"+secEsc+"','"+mainEsc+"')" : (inputId === 'uc-addr') ? "ucAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'b2-addr') ? "bizAddrPick('"+esc+"','"+mainEsc+"')" : (inputId === 'edit-m-address') ? "adminAddrPick('"+esc+"')" : (inputId === 'watch-venue') ? "watchVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'awe-venue') ? "aweVenuePick('"+mainEsc+"','"+secEsc+"')" : (inputId === 'adm-edit-venue') ? "admEditVenuePick('"+mainEsc+"','"+esc+"')" : (inputId === 'com-ev-location') ? "addrPick('"+esc+"')" : "addrPick('"+esc+"')");
     // Distance goes UNDER the pin icon (like Google Maps): the left column is
     // always on-screen, while the row's right edge can clip on narrow phones.
     var distLbl = p.distKm!=null ? (p.distKm>=100?Math.round(p.distKm)+' km':_watchDistLabel(p.distKm)) : '';
