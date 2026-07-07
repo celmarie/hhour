@@ -552,6 +552,19 @@ textarea.finput{resize:none;height:80px;}
 #screen-post input[type="time"]::-webkit-date-and-time-value{
   text-align: left; margin: 0;
 }
+/* Status-bar clearance for portal headers. Some iOS launches report
+   env(safe-area-inset-top) as 0 even though the translucent status bar draws
+   over the page — a boot probe then sets --sat-fix to a measured fallback, and
+   max() picks whichever is real. */
+.merch-hdr-bar, #me-topbar {
+  padding-top: calc(14px + max(env(safe-area-inset-top, 0px), var(--sat-fix, 0px))) !important;
+}
+#me-create-sheet-ov > div:first-child {
+  padding-top: max(env(safe-area-inset-top, 0px), var(--sat-fix, 0px)) !important;
+}
+#adm-cust-preview-bar {
+  padding-top: calc(11px + max(env(safe-area-inset-top, 0px), var(--sat-fix, 0px))) !important;
+}
 .so-cancel{font-size:14px;font-weight:700;color:white;cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;white-space:nowrap;}
 .so-body{flex:1;overflow-y:auto;padding:16px 18px;scrollbar-width:none;}
 .so-body::-webkit-scrollbar{display:none;}
@@ -5558,7 +5571,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707135301';
+var BUILD_VERSION = '20260707140021';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -5817,6 +5830,23 @@ try {
       }
     }, 250);
   });
+})();
+
+// Status-bar probe: when running full-screen (home-screen app) the status bar
+// draws OVER the page; if env(safe-area-inset-top) wrongly resolves to 0, set
+// --sat-fix so portal headers still clear the clock (see CSS max() rules).
+(function(){
+  try {
+    var standalone = (navigator.standalone === true) ||
+      (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    if(!standalone) return;
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none;';
+    (document.body || document.documentElement).appendChild(probe);
+    var v = parseFloat(getComputedStyle(probe).paddingTop) || 0;
+    probe.remove();
+    if(v < 1) document.documentElement.style.setProperty('--sat-fix', '54px');
+  } catch(e){}
 })();
 
 // HIDE-ONLY guard. iOS offers to fill a saved password whenever it sees a login
