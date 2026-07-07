@@ -5546,7 +5546,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707123846';
+var BUILD_VERSION = '20260707125102';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -32226,7 +32226,24 @@ function _setupDealMap() {
     try { _gmapObj.on('moveend', function(){ clearTimeout(window._mvlT); window._mvlT = setTimeout(_renderMapVenueList, 300); }); } catch(e){}
 
     // User location dot (kept directly on the map, not clustered)
-    try { L.circleMarker([center.lat, center.lng], { radius: 7, color: '#ffffff', weight: 2, fillColor: '#4285F4', fillOpacity: 1 }).addTo(_gmapObj).bindPopup('You are here'); } catch(e){}
+    // LIVE "you are here" dot: drawn and moved ONLY from real GPS fixes (never the
+    // fallback center, which used to paint the dot in the wrong place), and it
+    // follows the user while the map is open.
+    try {
+      if (navigator.geolocation) {
+        if (window._youDotWatch) { try { navigator.geolocation.clearWatch(window._youDotWatch); } catch(e){} }
+        window._youDot = null;
+        window._youDotWatch = navigator.geolocation.watchPosition(function(p){
+          try {
+            if (!_gmapObj) return;
+            var ll = [p.coords.latitude, p.coords.longitude];
+            if (!window._youDot) {
+              window._youDot = L.circleMarker(ll, { radius: 7, color: '#ffffff', weight: 2, fillColor: '#4285F4', fillOpacity: 1 }).addTo(_gmapObj).bindPopup('You are here');
+            } else { window._youDot.setLatLng(ll); }
+          } catch(e){}
+        }, function(){}, { enableHighAccuracy: false, maximumAge: 15000, timeout: 20000 });
+      }
+    } catch(e){}
 
     var verifiedDeals = (typeof vouchers !== 'undefined' ? vouchers : []).filter(function(v){ return v.verified !== false; });
     var communityDeals = (typeof ucDeals !== 'undefined' ? ucDeals : []).filter(function(d){ return d.id; });
