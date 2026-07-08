@@ -5938,7 +5938,13 @@ function showLoginScreen(){
 // ── Web login dropdown (desktop only) ─────────────────────────────────────────
 // A guest clicking Profile on desktop gets a compact login popup (Groupon-style)
 // instead of the full-screen takeover. Mobile + logged-in users use the normal flow.
-function _isWebWidth(){ try { return !!(window.matchMedia && window.matchMedia('(min-width:900px)').matches); } catch(e){ return false; } }
+function _isWebWidth(){ try {
+  // The native app is ALWAYS the phone experience, even on iPad — the desktop
+  // web shell in a webview is what got sign-in rejected by App Review (its
+  // Google popup is blocked in webviews, so the button just went dead).
+  if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return false;
+  return !!(window.matchMedia && window.matchMedia('(min-width:900px)').matches);
+} catch(e){ return false; } }
 function webProfileClick(){
   if(_isWebWidth() && isGuest){ openWebLoginPopup(); return; }
   goScreen('profile');
@@ -15429,6 +15435,10 @@ function switchLoginTab(role){
   var god=document.getElementById('login-or-div'); if(god) god.style.display = role==='customer'?'flex':'none';
   var gsi=document.getElementById('gsi-button');   if(gsi) gsi.style.display = role==='customer'?'flex':'none';
   var ggb=document.getElementById('google-btn');   if(ggb && role!=='customer') ggb.style.display='none';
+  // Native-app buttons are customer-only too (re-shown by _applyNativeLoginButtons
+  // via the initGsiButton call below when switching back to customer).
+  var anb=document.getElementById('apple-native-btn');  if(anb && role!=='customer') anb.style.display='none';
+  var gnb=document.getElementById('google-native-btn'); if(gnb && role!=='customer') gnb.style.display='none';
   if(role==='customer') setTimeout(initGsiButton, 0);   // (re)render the Google button
   var mw=document.getElementById('auth-mode-wrap'); if(mw) mw.style.display = (role==='customer')?'flex':'none';
   _loginMode='signin'; switchAuthMode('signin');
@@ -15483,6 +15493,11 @@ async function handleGoogleCredential(resp){
 
 // Render Google's official button into #gsi-button. Returns true on success.
 function initGsiButton(gsiId, fbId, width){
+  // Native app: GIS never renders. Google blocks its sign-in inside embedded
+  // webviews (the button goes dead — an App Review 2.1 rejection) and the
+  // redirect fallback escapes to Safari (a guideline 4 rejection). The wrapper
+  // shows the OS-level buttons instead. Returning true stops the _waitGsi loop.
+  if(_nativeApp()){ _applyNativeLoginButtons(); return true; }
   gsiId = gsiId || 'gsi-button'; fbId = fbId || 'google-btn';
   if(!(window.google && google.accounts && google.accounts.id)) return false;
   // Google sign-in is customer-only. This renders async (retry loop), so without this
@@ -15545,6 +15560,76 @@ async function loginWithGoogleRedirect(){
   }catch(e){
     if(errEl) errEl.textContent = 'Google sign-in failed: ' + (e.message || e);
   }
+}
+
+// ── Native app sign-in (Capacitor iOS) ───────────────────────────────────────
+// Inside the iOS app, sign-in must be fully in-app (App Review guideline 4) and
+// offer Sign in with Apple alongside Google (guideline 4.8). The SocialLogin
+// plugin shows the OS-level sheets and returns an ID token, which goes to
+// Supabase through the exact same signInWithIdToken path as the web's Google
+// button. On an old binary without the plugin, the buttons stay hidden and
+// email + guest login still work.
+function _nativeApp(){ try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch(e){ return false; } }
+function _nativeIOSApp(){ try { return _nativeApp() && window.Capacitor.getPlatform() === 'ios'; } catch(e){ return false; } }
+function _socialLoginPlugin(){ try { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.SocialLogin) || null; } catch(e){ return null; } }
+
+// Google Cloud Console → Credentials → OAuth client of type "iOS" for bundle
+// com.appiehour.app. The SAME ID must also be added in Supabase → Authentication
+// → Providers → Google → "Authorized Client IDs", or signInWithIdToken rejects
+// the token. Empty = the native Google button stays hidden (Apple + email only).
+var GOOGLE_IOS_CLIENT_ID = '';
+
+var _socialLoginInited = false;
+async function nativeOAuthLogin(provider){
+  var errEl = _activeLoginErrEl(); if(errEl) errEl.textContent = '';
+  if(!_googleTermsOk()) return;                    // same T&C gate as the web buttons
+  var plug = _socialLoginPlugin();
+  if(!plug){ if(errEl) errEl.textContent = 'Please update the Appie Hour app from the App Store to use this sign-in.'; return; }
+  try{
+    if(!_socialLoginInited){
+      var cfg = { apple: {} };
+      if(GOOGLE_IOS_CLIENT_ID) cfg.google = { iOSClientId: GOOGLE_IOS_CLIENT_ID, webClientId: GOOGLE_CLIENT_ID, iOSServerClientId: GOOGLE_CLIENT_ID };
+      await plug.initialize(cfg);
+      _socialLoginInited = true;
+    }
+    var res = await plug.login({ provider: provider, options: { scopes: provider === 'apple' ? ['email','name'] : ['email','profile'] } });
+    var r = (res && res.result) || {};
+    var idToken = r.idToken || (r.authentication && r.authentication.idToken) || '';
+    if(!idToken) return;                           // user closed the sheet
+    var { data, error } = await db.auth.signInWithIdToken({ provider: provider, token: idToken });
+    if(error){ if(errEl) errEl.textContent = _friendlyAuthErr(error.message); return; }
+    if(data && data.user){
+      // Apple reveals the user's name ONLY on the very first authorization —
+      // capture it into the account metadata or it is lost forever.
+      try {
+        var p = r.profile || {};
+        var nm = [p.givenName, p.familyName].filter(Boolean).join(' ').trim();
+        var meta = data.user.user_metadata || {};
+        if(nm && !meta.name && !meta.full_name){ await db.auth.updateUser({ data: { name: nm, full_name: nm } }); }
+      } catch(e){}
+      _authInitialized = true;
+      try { closeWebLoginPopup(); } catch(e){}
+      await handleAuthSession(data.user);
+    }
+  }catch(e){
+    var msg = (e && (e.message || e.errorMessage)) || '';
+    // The OS throws when the user dismisses the sheet — not an error worth showing.
+    if(!/cancel/i.test(msg) && errEl) errEl.textContent = 'Sign-in failed: ' + (msg || 'unknown error');
+  }
+}
+
+// Swap the web Google widgets for the native buttons when inside the iOS app.
+// Called from initGsiButton (so every path that renders login goes through it).
+function _applyNativeLoginButtons(){
+  if(!_nativeIOSApp()) return;
+  var isCustomer = (typeof loginRole === 'undefined' || loginRole === 'customer');
+  var plug = _socialLoginPlugin();
+  var ab = document.getElementById('apple-native-btn');
+  var gb = document.getElementById('google-native-btn');
+  if(ab) ab.style.display = (plug && isCustomer) ? 'flex' : 'none';
+  if(gb) gb.style.display = (plug && isCustomer && GOOGLE_IOS_CLIENT_ID) ? 'flex' : 'none';
+  var gsi = document.getElementById('gsi-button'); if(gsi) gsi.style.display = 'none';
+  var ggb = document.getElementById('google-btn'); if(ggb) ggb.style.display = 'none';
 }
 
 // ── Bot protection: Cloudflare Turnstile CAPTCHA ─────────────────────────────
@@ -33502,6 +33587,18 @@ function _setupDealMap() {
         <div style="font-size:11px;font-weight:700;color:#9b8b86;">or</div>
         <div style="flex:1;height:1px;background:#EDE3DA;"></div>
       </div>
+
+      <!-- Native app only (iOS): OS-level sign-in sheets. Google blocks its web
+           sign-in inside embedded webviews, so the wrapper never shows GIS —
+           these call the SocialLogin plugin instead (see nativeOAuthLogin). -->
+      <button type="button" id="apple-native-btn" onclick="nativeOAuthLogin('apple')" style="display:none;width:100%;align-items:center;justify-content:center;gap:9px;background:#000;color:#fff;border:none;border-radius:14px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" style="flex-shrink:0;"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+        Sign in with Apple
+      </button>
+      <button type="button" id="google-native-btn" onclick="nativeOAuthLogin('google')" style="display:none;width:100%;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1.5px solid #E2D8CE;border-radius:14px;padding:12px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px;">
+        <svg width="18" height="18" viewBox="0 0 18 18" style="flex-shrink:0;"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.41 5.41 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+        Continue with Google
+      </button>
 
       <!-- Continue with Google (customer only) — Google Identity Services renders here -->
       <div id="gsi-button" style="display:flex;justify-content:center;margin-bottom:12px;min-height:44px;"></div>
