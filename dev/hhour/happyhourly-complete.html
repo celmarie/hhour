@@ -9402,7 +9402,7 @@ function meCloseCreate(){
   // Reset edit mode + sheet chrome
   _meEditingDealId = null;
   var hdr = document.getElementById('me-create-title'); if(hdr) hdr.textContent = 'Create a Deal';
-  var pub = document.getElementById('me-publish-btn');  if(pub) pub.innerHTML = '🚀 Publish';
+  var pub = document.getElementById('me-publish-btn');  if(pub) pub.innerHTML = 'Publish';
   // Reset photo grid
   _mePhotos = [];
   renderPhotoGrid('me');
@@ -24594,7 +24594,7 @@ var adminNotifTemplates = {
     "— The Appie Hour Team",
 
   dealApproved:
-    "Your deal '{{deal}}' is now live on Appie Hour! 🚀 Customers in your area can see and purchase it right now. You've earned +{{credits}} credits.",
+    "Your deal '{{deal}}' is now live on Appie Hour. Customers in your area can see and purchase it right now. You've earned +{{credits}} credits.",
 
   dealRejected:
     "Your deal '{{deal}}' was not approved. Reason: {{reason}}. Please revise and resubmit. Contact support if you have questions.",
@@ -25782,7 +25782,7 @@ function meOpenEditDeal(dealId){
 
   // Reflect edit mode in the sheet header / publish button
   var hdr = document.getElementById('me-create-title');     if(hdr) hdr.textContent = 'Edit Deal';
-  var pub = document.getElementById('me-publish-btn');       if(pub) pub.innerHTML = '💾 Save';
+  var pub = document.getElementById('me-publish-btn');       if(pub) pub.innerHTML = 'Save';
 
   if(typeof meUpdateCurrencyPreview === 'function') meUpdateCurrencyPreview();
   if(typeof meUpdateSchedulePreview === 'function') meUpdateSchedulePreview();
@@ -25792,7 +25792,7 @@ function meOpenEditDeal(dealId){
   if(_edId && typeof meLoadArrivalTimes === 'function') meLoadArrivalTimes(_edId);
   if(_edId && typeof meLoadDateSlots === 'function') meLoadDateSlots(_edId);
 
-  showToast('📝 Editing "' + (deal.name||'deal') + '"');
+  showToast('Editing "' + (deal.name||'deal') + '"');
 }
 // Enhanced Deals with Scheduling & Bulk Actions
 function meRenderDealsEnhanced(){
@@ -29142,7 +29142,7 @@ function _mePublishDealInner(){
 
   meCloseCreate();
   mePageNew('deals');
-  showToast(wasEditing ? '✅ Deal updated!' : '🚀 Deal is now live!');
+  showToast(wasEditing ? 'Deal updated' : 'Deal is now live');
 }
 function meOpenPayoutRequest(){
   var sym = finSym(), minLocal = finMinPayoutLocal(), maxAmt = meCurrentBalance;
@@ -32990,7 +32990,7 @@ function _setupDealMap() {
   <!-- Dark header bar - matching Admin Panel -->
   <div class="merch-hdr-bar" style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;">
     <div style="min-width:0;">
-      <div class="merch-hdr-title" style="font-size:16px;font-weight:900;color:white;white-space:nowrap;">🏪 Merchant Portal</div>
+      <div class="merch-hdr-title" style="font-size:16px;font-weight:900;color:white;white-space:nowrap;">Merchant Portal</div>
       <div class="merch-hdr-sub" style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;white-space:nowrap;">Appie Hour Platform</div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
@@ -32999,7 +32999,7 @@ function _setupDealMap() {
         <button onclick="closeMerchant()" class="merch-hdr-btn" style="background:rgba(255,255,255,.1);border:none;border-radius:10px;padding:8px 16px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">✕ <span class="merch-btn-label">Close</span></button>
       </div>
       <div class="merch-hdr-welcome" style="text-align:right;line-height:1.3;">
-        <div style="font-size:13px;font-weight:800;color:#fff;">👋 Welcome, <span id="merch-hdr-name">there</span></div>
+        <div style="font-size:13px;font-weight:800;color:#fff;">Welcome, <span id="merch-hdr-name">there</span></div>
         <div id="merch-hdr-email" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
       </div>
     </div>
@@ -33101,7 +33101,7 @@ function _setupDealMap() {
         <div id="me-create-title" style="font-size:16px;font-weight:900;color:white;">Create a Deal</div>
         <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:1px;">Goes live instantly on the app</div>
       </div>
-      <button id="me-publish-btn" onclick="mePublishDeal()" style="background:white;border:none;border-radius:10px;padding:8px 14px;color:#E8192C;font-size:13px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">🚀 Publish</button>
+      <button id="me-publish-btn" onclick="mePublishDeal()" style="background:white;border:none;border-radius:10px;padding:8px 14px;color:#E8192C;font-size:13px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;">Publish</button>
     </div>
     <!-- Step indicator -->
     <div style="display:flex;padding:0 20px 16px;gap:6px;" id="me-step-dots">
@@ -33141,13 +33141,13 @@ function _setupDealMap() {
           <div>
             <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Category</label>
             <select id="me-deal-cat" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
-              <option value="bars">🍺 Bars</option>
-              <option value="cocktails">🍸 Cocktail Bar</option>
-              <option value="wine">🍷 Wine Bar</option>
-              <option value="restaurants">🍽️ Restaurant</option>
-              <option value="clubs">🎶 Club / Nightlife</option>
-              <option value="food">🍕 Food</option>
-              <option value="hotel">🏨 Hotel (date booking)</option>
+              <option value="bars">Bars</option>
+              <option value="cocktails">Cocktail Bar</option>
+              <option value="wine">Wine Bar</option>
+              <option value="restaurants">Restaurant</option>
+              <option value="clubs">Club / Nightlife</option>
+              <option value="food">Food</option>
+              <option value="hotel">Hotel (date booking)</option>
             </select>
           </div>
           <!-- Discount label is auto-computed from the prices now (field removed from the
@@ -33196,7 +33196,7 @@ function _setupDealMap() {
                 <option value="PKR">₨ PKR - Pakistan</option>
                 <option value="BDT">৳ BDT - Bangladesh</option>
                 </optgroup>
-                <option value="FREE">🆓 FREE</option>
+                <option value="FREE">FREE</option>
               </select>
               <input id="me-deal-price" type="number" min="0" step="0.01" placeholder="4.99" oninput="meUpdateCurrencyPreview()" style="flex:1;min-width:0;background:#F5F5F7;border:none;padding:13px 12px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;">
             </div>
@@ -33358,14 +33358,13 @@ function _setupDealMap() {
       <div style="padding:16px;">
         <textarea id="me-deal-terms" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:#1A1A1A;outline:none;height:80px;resize:none;box-sizing:border-box;line-height:1.5;" placeholder="e.g. One voucher per table. Cannot be combined with other offers. Subject to availability." onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'"></textarea>
         <div style="margin-top:12px;display:flex;align-items:flex-start;gap:10px;padding:12px;background:#F0FFF4;border-radius:10px;border:1px solid rgba(18,161,80,.2);">
-          <div style="font-size:18px;flex-shrink:0;">🚀</div>
           <div style="font-size:12px;color:#166534;font-weight:500;line-height:1.5;">Your deal goes <strong>live instantly</strong> on the app as soon as you publish. Customers in your area will see it right away.</div>
         </div>
       </div>
     </div>
 
     <!-- Publish button -->
-    <button onclick="mePublishDeal()" style="width:100%;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 16px rgba(232,25,44,.35);margin-bottom:10px;">🚀 Publish Deal Now</button>
+    <button onclick="mePublishDeal()" style="width:100%;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 16px rgba(232,25,44,.35);margin-bottom:10px;">Publish Deal Now</button>
     <button onclick="meCloseCreate()" style="width:100%;background:white;color:#555;border:1.5px solid #E8E8EC;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">Cancel</button>
 
   </div>
