@@ -6338,6 +6338,68 @@ function _parseHoursNums(s){
   return { from: from, to: to };
 }
 
+// ── Multiple schedule blocks ─────────────────────────────────────────────────
+// A deal can run several weekly day+time windows (e.g. Mon–Thu 4–6pm AND
+// Fri–Sun 2–5pm). These live in the `schedules` column as a JSON array of
+// {days, from, to} (from/to are 24h floats). For backward-compat the FIRST
+// block is also mirrored into the legacy days/hours/time_from/time_to fields,
+// so old app versions and any code that only reads those keep working.
+
+// 24h float → compact clock like "5PM" / "5:30PM" (matches how hours were written).
+function _fmtHr(h){
+  var hh = Math.floor(h) % 24; if(hh < 0) hh += 24;
+  var mn = Math.round((h - Math.floor(h)) * 60); if(mn === 60){ mn = 0; hh = (hh+1)%24; }
+  var ap = hh >= 12 ? 'PM' : 'AM', h12 = hh % 12 || 12;
+  return mn ? (h12 + ':' + (mn<10?'0':'') + mn + ap) : (h12 + ap);
+}
+function _fmtHoursRange(from, to){ return _fmtHr(from) + '–' + _fmtHr(to); }
+
+// Normalize any deal (DB row or in-memory) → [{days, from, to}] blocks.
+function _dealSchedules(deal){
+  if(!deal) return [];
+  var raw = deal.schedules;
+  if(typeof raw === 'string'){ try { raw = JSON.parse(raw); } catch(e){ raw = null; } }
+  if(Array.isArray(raw) && raw.length){
+    var out = [];
+    raw.forEach(function(b){
+      if(!b) return;
+      var f = (b.from != null) ? +b.from : (_parseHoursNums(b.hours)||{}).from;
+      var t = (b.to   != null) ? +b.to   : (_parseHoursNums(b.hours)||{}).to;
+      if(f != null && !isNaN(f) && t != null && !isNaN(t)) out.push({ days: b.days || 'Daily', from: f, to: t });
+    });
+    if(out.length) return out;
+  }
+  // Fallback: single block from the legacy fields.
+  var ff = (deal.timeFrom != null) ? +deal.timeFrom : (deal.time_from != null ? +deal.time_from : (_parseHoursNums(deal.hours)||{from:17}).from);
+  var tt = (deal.timeTo   != null) ? +deal.timeTo   : (deal.time_to   != null ? +deal.time_to   : (_parseHoursNums(deal.hours)||{to:22}).to);
+  return [{ days: deal.days || 'Daily', from: ff, to: tt }];
+}
+
+// blocks [{days,from,to}] → the DB fields to persist. Mirrors block 0 into the
+// legacy columns. Returns null if there are no valid blocks.
+function _schedulesToDbFields(blocks){
+  var clean = (blocks||[]).filter(function(b){ return b && b.from != null && !isNaN(b.from) && b.to != null && !isNaN(b.to); });
+  if(!clean.length) return null;
+  var first = clean[0];
+  return {
+    schedules: JSON.stringify(clean.map(function(b){ return { days: b.days || 'Daily', from: +b.from, to: +b.to }; })),
+    days: first.days || 'Daily',
+    hours: _fmtHoursRange(first.from, first.to),
+    time_from: first.from,
+    time_to: first.to
+  };
+}
+
+// JSON for the deck-cd `data-sched` attribute (single-quoted in HTML). Day
+// strings are controlled (day names/ranges) so only '&' and single-quote need
+// escaping for attribute-safety.
+function _schedAttr(deal){
+  try {
+    var arr = _dealSchedules(deal).map(function(b){ return { days: b.days, from: b.from, to: b.to }; });
+    return JSON.stringify(arr).replace(/&/g,'&amp;').replace(/'/g,'&#39;');
+  } catch(e){ return ''; }
+}
+
 // ── DB row → in-memory deal shape ─────────────────────────────────────────────
 function dbDealToLocal(row) {
   var v = row.venues || {};
@@ -6367,6 +6429,7 @@ function dbDealToLocal(row) {
     distKm: dk,
     days: row.days || 'Daily',
     hours: row.hours || '5PM–10PM',
+    schedules: row.schedules || null,
     timeFrom: (row.time_from != null ? row.time_from : (_parseHoursNums(row.hours)||{from:17}).from),
     timeTo:   (row.time_to   != null ? row.time_to   : (_parseHoursNums(row.hours)||{to:22}).to),
     rating: 0,
@@ -6421,6 +6484,7 @@ function dbUCToLocal(row) {
     claimed: row.claimed || 0,
     days: row.days || 'Daily',
     hours: row.hours || '5PM–10PM',
+    schedules: row.schedules || null,
     timeFrom: (row.time_from != null ? row.time_from : (_parseHoursNums(row.hours)||{from:17}).from),
     timeTo:   (row.time_to   != null ? row.time_to   : (_parseHoursNums(row.hours)||{to:22}).to),
     verified: false,
@@ -9389,6 +9453,7 @@ function meOpenCreate(){
   var fmt=function(d){return d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0');};
   var sd=document.getElementById('me-deal-start-date'); if(sd) sd.value=fmt(today);
   var ed=document.getElementById('me-deal-end-date');   if(ed) ed.value=fmt(end);
+  if(typeof meResetSchedBlocks==='function') meResetSchedBlocks();   // clear extra time blocks for a new deal
   meUpdateSchedulePreview();
   meUpdateCurrencyPreview();
   renderPhotoGrid('me');
@@ -9486,6 +9551,27 @@ function _fmtClock(h){
   return h12 + ':' + (mm<10?'0':'') + mm + ap;
 }
 
+// A deck-cd element's schedule blocks → [{from, to, set}]. Prefers the JSON
+// `data-sched` (multiple day+time blocks); falls back to the single
+// data-from/data-to/data-days so old cards + old cached rows still work.
+function _cdBlocks(el){
+  var raw = el.dataset.sched;
+  if(raw){
+    try {
+      var arr = JSON.parse(raw);
+      if(Array.isArray(arr) && arr.length){
+        var out = [];
+        arr.forEach(function(b){
+          var f = parseFloat(b.from), tt = parseFloat(b.to);
+          if(!isNaN(f) && !isNaN(tt)) out.push({ from:f, to:tt, set:_activeDaySet(b.days||'') });
+        });
+        if(out.length) return out;
+      }
+    } catch(e){}
+  }
+  return [{ from:parseFloat(el.dataset.from), to:parseFloat(el.dataset.to), set:_activeDaySet(el.dataset.days||'') }];
+}
+
 function refreshDeckCountdowns(){
   var nowCache = {};   // resolve "now" once per timezone per tick (Intl is not free)
   function nowFor(tz){ var k = tz||'_local'; if(nowCache[k]===undefined) nowCache[k] = _tzNow(tz); return nowCache[k]; }
@@ -9495,28 +9581,36 @@ function refreshDeckCountdowns(){
     var tz   = _tzForAddr(el.dataset.addr || '');   // the VENUE's timezone (null → viewer-local)
     var t    = nowFor(tz);
     var h    = t.h;
-    var from = parseFloat(el.dataset.from);
-    var to   = parseFloat(el.dataset.to);
-    var set  = _activeDaySet(el.dataset.days || '');
     var tzTag = '';   // no timezone label on the deck card (kept clean); the deal detail still shows the venue-time note
-    var activeToday = set.indexOf(t.dow) !== -1;
-    var openNow = activeToday && (to > from ? (h >= from && h < to) : (h >= from || h < to)); // midnight-cross aware
-    var html;
-    if(openNow){
-      var rem = (to > from) ? (to - h) : (h >= from ? (24 - h + to) : (to - h));
-      html = '<span style="color:#12A150;font-weight:700;">🟢 Open · closes in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(Math.round(rem*3600)) + '</span></span>' + tzTag;
-    } else {
-      // Always count down to the NEXT start — today if still upcoming, else the next active day.
-      var bestH = null;
-      for(var k=0;k<=7;k++){
-        var dow = (t.dow + k) % 7;
-        if(set.indexOf(dow) === -1) continue;
-        var hu = k*24 + from - h;
-        if(hu > 0){ bestH = hu; break; }
+    // Evaluate EVERY schedule block. If any block is open now, show the one
+    // closing soonest; otherwise count down to the nearest upcoming start
+    // across all blocks. (Single-block deals fall through unchanged.)
+    var blocks = _cdBlocks(el);
+    var bestRem = null;   // hours until close, among currently-open blocks
+    var bestUntil = null; // hours until next start, among closed blocks
+    blocks.forEach(function(b){
+      if(isNaN(b.from) || isNaN(b.to)) return;
+      var activeToday = b.set.indexOf(t.dow) !== -1;
+      var openNow = activeToday && (b.to > b.from ? (h >= b.from && h < b.to) : (h >= b.from || h < b.to));
+      if(openNow){
+        var rem = (b.to > b.from) ? (b.to - h) : (h >= b.from ? (24 - h + b.to) : (b.to - h));
+        if(bestRem === null || rem < bestRem) bestRem = rem;
+      } else {
+        for(var k=0;k<=7;k++){
+          var dow = (t.dow + k) % 7;
+          if(b.set.indexOf(dow) === -1) continue;
+          var hu = k*24 + b.from - h;
+          if(hu > 0){ if(bestUntil === null || hu < bestUntil) bestUntil = hu; break; }
+        }
       }
-      html = (bestH != null)
-        ? '<span style="color:#B45309;font-weight:700;">🕐 Available in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(Math.round(bestH*3600)) + '</span></span>' + tzTag
-        : '<span style="color:#9A9AB0;font-weight:700;">Not available</span>';
+    });
+    var html;
+    if(bestRem !== null){
+      html = '<span style="color:#12A150;font-weight:700;">🟢 Open · closes in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(Math.round(bestRem*3600)) + '</span></span>' + tzTag;
+    } else if(bestUntil !== null){
+      html = '<span style="color:#B45309;font-weight:700;">🕐 Available in <span style="font-variant-numeric:tabular-nums;">' + fmtCountdown(Math.round(bestUntil*3600)) + '</span></span>' + tzTag;
+    } else {
+      html = '<span style="color:#9A9AB0;font-weight:700;">Not available</span>';
     }
     el.innerHTML = html;
    } catch(e){ /* one bad card must never break the 1s tick for all the others */ }
@@ -9874,7 +9968,7 @@ function renderCoupons(cat){
       +(function(){ var avg=getDealAvgRating(v.id)||v.rating||0; return '<div class="cimg-bottom"><div>'+wasTxt+'<div class="cimg-price">'+v.price+'</div></div>'+(avg>0?'<div class="cimg-rating">⭐ '+avg+'</div>':'')+'</div></div>'; })()
       +'<div class="cbody"><div class="cname">'+esc(v.name)+'</div><div class="cdeal-sub">'+dealDiscountLabel(v)+'</div>'
       +'<div class="cmeta"><span>📍 '+v.dist+'</span><span style="font-size:10px;color:#9A9AB0;">⏰ '+v.hours+'</span></div>'
-      +'<div style="font-size:11px;margin:4px 0 3px;"><span class="deck-cd" data-from="'+v.timeFrom+'" data-to="'+v.timeTo+'" data-today="'+todayAttr+'" data-days="'+esc(v.days||'')+'" data-addr="'+esc(v.address||'')+'"></span></div>'
+      +'<div style="font-size:11px;margin:4px 0 3px;"><span class="deck-cd" data-from="'+v.timeFrom+'" data-to="'+v.timeTo+'" data-today="'+todayAttr+'" data-days="'+esc(v.days||'')+'" data-addr="'+esc(v.address||'')+'" data-sched=\''+_schedAttr(v)+'\'></span></div>'
       +'<div style="font-size:11px;font-weight:700;color:'+availColor+';margin:3px 0 6px;">🎟️ '+avail+' vouchers available</div>'
       +'<button class="buy-now" onclick="event.stopPropagation();isGuest?requireLogin(\'purchase vouchers\'):openVoucher('+v.id+')">'+(isGuest?'🔒 Sign in to buy':'Buy Now')+'</button>'
       +'</div></div>';
@@ -9913,7 +10007,7 @@ function renderUC(cat){
       +wasTxt
       +'<div style="font-size:20px;font-weight:900;color:white;font-family:Inter,sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.5);">'+uSym+u.price+'</div></div></div>'
       +'<div class="ucbody"><div class="ucname">'+esc(u.name)+'</div>'
-      +'<div class="ucmeta">📍 '+u.dist+' · <span class="deck-cd" data-from="'+u.timeFrom+'" data-to="'+u.timeTo+'" data-today="'+todayAttr+'" data-days="'+esc(u.days||'')+'" data-addr="'+esc(u.address||'')+'"></span></div>'
+      +'<div class="ucmeta">📍 '+u.dist+' · <span class="deck-cd" data-from="'+u.timeFrom+'" data-to="'+u.timeTo+'" data-today="'+todayAttr+'" data-days="'+esc(u.days||'')+'" data-addr="'+esc(u.address||'')+'" data-sched=\''+_schedAttr(u)+'\'></span></div>'
       +(function(){ var avg=getDealAvgRating(u.id)||u.rating||0; return '<div style="display:flex;align-items:center;justify-content:space-between;"><div class="ucdeal">'+esc(u.deal)+'</div>'+(avg>0?'<div class="cimg-rating" style="color:var(--t2);">⭐ '+avg+'</div>':'')+'</div></div></div>'; })();
   }).join('') + seeAll;
   startDeckCountdowns();
@@ -10793,6 +10887,24 @@ function openDeal(deal){
       <div class="vds"><div class="vds-val" style="font-size:13px;">${deal.hours}</div>${_vdValidUntil(deal)}</div>
       <div class="vds"><div class="vds-val" style="font-size:13px;">${deal.days}</div><div class="vds-lbl">Days</div></div>`;
   }
+
+  // Multiple schedule blocks → list every window below the stats row. (The stats
+  // row's Hours/Days shows only the first block, so this fills in the rest.)
+  try {
+    var _sbl = _dealSchedules(deal);
+    var _schEl = document.getElementById('vd-sched-list');
+    if(!_schEl && statsEl && statsEl.parentNode){
+      _schEl = document.createElement('div'); _schEl.id = 'vd-sched-list';
+      statsEl.parentNode.insertBefore(_schEl, statsEl.nextSibling);
+    }
+    if(_schEl){
+      if(_sbl.length > 1){
+        _schEl.style.cssText = 'margin:12px 0 0;background:#F5F5F7;border-radius:12px;padding:11px 14px;';
+        _schEl.innerHTML = '<div style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Schedule</div>'
+          + _sbl.map(function(b){ return '<div style="font-size:13px;font-weight:700;color:#1A1A1A;line-height:1.7;">🕐 ' + esc(b.days||'Daily') + ' · ' + esc(_fmtHoursRange(b.from,b.to)) + '</div>'; }).join('');
+      } else { _schEl.style.display = 'none'; _schEl.innerHTML = ''; }
+    }
+  } catch(e){}
 
   // Show buy section only for verified merchant deals
   document.getElementById('vd-merchant-section').style.display=isMerchant?'block':'none';
@@ -14665,7 +14777,7 @@ function doSearch(q){
         ${d.desc?`<div style="font-size:12px;color:#9A9AB0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d.desc)}</div>`:''}
         <div style="font-size:11.5px;color:#666;font-weight:600;margin-top:3px;">📅 ${esc(d.days||'Daily')} · ⏰ ${esc(d.hours||'')}</div>
         <div style="font-size:11.5px;margin-top:3px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <span class="deck-cd" data-from="${d.timeFrom}" data-to="${d.timeTo}" data-today="${todayAttr}" data-days="${esc(d.days||'')}" data-addr="${esc(d.address||'')}"></span>
+          <span class="deck-cd" data-from="${d.timeFrom}" data-to="${d.timeTo}" data-today="${todayAttr}" data-days="${esc(d.days||'')}" data-addr="${esc(d.address||'')}" data-sched='${_schedAttr(d)}'></span>
           ${d.verified?`<span style="font-weight:700;color:${availColor};">🎟️ ${avail} voucher${avail!==1?'s':''} left</span>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
@@ -16395,6 +16507,7 @@ async function loadAdminData(){
           img3: (function(){ var u=r.image_url||''; if(u.startsWith('[')){ try{ return JSON.parse(u)[2]||''; }catch(e){} } return r.image_url_3||''; })(),
           _createdAt: r.created_at || '',
           _updatedAt: r.updated_at || r.created_at || '',
+          schedules: r.schedules || null,
           timeFrom: (r.time_from != null ? r.time_from : (_parseHoursNums(r.hours)||{from:17}).from), timeTo: (r.time_to != null ? r.time_to : (_parseHoursNums(r.hours)||{to:22}).to),
           discPct: r.discount_pct || 0,
           rating: 0, timeLeft: '3h 00m',
@@ -25265,6 +25378,7 @@ async function loadMerchantData(){
           price: d.price, wasPrice: d.was_price, isFree: d.is_free,
           cat: d.category||'', category: d.category||'',
           hours: d.hours||'', days: d.days||'', desc: d.description||d.desc||'',
+          schedules: d.schedules || null,
           timeFrom: d.time_from, timeTo: d.time_to,
           startDate: d.start_date||'', endDate: d.end_date||'',
           img: photoArr[0] || '', photos: photoArr,
@@ -25773,6 +25887,18 @@ function meOpenEditDeal(dealId){
 
   // Days
   if(deal.days) meSetActiveDays(deal.days);
+
+  // Multiple schedule blocks: block 0 is set above; render blocks 2+ as extras.
+  try {
+    meResetSchedBlocks();
+    var _sb = _dealSchedules(deal);
+    if(_sb.length){
+      setVal('me-deal-time-start', meHourToTimeValue(_sb[0].from, '17:00'));
+      setVal('me-deal-time-end',   meHourToTimeValue(_sb[0].to,   '21:00'));
+      if(_sb[0].days) meSetActiveDays(_sb[0].days);
+      for(var _si=1; _si<_sb.length; _si++) meAddSchedBlock(_sb[_si]);
+    }
+  } catch(e){}
 
   // Photos — restore existing ones into the grid
   var photos = (deal.photos && deal.photos.length) ? deal.photos.slice() : meParsePhotos(deal.img || deal.image_url);
@@ -28820,6 +28946,63 @@ function meGetActiveDays(){
   return Array.from(document.querySelectorAll('.me-day-chip.active')).map(function(c){return c.dataset.day;});
 }
 
+// ── Multiple schedule blocks (merchant deal form) ────────────────────────────
+// Block 0 = the existing #me-deal-time-start/end + #me-day-chips. Extra blocks
+// live in #me-extra-sched-blocks; each .me-xblock has its own time inputs +
+// .me-xday chips. meCollectSchedules() returns every block as {days,from,to}.
+var _MEDOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function _timeToHour(t){ var p=String(t||'').split(':'); var h=parseInt(p[0],10)||0; var m=parseInt(p[1],10)||0; return h + m/60; }
+function meToggleXDay(el){
+  var on = el.classList.toggle('active');
+  el.style.background = on ? '#E8192C' : 'white';
+  el.style.color      = on ? 'white' : '#9A9AB0';
+  el.style.borderColor= on ? '#E8192C' : '#E8E8EC';
+}
+function _meXDayChips(daySet){
+  return _MEDOW.map(function(d){
+    var on = daySet.indexOf(d) !== -1;
+    return '<div class="me-xday'+(on?' active':'')+'" onclick="meToggleXDay(this)" data-day="'+d+'" style="padding:7px 11px;background:'+(on?'#E8192C':'white')+';color:'+(on?'white':'#9A9AB0')+';border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid '+(on?'#E8192C':'#E8E8EC')+';user-select:none;">'+d+'</div>';
+  }).join('');
+}
+function meAddSchedBlock(block){
+  var box = document.getElementById('me-extra-sched-blocks'); if(!box) return;
+  block = block || {};
+  var names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var daySet;
+  try { daySet = _activeDaySet(block.days || 'Fri, Sat, Sun').map(function(i){ return names[i]; }); } catch(e){ daySet = ['Fri','Sat','Sun']; }
+  var ts = (block.from != null) ? meHourToTimeValue(block.from, '14:00') : '14:00';
+  var te = (block.to   != null) ? meHourToTimeValue(block.to,   '17:00') : '17:00';
+  var el = document.createElement('div');
+  el.className = 'me-xblock';
+  el.style.cssText = 'border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;display:grid;gap:10px;position:relative;';
+  el.innerHTML = ''
+    + '<button type="button" onclick="meRemoveSchedBlock(this)" title="Remove" style="position:absolute;top:8px;right:8px;background:#F5F5F7;border:none;border-radius:8px;width:26px;height:26px;color:#9A9AB0;font-size:16px;cursor:pointer;line-height:1;">×</button>'
+    + '<div style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;">Additional time block</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+      + '<div><label style="font-size:9px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:4px;">Start</label><input type="time" class="me-xtime-start" value="'+ts+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;box-sizing:border-box;" onchange="meUpdateSchedulePreview()"></div>'
+      + '<div><label style="font-size:9px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:4px;">End</label><input type="time" class="me-xtime-end" value="'+te+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;box-sizing:border-box;" onchange="meUpdateSchedulePreview()"></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;" class="me-xdays">' + _meXDayChips(daySet) + '</div>';
+  box.appendChild(el);
+  if(typeof meUpdateSchedulePreview === 'function') meUpdateSchedulePreview();
+}
+function meRemoveSchedBlock(btn){ var b = btn.closest('.me-xblock'); if(b) b.remove(); if(typeof meUpdateSchedulePreview === 'function') meUpdateSchedulePreview(); }
+function meResetSchedBlocks(){ var box = document.getElementById('me-extra-sched-blocks'); if(box) box.innerHTML = ''; }
+function meCollectSchedules(){
+  var blocks = [];
+  var d0 = meGetActiveDays();
+  var t0s = (document.getElementById('me-deal-time-start')||{}).value;
+  var t0e = (document.getElementById('me-deal-time-end')||{}).value;
+  if(d0.length && t0s && t0e) blocks.push({ days: d0.join(', '), from: _timeToHour(t0s), to: _timeToHour(t0e) });
+  document.querySelectorAll('#me-extra-sched-blocks .me-xblock').forEach(function(bl){
+    var days = Array.from(bl.querySelectorAll('.me-xday.active')).map(function(c){ return c.dataset.day; });
+    var s = (bl.querySelector('.me-xtime-start')||{}).value;
+    var e = (bl.querySelector('.me-xtime-end')||{}).value;
+    if(days.length && s && e) blocks.push({ days: days.join(', '), from: _timeToHour(s), to: _timeToHour(e) });
+  });
+  return blocks;
+}
+
 function meUpdateSchedulePreview(){
   var sd=document.getElementById('me-deal-start-date');
   var ed=document.getElementById('me-deal-end-date');
@@ -28879,6 +29062,8 @@ function _mePublishDealInner(){
   var timeStart=(document.getElementById('me-deal-time-start').value||'').trim();
   var timeEnd=(document.getElementById('me-deal-time-end').value||'').trim();
   var days=meGetActiveDays();
+  var schedBlocks=meCollectSchedules();   // block 0 + any extra day+time blocks
+  var schedJson=schedBlocks.length ? JSON.stringify(schedBlocks) : null;
 
   if(!title){highlight('me-deal-title');showToast('⚠️ Please enter a deal title'); return;}
   if(!desc){highlight('me-deal-desc');showToast('⚠️ Please add a description'); return;}
@@ -28942,6 +29127,7 @@ function _mePublishDealInner(){
     off: off,
     days: days.join(', '),
     hours: fmt12(timeStart)+' – '+fmt12(timeEnd),
+    schedules: schedJson,
     startDate: startDate,
     endDate: endDate,
     validUntil: fmtDate(endDate),
@@ -29041,6 +29227,7 @@ function _mePublishDealInner(){
           time_from: parseInt(timeStart.split(':')[0]),
           time_to: parseInt(timeEnd.split(':')[0]),
           days: days.join(', '),
+          schedules: schedJson,
           slots_total: total,
           start_date: startDate || null, end_date: endDate || null,
           image_url: dbImgUrl,
@@ -29076,6 +29263,20 @@ function _mePublishDealInner(){
             savedDealId = ins2.data && ins2.data.id;
           }
           if(bkRequired) showToast('⚠️ Booking not saved — run deal_bookings.sql in Supabase first');
+        }
+        // `schedules` column may not exist yet (multi-schedule SQL not run) — retry
+        // without it so the deal still saves (single-block via days/hours/time_from/to).
+        if(dbErr && /schedules/.test(dbErr.message||'')){
+          delete payload.schedules;
+          if(wasEditing && editDbId){
+            var up3 = await db.from('deals').update(payload).eq('id', editDbId);
+            dbErr = up3.error;
+          } else {
+            var ins3 = await db.from('deals').insert(payload).select('id').single();
+            dbErr = ins3.error;
+            savedDealId = ins3.data && ins3.data.id;
+          }
+          if(schedBlocks.length > 1) showToast('⚠️ Extra time blocks not saved — run add_deal_schedules.sql in Supabase first');
         }
         // New deal → generate its shareable slug (stable; not changed on edits).
         if(savedDealId && !dbErr) _setSlugForRow('deals', savedDealId, payload.title);
@@ -33273,6 +33474,10 @@ function _setupDealMap() {
             <div class="me-day-chip" onclick="meToggleDay(this)" data-day="Sun" style="padding:8px 12px;background:white;color:#9A9AB0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #E8E8EC;transition:all .15s;user-select:none;">Sun</div>
           </div>
         </div>
+
+        <!-- Extra time blocks (multiple day+time schedules) -->
+        <div id="me-extra-sched-blocks" style="display:grid;gap:10px;"></div>
+        <button type="button" onclick="meAddSchedBlock()" style="justify-self:start;background:#F0F2F5;border:1.5px dashed #C7C7CC;border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:800;color:#1A1A1A;cursor:pointer;font-family:Inter,sans-serif;">+ Add another time block</button>
 
         <!-- Schedule preview -->
         <div id="me-schedule-preview" style="background:#F0F2F5;border-radius:12px;padding:12px 14px;display:none;">
