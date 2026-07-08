@@ -20,10 +20,12 @@ const webpush = require('web-push');
 const VAPID_PUBLIC  = process.env.VAPID_PUBLIC  || 'BAHC8ym5QUaY6-5Tv3q0Ckc5F1dZj52hj8tY85lzbEpy0BRPNg6RqiG0ajTwhwLs1PnoL5ztmpxnxfMttjKa66g';
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:business@appiehour.com';
 
+// Where tapping the notification lands. Everything opens the Alerts screen (where the
+// sent notification appears in-app); rewards go straight to Credits.
 function urlForType(type) {
   switch (type) {
     case 'rewards': return '/credits';
-    default:        return '/';
+    default:        return '/alerts';
   }
 }
 
@@ -47,7 +49,12 @@ module.exports = async function handler(req, res) {
   if (webhookSecret) {
     const secret = process.env.PUSH_WEBHOOK_SECRET;
     if (!secret) return res.status(500).json({ error: 'Server missing PUSH_WEBHOOK_SECRET' });
-    if (webhookSecret !== secret) return res.status(401).json({ error: 'Bad secret' });
+    // Trim both sides — a trailing space/newline on the pasted env var is the #1 cause
+    // of a silent "Bad secret" mismatch.
+    if (String(webhookSecret).trim() !== String(secret).trim()) {
+      console.log('[push] secret mismatch', { envLen: secret.length, envTrimLen: secret.trim().length, hdrLen: String(webhookSecret).length });
+      return res.status(401).json({ error: 'Bad secret' });
+    }
     const vapidPrivate = process.env.VAPID_PRIVATE;
     if (!vapidPrivate) return res.status(500).json({ error: 'Server missing VAPID_PRIVATE' });
 
@@ -60,7 +67,7 @@ module.exports = async function handler(req, res) {
       const { data: subs, error } = await admin
         .from('push_subscriptions').select('id,endpoint,p256dh,auth').eq('user_id', userId);
       if (error) return res.status(400).json({ error: error.message });
-      if (!subs || !subs.length) return res.json({ ok: true, sent: 0 });
+      if (!subs || !subs.length) { console.log('[push] webhook: user', String(userId).slice(0, 8), 'has 0 subscriptions'); return res.json({ ok: true, sent: 0 }); }
 
       webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, vapidPrivate);
       const payload = JSON.stringify({
@@ -84,6 +91,7 @@ module.exports = async function handler(req, res) {
         }
       });
       if (dead.length) { try { await admin.from('push_subscriptions').delete().in('id', dead); } catch (e) {} }
+      console.log('[push] webhook: user', String(userId).slice(0, 8), '→ subs', subs.length, 'sent', sent, 'failed', failed);
       return res.json({ ok: true, sent: sent, failed: failed });
     } catch (e) {
       return res.status(500).json({ error: e.message || 'Unknown error' });
