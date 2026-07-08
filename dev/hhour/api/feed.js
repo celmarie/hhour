@@ -20,7 +20,10 @@ module.exports = async function handler(req, res) {
       .eq('status', 'approved')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(400);   // covers every live deal + growth headroom (client renders paginated)
+      .limit(2000);  // MUST exceed the live deal count — deals past the limit vanish
+                     // from customer search/deck while staying visible to admins
+                     // (this bit at 400 when approved deals hit 404). Client renders
+                     // paginated, so more rows only cost payload, not rendering.
     if (error) {
       res.setHeader('Cache-Control', 'no-store');
       return res.status(500).json({ error: error.message });

@@ -1,0 +1,17 @@
+# Anything listed here is NOT uploaded to Vercel — so it can never be served.
+# Before this file existed, every *.sql helper in the repo deployed as a public
+# static file (e.g. appiehour.com/push_trigger.sql leaked the push webhook
+# secret; set_test_password.sql leaked a test login). The app only needs the
+# HTML shell, sw.js, version.json, api/ and vercel.json.
+*.sql
+*.py
+*.command
+*.sh
+*.tar.gz
+*.md
+happyhourly-REAL-app-backup-*.html
+supabase_email_confirm_signup.html
+hhour/
+.agents/
+.claude/
+skills-lock.json

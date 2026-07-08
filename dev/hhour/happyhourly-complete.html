@@ -5580,7 +5580,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260707150932';
+var BUILD_VERSION = '20260708025431';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -6497,9 +6497,24 @@ async function fetchCommunityFeed(){
       if(Array.isArray(rows)) return { data: rows, error: null };
     }
   } catch(e){ /* fall through to the direct query */ }
-  // 400 covers every live deal with growth headroom. Loading more DATA is safe now —
-  // the heavy part (rendering) is paginated 50-at-a-time and list images are thumbnailed.
-  return await db.from('community_deals').select('*').eq('status','approved').is('deleted_at', null).order('created_at', { ascending: false }).limit(400);
+  // Limit MUST exceed the live deal count — deals past it vanish from customer
+  // search/deck while staying visible to admins (bit us at 400 when approved deals
+  // hit 404: "Mr Robinson" disappeared). Loading more DATA is safe — rendering is
+  // paginated 50-at-a-time and list images are thumbnailed.
+  return await db.from('community_deals').select('*').eq('status','approved').is('deleted_at', null).order('created_at', { ascending: false }).limit(2000);
+}
+
+// Cache copy with base64 photos stripped (only hosted http URLs are kept): a single
+// legacy base64 photo is 300–700KB, so a few of them push the cache JSON past the
+// ~5MB localStorage quota — setItem then throws forever (silently caught) and the
+// offline cache FREEZES at whatever was last written. That stale copy is what
+// customers see on boot, minus any photos/deals added since.
+function _slimDealsForCache(list){
+  return (list||[]).map(function(d){
+    var c = Object.assign({}, d);
+    ['img','img2','img3'].forEach(function(k){ if(c[k] && String(c[k]).indexOf('http')!==0) c[k]=''; });
+    return c;
+  });
 }
 
 // ── Load public deals (no auth required) ──────────────────────────────────────
@@ -6536,7 +6551,7 @@ async function loadDealsFromSupabase() {
     // admins still see expired deals via their own loader.
     if (dr.data) {
       vouchers = dr.data.map(dbDealToLocal).filter(function(d){ return !isDealExpired(d); });
-      try { localStorage.setItem('hh_deals_cache', JSON.stringify({v:vouchers,time:Date.now()})); } catch(e){}
+      try { localStorage.setItem('hh_deals_cache', JSON.stringify({v:_slimDealsForCache(vouchers),time:Date.now()})); } catch(e){}
     } else { vouchers = []; }
 
     // Process community deals
@@ -6546,7 +6561,7 @@ async function loadDealsFromSupabase() {
       freshUC.forEach(function(d){ if(d._dbId) freshIds[d._dbId] = true; });
       var sessionKept = ucDeals.filter(function(d){ return d._sessionAdded && !freshIds[d._dbId]; });
       ucDeals = sessionKept.concat(freshUC);
-      try { localStorage.setItem('hh_uc_deals_cache', JSON.stringify({u:ucDeals,time:Date.now()})); } catch(e){}
+      try { localStorage.setItem('hh_uc_deals_cache', JSON.stringify({u:_slimDealsForCache(ucDeals),time:Date.now()})); } catch(e){}
     } else { ucDeals = []; }
 
     // Render immediately — no longer waiting for reviews
@@ -16054,6 +16069,46 @@ function withTimeout(promise, ms){
   return Promise.race([promise, new Promise(function(_, reject){ setTimeout(function(){ reject(new Error('query timeout')); }, ms); })]);
 }
 
+// One-time self-heal: move legacy base64 photos embedded in deal rows to Storage
+// URLs. Runs quietly from an admin session (Storage upload + row update are already
+// admin-permitted — the same rights the old save path used to write the base64).
+// Every photo is preserved byte-for-byte as a file in the 'photos' bucket; a row is
+// only rewritten once ALL its photos uploaded cleanly — never half-migrated. This is
+// what un-bloats the public feed (was ~3MB of base64, near Vercel's 4.5MB cap).
+var _b64MigRan = false;
+async function migrateBase64DealPhotos(){
+  if(_b64MigRan) return; _b64MigRan = true;
+  var tables = ['community_deals','deals'];
+  var migrated = 0, skipped = 0;
+  for(var t=0; t<tables.length; t++){
+    var table = tables[t];
+    try {
+      var res = await db.from(table).select('id,image_url').like('image_url','%data:image%').limit(100);
+      var rows = (res && res.data) || [];
+      for(var i=0; i<rows.length; i++){
+        var r = rows[i];
+        try {
+          var u = r.image_url || '';
+          var arr = [u];
+          if(u.startsWith('[')){ try { arr = JSON.parse(u); } catch(e){ arr = [u]; } }
+          arr = (arr||[]).filter(Boolean);
+          var out = [];
+          for(var j=0; j<arr.length; j++){
+            var p = arr[j];
+            out.push((typeof p==='string' && p.startsWith('data:')) ? await uploadImageToStorage(p, 'community') : p);
+          }
+          out = out.filter(Boolean);
+          if(!out.length || !out.every(function(p){ return typeof p==='string' && p.indexOf('http')===0; })){ skipped++; continue; }
+          var upd = await db.from(table).update({ image_url: out.length>1 ? JSON.stringify(out) : out[0] }).eq('id', r.id);
+          if(upd && upd.error){ skipped++; } else { migrated++; }
+        } catch(e){ skipped++; }
+      }
+    } catch(e){ console.warn('[photo-migration] '+table, e); }
+  }
+  if(migrated || skipped) console.log('[photo-migration] moved '+migrated+' deal photo set(s) to Storage'+(skipped?(', '+skipped+' skipped (will retry next admin visit)'):''));
+  if(migrated && typeof showToast==='function') showToast('🖼️ Optimized photos on '+migrated+' deal'+(migrated!==1?'s':''));
+}
+
 async function loadAdminData(){
   try {
     // ⚡ Kick off ALL independent admin queries in parallel with 8s timeout fallback per query
@@ -16197,6 +16252,9 @@ async function loadAdminData(){
       });
       pendingCommunityDeals = allItems.filter(function(d){ return !_removedUC.includes(d._dbId); });
     }
+    // Kick the base64→Storage photo self-heal once the dashboard is settled (idle,
+    // fire-and-forget — a failure here never touches the admin UI).
+    setTimeout(function(){ try { migrateBase64DealPhotos().catch(function(){}); } catch(e){} }, 4000);
     // Users + venue owners (fetched in parallel above)
     var dbUsers = await _pUsers;
     var dbVenueOwners = await _pVenueOwners;
@@ -22865,29 +22923,16 @@ async function adminSaveEditsOnly(){
 
   var edits = admCollectEdits();
 
-  // Collect all photos and compress new ones
+  // Collect all photos. Data-URL photos (new picks AND legacy base64 already in the
+  // row) are compressed and UPLOADED to Storage — only the hosted URL is saved.
+  // Embedding base64 in image_url bloated the public feed toward Vercel's 4.5MB
+  // response cap and left customer lists photo-less (they refuse to render base64 —
+  // iOS memory guard).
   var savedImg1 = '', savedImg2 = '', savedImg3 = '';
   var p0 = _admPhotos[0]||'', p1 = _admPhotos[1]||'', p2 = _admPhotos[2]||'';
-
-
-  // slot 0: compress only if changed from original
-  if(p0 && p0 !== _admEditPhotoDataUrl && p0.startsWith('data:')){
-    try { savedImg1 = await compressImage(p0, 800, 0.8); } catch(e){ savedImg1 = p0; }
-  } else {
-    savedImg1 = p0;
-  }
-  // slot 1: always compress if it's a new data URL
-  if(p1 && p1.startsWith('data:')){
-    try { savedImg2 = await compressImage(p1, 800, 0.8); } catch(e){ savedImg2 = p1; }
-  } else {
-    savedImg2 = p1;
-  }
-  // slot 2: always compress if it's a new data URL
-  if(p2 && p2.startsWith('data:')){
-    try { savedImg3 = await compressImage(p2, 800, 0.8); } catch(e){ savedImg3 = p2; }
-  } else {
-    savedImg3 = p2;
-  }
+  try { savedImg1 = (p0 && p0.startsWith('data:')) ? await compressAndUpload(p0, 800, 0.8, 'community') : p0; } catch(e){ savedImg1 = p0; }
+  try { savedImg2 = (p1 && p1.startsWith('data:')) ? await compressAndUpload(p1, 800, 0.8, 'community') : p1; } catch(e){ savedImg2 = p1; }
+  try { savedImg3 = (p2 && p2.startsWith('data:')) ? await compressAndUpload(p2, 800, 0.8, 'community') : p2; } catch(e){ savedImg3 = p2; }
 
   try {
     if(_admReviewSource === 'merchant'){
