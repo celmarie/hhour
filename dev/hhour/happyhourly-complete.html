@@ -33504,7 +33504,7 @@ function _setupDealMap() {
     border:1px solid rgba(255,255,255,.7);
     border-radius:28px;
     box-shadow:0 30px 70px rgba(18,128,53,.18), inset 0 1px 0 rgba(255,255,255,.6);
-    padding:34px 26px 30px;
+    padding:22px 22px 20px;
   }
   #merchant-login-screen input{
     -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
@@ -33687,38 +33687,38 @@ function _setupDealMap() {
 </div>
 
 <!-- ══ DEDICATED MERCHANT LOGIN (/merchant) — Groupon-Merchant style ══ -->
-<div id="merchant-login-screen" style="display:none;position:fixed;inset:0;z-index:999999;background:#fff;flex-direction:column;align-items:center;overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 52px) 22px calc(env(safe-area-inset-bottom,0px) + 48px);font-family:'Inter',sans-serif;box-sizing:border-box;">
+<div id="merchant-login-screen" style="display:none;position:fixed;inset:0;z-index:999999;background:#fff;flex-direction:column;align-items:center;justify-content:safe center;overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 14px) 22px calc(env(safe-area-inset-bottom,0px) + 14px);font-family:'Inter',sans-serif;box-sizing:border-box;">
   <!-- mint glass backdrop blobs -->
   <div class="ml-blob" style="top:-60px;left:-50px;width:280px;height:280px;background:radial-gradient(circle,rgba(46,166,76,.42),transparent 70%);"></div>
   <div class="ml-blob" style="bottom:-70px;right:-50px;width:320px;height:320px;background:radial-gradient(circle,rgba(16,185,129,.32),transparent 70%);animation-delay:-7s;"></div>
   <div class="ml-blob" style="top:44%;left:-80px;width:220px;height:220px;background:radial-gradient(circle,rgba(110,231,183,.4),transparent 70%);animation-delay:-3s;"></div>
-  <div class="ls-card" style="width:100%;max-width:440px;margin:auto;">
+  <div class="ls-card" style="width:100%;max-width:440px;margin:0 auto;">
     <!-- Logo -->
-    <div style="text-align:center;margin-bottom:14px;">
-      <img src="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-logo.png?v=3" alt="Appie Hour" style="width:170px;height:auto;display:block;margin:0 auto;">
-      <div style="font-size:13px;font-weight:700;color:#9A9AB0;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;">Merchant</div>
+    <div style="text-align:center;margin-bottom:8px;">
+      <img src="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-logo.png?v=3" alt="Appie Hour" style="width:118px;height:auto;display:block;margin:0 auto;">
+      <div style="font-size:12px;font-weight:700;color:#9A9AB0;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;">Merchant</div>
     </div>
 
     <!-- Language pill -->
-    <div style="text-align:center;margin-bottom:34px;">
-      <button onclick="mOpenLangPicker()" type="button" style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #E8192C;color:#E8192C;border-radius:24px;padding:9px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">🌐 <span id="m-lang-label">English</span> <span style="opacity:.6;">▾</span></button>
+    <div style="text-align:center;margin-bottom:16px;">
+      <button onclick="mOpenLangPicker()" type="button" style="display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #E8192C;color:#E8192C;border-radius:24px;padding:7px 18px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">🌐 <span id="m-lang-label">English</span> <span style="opacity:.6;">▾</span></button>
     </div>
 
     <!-- Email -->
-    <label style="display:block;font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:8px;">Email address</label>
-    <input id="m-login-email" type="hidden" data-pwfield="1" data-ot="email" disabled autocomplete="email" style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:16px 16px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;margin-bottom:24px;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
+    <label style="display:block;font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:6px;">Email address</label>
+    <input id="m-login-email" type="hidden" data-pwfield="1" data-ot="email" disabled autocomplete="email" style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;margin-bottom:12px;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
 
     <!-- Password -->
-    <label style="display:block;font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:8px;">Password</label>
-    <div style="position:relative;margin-bottom:14px;">
-      <input id="m-login-pass" type="hidden" data-pwfield="1" data-ot="password" disabled autocomplete="current-password" style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:16px 48px 16px 16px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
+    <label style="display:block;font-size:15px;font-weight:800;color:#1A1A1A;margin-bottom:6px;">Password</label>
+    <div style="position:relative;margin-bottom:10px;">
+      <input id="m-login-pass" type="hidden" data-pwfield="1" data-ot="password" disabled autocomplete="current-password" style="width:100%;box-sizing:border-box;background:#fff;border:1.5px solid #E2E2E8;border-radius:14px;padding:13px 44px 13px 14px;font-family:'Inter',sans-serif;font-size:15px;color:#1A1A1A;outline:none;" onfocus="this.style.borderColor='#12A150'" onblur="this.style.borderColor='#E2E2E8'" onkeydown="if(event.key==='Enter')doMerchantLogin()">
       <button type="button" onclick="mTogglePw()" title="Show / hide password" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#F0F0F4;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
         <svg id="m-pw-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B76" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
 
     <!-- Stay logged in + forgot -->
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:13.5px;font-weight:700;color:#1A1A1A;white-space:nowrap;flex-shrink:0;">
         <input id="m-stay" type="checkbox" style="width:17px;height:17px;accent-color:#12A150;cursor:pointer;flex-shrink:0;"> Stay logged in
       </label>
@@ -33730,12 +33730,12 @@ function _setupDealMap() {
     <div id="m-login-error" style="color:#E8192C;font-size:13.5px;font-weight:700;min-height:18px;margin-bottom:6px;text-align:center;"></div>
     <div id="captcha-box-merchant" style="display:none;justify-content:center;margin:0 0 10px;"></div>
 
-    <button id="m-login-btn" type="button" onclick="doMerchantLogin()" style="width:100%;background:linear-gradient(135deg,#2EA64C,#157A35);color:#fff;border:none;border-radius:28px;padding:18px;font-size:17px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 10px 26px rgba(21,128,53,.32);">Login</button>
+    <button id="m-login-btn" type="button" onclick="doMerchantLogin()" style="width:100%;background:linear-gradient(135deg,#2EA64C,#157A35);color:#fff;border:none;border-radius:28px;padding:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 10px 26px rgba(21,128,53,.32);">Login</button>
 
-    <div style="text-align:center;margin-top:38px;"><a onclick="mNeedHelp()" style="font-size:16px;font-weight:600;color:#2563EB;cursor:pointer;text-decoration:underline;">Need help?</a></div>
-    <div style="height:1px;background:#EDEDF0;margin:22px auto;max-width:120px;"></div>
+    <div style="text-align:center;margin-top:16px;"><a onclick="mNeedHelp()" style="font-size:15px;font-weight:600;color:#2563EB;cursor:pointer;text-decoration:underline;">Need help?</a></div>
+    <div style="height:1px;background:#EDEDF0;margin:12px auto;max-width:120px;"></div>
     <div style="text-align:center;font-size:15px;color:#1A1A1A;">Don't have a Merchant account? <a onclick="_merchantSignUp()" style="color:#2563EB;font-weight:700;cursor:pointer;text-decoration:underline;">Sign Up With Appie Hour</a></div>
-    <div style="text-align:center;margin-top:24px;"><a onclick="switchLoginTab('customer');_showMerchantLogin(false);" style="font-size:13px;font-weight:600;color:#9A9AB0;cursor:pointer;">← Back to customer login</a></div>
+    <div style="text-align:center;margin-top:14px;"><a onclick="switchLoginTab('customer');_showMerchantLogin(false);" style="font-size:13px;font-weight:600;color:#9A9AB0;cursor:pointer;">← Back to customer login</a></div>
   </div>
 </div>
 
