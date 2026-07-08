@@ -20,10 +20,11 @@ module.exports = async function handler(req, res) {
       .eq('status', 'approved')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(2000);  // MUST exceed the live deal count — deals past the limit vanish
-                     // from customer search/deck while staying visible to admins
-                     // (this bit at 400 when approved deals hit 404). Client renders
-                     // paginated, so more rows only cost payload, not rendering.
+      .limit(2000);  // Contract with the client: fetchCommunityFeed treats a payload
+                     // of >= 2000 rows as truncated and re-pages the full set from
+                     // Supabase directly, so deals can never silently vanish again
+                     // (bit us at 400 when approved deals hit 404). If you raise this
+                     // limit, raise the client's check too — never lower either one.
     if (error) {
       res.setHeader('Cache-Control', 'no-store');
       return res.status(500).json({ error: error.message });

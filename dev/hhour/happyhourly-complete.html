@@ -5580,7 +5580,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260708030446';
+var BUILD_VERSION = '20260708031948';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -6485,23 +6485,50 @@ function dbAgo(ts) {
   return (s / 86400 | 0) + 'd ago';
 }
 
+// Fetch EVERY row of a query by paging past fixed row caps (Supabase serves at
+// most ~1000 rows per request even without .limit()). A silently capped page is
+// exactly the "deal exists for admins but vanished for customers" bug — it bit at
+// 400 when approved deals hit 404 ("Mr Robinson" disappeared from search). Never
+// fetch an unbounded deal list without this. Rows are deduped by id because
+// OFFSET paging on a non-unique sort column can repeat a row across page edges.
+async function _fetchAllRows(makeQuery, pageSize){
+  pageSize = pageSize || 1000;
+  var out = [], from = 0, guard = 0;
+  while(guard++ < 20){
+    var r;
+    try { r = await makeQuery().range(from, from + pageSize - 1); }
+    catch(e){ r = { data: null, error: e }; }
+    if(r && r.error) return { data: out.length ? out : null, error: r.error };
+    var batch = (r && r.data) || [];
+    out = out.concat(batch);
+    if(batch.length < pageSize) break;
+    from += pageSize;
+  }
+  var seen = {}, deduped = [];
+  out.forEach(function(row){
+    var k = row && row.id != null ? row.id : ('_' + deduped.length);
+    if(!seen[k]){ seen[k] = true; deduped.push(row); }
+  });
+  return { data: deduped, error: null };
+}
+
 // Community feed via the edge-cached /api/feed route — absorbs traffic spikes so
 // the browser fleet doesn't hammer Supabase directly. Falls back to a direct,
-// limited query if the route is unavailable. Returns the { data, error } shape
+// paged query if the route is unavailable. Returns the { data, error } shape
 // the loader expects, so dbUCToLocal mapping is unchanged.
 async function fetchCommunityFeed(){
   try {
     var res = await fetch('/api/feed', { headers: { 'Accept': 'application/json' } });
     if(res.ok){
       var rows = await res.json();
-      if(Array.isArray(rows)) return { data: rows, error: null };
+      // A payload at the API's limit means it was likely truncated — ignore it and
+      // page the complete set directly instead of silently dropping the oldest deals.
+      if(Array.isArray(rows) && rows.length < 2000) return { data: rows, error: null };
     }
   } catch(e){ /* fall through to the direct query */ }
-  // Limit MUST exceed the live deal count — deals past it vanish from customer
-  // search/deck while staying visible to admins (bit us at 400 when approved deals
-  // hit 404: "Mr Robinson" disappeared). Loading more DATA is safe — rendering is
-  // paginated 50-at-a-time and list images are thumbnailed.
-  return await db.from('community_deals').select('*').eq('status','approved').is('deleted_at', null).order('created_at', { ascending: false }).limit(2000);
+  return await _fetchAllRows(function(){
+    return db.from('community_deals').select('*').eq('status','approved').is('deleted_at', null).order('created_at', { ascending: false });
+  });
 }
 
 // Cache copy with base64 photos stripped (only hosted http URLs are kept): a single
@@ -6526,17 +6553,19 @@ async function loadDealsFromSupabase() {
     // Fetch deals + community deals together — render as soon as both arrive.
     // Reviews are fetched separately in the background so they never block rendering.
     var [dr, ur] = await Promise.all([
-      db.from('deals').select('*, venues(name,category,dist_km,accepted_payment)')
-        .eq('status', 'active')
-        .order('claimed', { ascending: false })
-        .then(function(r){ return r; }, function(e){ return {data:null, error:e}; })
-        .then(function(r){
+      _fetchAllRows(function(){
+        return db.from('deals').select('*, venues(name,category,dist_km,accepted_payment)')
+          .eq('status', 'active')
+          .order('claimed', { ascending: false });
+      }).then(function(r){
           // venues.accepted_payment may not exist until pay_onsite.sql is run —
           // fall back to the original query so the feed always loads.
           if(r && r.error){
-            return db.from('deals').select('*, venues(name,category,dist_km)')
-              .eq('status', 'active')
-              .order('claimed', { ascending: false });
+            return _fetchAllRows(function(){
+              return db.from('deals').select('*, venues(name,category,dist_km)')
+                .eq('status', 'active')
+                .order('claimed', { ascending: false });
+            });
           }
           return r;
         }),
@@ -16116,9 +16145,13 @@ async function loadAdminData(){
       // select('*') is resilient: a missing optional column won't error the whole
       // query (which would silently empty the admin community-deals lists). The
       // mapping below defaults every field, so extra/missing columns are fine.
-      db.from('community_deals')
-        .select('*')
-        .order('created_at', {ascending:false}),
+      // _fetchAllRows pages past Supabase's ~1000-row cap — without it the admin
+      // list would silently drop the oldest deals once submissions pass 1000.
+      _fetchAllRows(function(){
+        return db.from('community_deals')
+          .select('*')
+          .order('created_at', {ascending:false});
+      }),
       8000
     ).catch(function(){ return { data: [] }; });
 
