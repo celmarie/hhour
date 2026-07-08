@@ -32983,6 +32983,9 @@ function _setupDealMap() {
   .merch-hdr-btn{ padding:9px 11px !important; font-size:15px !important; }
   #merch-hdr-email{ display:none !important; }         /* keep just the welcome name */
   .merch-hdr-welcome > div:first-child{ font-size:12px !important; }
+  /* Admin header: same treatment — hide the truncated login email so the title
+     doesn't get squeezed into two lines; just "Admin Panel" + Close remain. */
+  #admin-hdr-email{ display:none !important; }
 }
 </style>
 
@@ -33788,8 +33791,8 @@ function _setupDealMap() {
 <div id="admin-root" style="display:none;position:fixed;inset:0;background:#F4F4F7;z-index:99999;flex-direction:column;overflow:hidden;font-family:'Inter',sans-serif;">
   <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);padding:calc(14px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
     <div>
-      <div style="font-size:16px;font-weight:900;color:white;">🛡 Admin Panel</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;">Appie Hour Platform</div>
+      <div style="font-size:16px;font-weight:900;color:white;white-space:nowrap;">🛡 Admin Panel</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;white-space:nowrap;">Appie Hour Platform</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
       <span id="admin-hdr-email" style="font-size:12px;font-weight:600;color:rgba(255,255,255,.6);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
