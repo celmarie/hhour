@@ -4245,6 +4245,9 @@ function _loadGT(){
                 <div class="uc-day-chip" onclick="ucToggleDay(this)" data-day="Sun" style="padding:8px 12px;background:white;color:#9A9AB0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #E8E8EC;transition:all .15s;user-select:none;">Sun</div>
               </div>
             </div>
+            <!-- Extra time blocks (multiple day+time schedules) -->
+            <div id="uc-extra-sched-blocks" style="display:grid;gap:10px;"></div>
+            <button type="button" onclick="ucAddSchedBlock()" style="justify-self:start;background:#F0F2F5;border:1.5px dashed #C7C7CC;border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:800;color:#1A1A1A;cursor:pointer;font-family:Inter,sans-serif;">+ Add another time block</button>
             <div id="uc-schedule-preview" style="background:#F0F2F5;border-radius:12px;padding:12px 14px;display:none;">
               <div style="font-size:11px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Schedule preview</div>
               <div id="uc-schedule-preview-text" style="font-size:13px;font-weight:700;color:#1A1A1A;line-height:1.6;"></div>
@@ -9555,21 +9558,29 @@ function _fmtClock(h){
 // `data-sched` (multiple day+time blocks); falls back to the single
 // data-from/data-to/data-days so old cards + old cached rows still work.
 function _cdBlocks(el){
-  var raw = el.dataset.sched;
+  var raw = el.dataset.sched || '';
+  // Parse ONCE per element and cache on the node. refreshDeckCountdowns runs
+  // every second over every visible card; without this cache we'd JSON.parse +
+  // regex-parse day strings for every card on every tick (needless memory churn
+  // on iOS). Re-parse only if the attribute actually changed.
+  if(el._cdRaw === raw && el._cdBlk) return el._cdBlk;
+  var out = null;
   if(raw){
     try {
       var arr = JSON.parse(raw);
       if(Array.isArray(arr) && arr.length){
-        var out = [];
+        out = [];
         arr.forEach(function(b){
           var f = parseFloat(b.from), tt = parseFloat(b.to);
           if(!isNaN(f) && !isNaN(tt)) out.push({ from:f, to:tt, set:_activeDaySet(b.days||'') });
         });
-        if(out.length) return out;
+        if(!out.length) out = null;
       }
-    } catch(e){}
+    } catch(e){ out = null; }
   }
-  return [{ from:parseFloat(el.dataset.from), to:parseFloat(el.dataset.to), set:_activeDaySet(el.dataset.days||'') }];
+  if(!out) out = [{ from:parseFloat(el.dataset.from), to:parseFloat(el.dataset.to), set:_activeDaySet(el.dataset.days||'') }];
+  el._cdRaw = raw; el._cdBlk = out;
+  return out;
 }
 
 function refreshDeckCountdowns(){
@@ -14254,10 +14265,13 @@ function _submitDealInner(){
   var endDate=_ucEndIndefinite ? null : (document.getElementById('uc-deal-end-date')||{value:''}).value || null;
   var activeDays=ucGetActiveDays();
   var days=activeDays.length>0?activeDays.join(', '):'Daily';
+  // Capture the schedule blocks NOW — the form resets before the async insert runs.
+  var ucSchedBlocks=(typeof ucCollectSchedules==='function')?ucCollectSchedules():[];
+  var ucSchedJson=ucSchedBlocks.length?JSON.stringify(ucSchedBlocks):null;
 
   // EDIT MODE — update the existing under-review submission instead of creating a new one.
   if(window._ucEditingId){
-    _ucSaveEdit({ dbId:window._ucEditingId, v:v, title:title, d:d, addr:addr, website:website,
+    _ucSaveEdit({ dbId:window._ucEditingId, v:v, title:title, d:d, addr:addr, website:website, schedJson:ucSchedJson,
                   hours:hours, days:days, curCode:curCode, priceRaw:priceRaw, wasRaw:wasRaw,
                   isFreeSelected:isFreeSelected, catVal:catVal, emoji:emoji,
                   priceDisp:price, wasDisp:was, startDate:startDate, endDate:endDate });
@@ -14310,6 +14324,7 @@ function _submitDealInner(){
           website: website || null,
           start_date: startDate || null,
           end_date: endDate || null,
+          schedules: ucSchedJson,
           status: 'pending'
         };
         var { data: row, error: insErr } = await db.from('community_deals').insert(_ins).select().single();
@@ -14318,6 +14333,12 @@ function _submitDealInner(){
           delete _ins.start_date; delete _ins.end_date;
           var _rt = await db.from('community_deals').insert(_ins).select().single();
           row = _rt.data; insErr = _rt.error;
+        }
+        if (insErr && /schedules/.test(insErr.message||'')) {
+          // `schedules` column not added yet — save without it (single window persists).
+          delete _ins.schedules;
+          var _rt2 = await db.from('community_deals').insert(_ins).select().single();
+          row = _rt2.data; insErr = _rt2.error;
         }
         if (insErr) {
           console.error('[Supabase] submitDeal error:', insErr.message, insErr);
@@ -14391,6 +14412,7 @@ function _ucResetPostForm(){
     c.style.color=def?'white':'#9A9AB0';
     c.style.borderColor=def?'#E8192C':'#E8E8EC';
   });
+  if(typeof ucResetSchedBlocks==='function') ucResetSchedBlocks();   // clear extra time blocks
   var ucPrev=document.getElementById('uc-schedule-preview');if(ucPrev)ucPrev.style.display='none';
   var ucPricePrev=document.getElementById('uc-price-preview');if(ucPricePrev)ucPricePrev.style.display='none';
   _ucPhotos=[]; _ucDealPhotoDataUrl='';
@@ -14449,6 +14471,12 @@ function _ucPrefillForm(deal){
     c.style.color      = on ? 'white' : '#9A9AB0';
     c.style.borderColor= on ? '#E8192C' : '#E8E8EC';
   });
+  // Multiple schedule blocks: block 0 is set above; render blocks 2+ as extras.
+  try {
+    if(typeof ucResetSchedBlocks==='function') ucResetSchedBlocks();
+    var _ucb = _dealSchedules(deal);
+    for(var _ui=1; _ui<_ucb.length; _ui++) ucAddSchedBlock(_ucb[_ui]);
+  } catch(e){}
   // Start/end dates + their "Not definite" pills (apply the pill state FIRST —
   // turning a pill on clears the input, so the value must be set after).
   _ucStartIndefinite = !deal.start_date;
@@ -14506,8 +14534,10 @@ async function _ucSaveEdit(f){
       was_price: f.wasRaw ? parseFloat(f.wasRaw) : null,
       currency:f.curCode, emoji:f.emoji, address:f.addr||'',
       category:f.catVal||'bars', website:f.website||null,
-      start_date: f.startDate || null, end_date: f.endDate || null
+      start_date: f.startDate || null, end_date: f.endDate || null,
+      schedules: (f.schedJson != null ? f.schedJson : undefined)
     };
+    if(upd.schedules === undefined) delete upd.schedules;
     // Only overwrite image_url when we have hosted URL(s); otherwise leave the deal's
     // existing image untouched (don't wipe it because a re-upload failed).
     if(photos.length) upd.image_url = photos.length>1 ? JSON.stringify(photos) : photos[0];
@@ -14516,6 +14546,11 @@ async function _ucSaveEdit(f){
     var { data:updRows, error } = await db.from('community_deals')
       .update(upd).eq('id', f.dbId).eq('user_id', currentUser.id)
       .in('status', ['pending','verifying']).select();
+    if(error && /schedules/.test(error.message||'')){
+      delete upd.schedules;
+      var _rs = await db.from('community_deals').update(upd).eq('id', f.dbId).eq('user_id', currentUser.id).in('status', ['pending','verifying']).select();
+      updRows = _rs.data; error = _rs.error;
+    }
     if(error){ console.error('[_ucSaveEdit]', error.message); showToast('⚠️ Could not save changes — '+error.message); _ucSetEditMode(true); return; }
     if(!updRows || !updRows.length){
       // Row no longer matches (approved/rejected or gone) — nothing was changed.
@@ -28964,14 +28999,16 @@ function _meXDayChips(daySet){
     return '<div class="me-xday'+(on?' active':'')+'" onclick="meToggleXDay(this)" data-day="'+d+'" style="padding:7px 11px;background:'+(on?'#E8192C':'white')+';color:'+(on?'white':'#9A9AB0')+';border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid '+(on?'#E8192C':'#E8E8EC')+';user-select:none;">'+d+'</div>';
   }).join('');
 }
-function meAddSchedBlock(block){
-  var box = document.getElementById('me-extra-sched-blocks'); if(!box) return;
+// Shared block-element builder. previewFn = name of the form's preview refresher
+// ('meUpdateSchedulePreview' or 'ucUpdateSchedulePreview').
+function _buildXSchedBlock(block, previewFn){
   block = block || {};
   var names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var daySet;
   try { daySet = _activeDaySet(block.days || 'Fri, Sat, Sun').map(function(i){ return names[i]; }); } catch(e){ daySet = ['Fri','Sat','Sun']; }
   var ts = (block.from != null) ? meHourToTimeValue(block.from, '14:00') : '14:00';
   var te = (block.to   != null) ? meHourToTimeValue(block.to,   '17:00') : '17:00';
+  var oc = previewFn ? (' onchange="'+previewFn+'()"') : '';
   var el = document.createElement('div');
   el.className = 'me-xblock';
   el.style.cssText = 'border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;display:grid;gap:10px;position:relative;';
@@ -28979,22 +29016,20 @@ function meAddSchedBlock(block){
     + '<button type="button" onclick="meRemoveSchedBlock(this)" title="Remove" style="position:absolute;top:8px;right:8px;background:#F5F5F7;border:none;border-radius:8px;width:26px;height:26px;color:#9A9AB0;font-size:16px;cursor:pointer;line-height:1;">×</button>'
     + '<div style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;">Additional time block</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
-      + '<div><label style="font-size:9px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:4px;">Start</label><input type="time" class="me-xtime-start" value="'+ts+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;box-sizing:border-box;" onchange="meUpdateSchedulePreview()"></div>'
-      + '<div><label style="font-size:9px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:4px;">End</label><input type="time" class="me-xtime-end" value="'+te+'" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;box-sizing:border-box;" onchange="meUpdateSchedulePreview()"></div>'
+      + '<div><label style="font-size:9px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:4px;">Start</label><input type="time" class="me-xtime-start" value="'+ts+'"'+oc+' style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;box-sizing:border-box;"></div>'
+      + '<div><label style="font-size:9px;font-weight:800;color:#9A9AB0;text-transform:uppercase;display:block;margin-bottom:4px;">End</label><input type="time" class="me-xtime-end" value="'+te+'"'+oc+' style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;box-sizing:border-box;"></div>'
     + '</div>'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;" class="me-xdays">' + _meXDayChips(daySet) + '</div>';
-  box.appendChild(el);
-  if(typeof meUpdateSchedulePreview === 'function') meUpdateSchedulePreview();
+  return el;
 }
-function meRemoveSchedBlock(btn){ var b = btn.closest('.me-xblock'); if(b) b.remove(); if(typeof meUpdateSchedulePreview === 'function') meUpdateSchedulePreview(); }
-function meResetSchedBlocks(){ var box = document.getElementById('me-extra-sched-blocks'); if(box) box.innerHTML = ''; }
-function meCollectSchedules(){
+function _refreshSchedPreviews(){ try{ if(typeof meUpdateSchedulePreview==='function') meUpdateSchedulePreview(); }catch(e){} try{ if(typeof ucUpdateSchedulePreview==='function') ucUpdateSchedulePreview(); }catch(e){} }
+function meRemoveSchedBlock(btn){ var b = btn.closest('.me-xblock'); if(b) b.remove(); _refreshSchedPreviews(); }
+function _collectSchedules(activeDays, t0sId, t0eId, containerId){
   var blocks = [];
-  var d0 = meGetActiveDays();
-  var t0s = (document.getElementById('me-deal-time-start')||{}).value;
-  var t0e = (document.getElementById('me-deal-time-end')||{}).value;
-  if(d0.length && t0s && t0e) blocks.push({ days: d0.join(', '), from: _timeToHour(t0s), to: _timeToHour(t0e) });
-  document.querySelectorAll('#me-extra-sched-blocks .me-xblock').forEach(function(bl){
+  var t0s = (document.getElementById(t0sId)||{}).value;
+  var t0e = (document.getElementById(t0eId)||{}).value;
+  if(activeDays.length && t0s && t0e) blocks.push({ days: activeDays.join(', '), from: _timeToHour(t0s), to: _timeToHour(t0e) });
+  document.querySelectorAll('#'+containerId+' .me-xblock').forEach(function(bl){
     var days = Array.from(bl.querySelectorAll('.me-xday.active')).map(function(c){ return c.dataset.day; });
     var s = (bl.querySelector('.me-xtime-start')||{}).value;
     var e = (bl.querySelector('.me-xtime-end')||{}).value;
@@ -29002,6 +29037,16 @@ function meCollectSchedules(){
   });
   return blocks;
 }
+
+// Merchant form
+function meAddSchedBlock(block){ var box=document.getElementById('me-extra-sched-blocks'); if(!box) return; box.appendChild(_buildXSchedBlock(block,'meUpdateSchedulePreview')); _refreshSchedPreviews(); }
+function meResetSchedBlocks(){ var box=document.getElementById('me-extra-sched-blocks'); if(box) box.innerHTML=''; }
+function meCollectSchedules(){ return _collectSchedules(meGetActiveDays(), 'me-deal-time-start', 'me-deal-time-end', 'me-extra-sched-blocks'); }
+
+// Consumer "Share a Deal" form
+function ucAddSchedBlock(block){ var box=document.getElementById('uc-extra-sched-blocks'); if(!box) return; box.appendChild(_buildXSchedBlock(block,'ucUpdateSchedulePreview')); _refreshSchedPreviews(); }
+function ucResetSchedBlocks(){ var box=document.getElementById('uc-extra-sched-blocks'); if(box) box.innerHTML=''; }
+function ucCollectSchedules(){ return _collectSchedules(ucGetActiveDays(), 'uc-deal-time-start', 'uc-deal-time-end', 'uc-extra-sched-blocks'); }
 
 function meUpdateSchedulePreview(){
   var sd=document.getElementById('me-deal-start-date');
