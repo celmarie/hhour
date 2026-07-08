@@ -9309,7 +9309,7 @@ function mePage(page, btn){
   if(btn) btn.classList.add('active');
 
   // Update title
-  var titles={dashboard:'📊 Dashboard',deals:'🔥 My Deals',vouchers:'🎟️ Vouchers',redeem:'✅ Redemptions',payouts:'💶 Payouts',analytics:'📈 Analytics',reviews:'⭐ Reviews'};
+  var titles={dashboard:'Dashboard',deals:'My Deals',vouchers:'Vouchers',redeem:'Redemptions',payouts:'Payouts',analytics:'Analytics',reviews:'Reviews'};
   var titleEl=document.getElementById('me-page-title-text');
   if(titleEl) titleEl.textContent=titles[page]||page;
   var topbarTitle=document.querySelector('.me-topbar-title');
@@ -26075,7 +26075,7 @@ function meRenderBookings(){
   // Async-load after the skeleton paints
   setTimeout(meLoadBookings, 30);
   return '<div style="margin-bottom:16px;padding-left:8px;">'
-      +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;font-family:Inter,sans-serif;">📅 Arrival Bookings</div>'
+      +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;font-family:Inter,sans-serif;">Arrival Bookings</div>'
       +'<div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Upcoming &amp; recent arrivals — flag a no-show if a guest didn\'t turn up</div>'
     +'</div>'
     +'<div id="me-bookings-list">'
@@ -26161,7 +26161,7 @@ async function meLoadBookings(){
     +'<div style="flex:1;background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:20px;font-weight:900;color:#E8192C;">'+(_next||'—')+'</div><div style="font-size:10.5px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;">Next arrival</div></div>'
   +'</div>';
   var _ubHtml = unbooked.length ? '<div style="background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:13px 14px;margin-bottom:14px;font-family:Inter,sans-serif;">'
-    +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">🎟️ Expected arrivals — no time booked</div>'
+    +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">Expected arrivals — no time booked</div>'
     +'<div style="font-size:11px;color:#9A9AB0;margin-bottom:6px;">Valid vouchers without a chosen date/time — these guests can arrive any time the deal runs.</div>'
     + unbooked.map(function(p){
         var nm=(p.profiles&&p.profiles.name)||'Customer';
@@ -26426,7 +26426,7 @@ function meRenderRedeem(){
     // ── Scanner card ──────────────────────────────────────────────────────
     +'<div class="me-card">'
       +'<div class="me-card-header">'
-        +'<span class="me-card-title">📷 QR Code Scanner</span>'
+        +'<span class="me-card-title">QR Code Scanner</span>'
         +'<span id="me-scan-status" style="font-size:11px;font-weight:700;color:#9A9AB0;background:#f5f5f7;padding:4px 10px;border-radius:20px;font-family:Inter,sans-serif;">Camera off</span>'
       +'</div>'
       +'<div class="me-card-body" style="padding:0;">'
@@ -33010,15 +33010,15 @@ function _setupDealMap() {
 
   <!-- Horizontal navigation tabs - matching Admin Panel -->
   <div class="adm-nav-wrap me-tabnav">
-    <button class="adm-nav-btn adm-nav-on" onclick="mePageNew('dashboard')"><span class="adm-tab-icon">📊</span><span class="adm-tab-label">Dashboard</span></button>
-    <button class="adm-nav-btn" onclick="mePageNew('deals')"><span class="adm-tab-icon">🔥</span><span class="adm-tab-label">My Deals</span></button>
-    <button class="adm-nav-btn" onclick="mePageNew('vouchers')"><span class="adm-tab-icon">🎟️</span><span class="adm-tab-label">Vouchers</span></button>
-    <button class="adm-nav-btn" onclick="mePageNew('bookings')"><span class="adm-tab-icon">📅</span><span class="adm-tab-label">Bookings</span></button>
-    <button class="adm-nav-btn" onclick="mePageNew('redeem')"><span class="adm-tab-icon">✅</span><span class="adm-tab-label">Redemptions</span></button>
-    <button class="adm-nav-btn" onclick="mePageNew('reviews')"><span class="adm-tab-icon">⭐</span><span class="adm-tab-label">Reviews</span></button>
-    <button class="adm-nav-btn" onclick="mePageNew('analytics')"><span class="adm-tab-icon">📈</span><span class="adm-tab-label">Analytics</span></button>
-    <button class="adm-nav-btn" onclick="mePageNew('payouts')"><span class="adm-tab-icon">💰</span><span class="adm-tab-label">Payouts</span></button>
-    <button class="adm-nav-btn" onclick="mePageNew('settings')"><span class="adm-tab-icon">⚙️</span><span class="adm-tab-label">Settings</span></button>
+    <button class="adm-nav-btn adm-nav-on" onclick="mePageNew('dashboard')"><span class="adm-tab-label">Dashboard</span></button>
+    <button class="adm-nav-btn" onclick="mePageNew('deals')"><span class="adm-tab-label">My Deals</span></button>
+    <button class="adm-nav-btn" onclick="mePageNew('vouchers')"><span class="adm-tab-label">Vouchers</span></button>
+    <button class="adm-nav-btn" onclick="mePageNew('bookings')"><span class="adm-tab-label">Bookings</span></button>
+    <button class="adm-nav-btn" onclick="mePageNew('redeem')"><span class="adm-tab-label">Redemptions</span></button>
+    <button class="adm-nav-btn" onclick="mePageNew('reviews')"><span class="adm-tab-label">Reviews</span></button>
+    <button class="adm-nav-btn" onclick="mePageNew('analytics')"><span class="adm-tab-label">Analytics</span></button>
+    <button class="adm-nav-btn" onclick="mePageNew('payouts')"><span class="adm-tab-label">Payouts</span></button>
+    <button class="adm-nav-btn" onclick="mePageNew('settings')"><span class="adm-tab-label">Settings</span></button>
   </div>
 
   <!-- Main content area -->
@@ -33051,18 +33051,18 @@ function _setupDealMap() {
     <!-- Navigation sections -->
     <div class="me-sidebar-section">
       <span class="me-sidebar-label">Main</span>
-      <button class="me-sidebar-btn active" data-page="dashboard" onclick="mePageNew('dashboard')">📊 Dashboard</button>
-      <button class="me-sidebar-btn" data-page="deals" onclick="mePageNew('deals')">🔥 My Deals<span class="me-sidebar-badge">3</span></button>
-      <button class="me-sidebar-btn" data-page="vouchers" onclick="mePageNew('vouchers')">🎟️ Vouchers</button>
-      <button class="me-sidebar-btn" data-page="bookings" onclick="mePageNew('bookings')">📅 Bookings</button>
-      <button class="me-sidebar-btn" data-page="redeem" onclick="mePageNew('redeem')">✅ Redemptions<span class="me-sidebar-badge">7</span></button>
-      <button class="me-sidebar-btn" data-page="reviews" onclick="mePageNew('reviews')">⭐ Reviews</button>
+      <button class="me-sidebar-btn active" data-page="dashboard" onclick="mePageNew('dashboard')">Dashboard</button>
+      <button class="me-sidebar-btn" data-page="deals" onclick="mePageNew('deals')">My Deals<span class="me-sidebar-badge">3</span></button>
+      <button class="me-sidebar-btn" data-page="vouchers" onclick="mePageNew('vouchers')">Vouchers</button>
+      <button class="me-sidebar-btn" data-page="bookings" onclick="mePageNew('bookings')">Bookings</button>
+      <button class="me-sidebar-btn" data-page="redeem" onclick="mePageNew('redeem')">Redemptions<span class="me-sidebar-badge">7</span></button>
+      <button class="me-sidebar-btn" data-page="reviews" onclick="mePageNew('reviews')">Reviews</button>
     </div>
 
     <div class="me-sidebar-section">
       <span class="me-sidebar-label">Analytics</span>
-      <button class="me-sidebar-btn" data-page="analytics" onclick="mePageNew('analytics')">📈 Analytics</button>
-      <button class="me-sidebar-btn" data-page="payouts" onclick="mePageNew('payouts')">💰 Payouts</button>
+      <button class="me-sidebar-btn" data-page="analytics" onclick="mePageNew('analytics')">Analytics</button>
+      <button class="me-sidebar-btn" data-page="payouts" onclick="mePageNew('payouts')">Payouts</button>
     </div>
   </div>
 
@@ -33070,7 +33070,7 @@ function _setupDealMap() {
   <div id="me-main-wrapper">
     <!-- Topbar -->
     <div id="me-topbar">
-      <div class="me-topbar-title" id="me-page-title">📊 Dashboard</div>
+      <div class="me-topbar-title" id="me-page-title">Dashboard</div>
       <button onclick="closeMerchant()" style="background: var(--me-border); border: none; border-radius: 10px; width: 40px; height: 40px; color: var(--me-text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-weight: 600;">←</button>
     </div>
 
@@ -33080,12 +33080,12 @@ function _setupDealMap() {
     <!-- Bottom navigation (Mobile < 768px) -->
     <nav id="me-hnav">
       <div class="me-bnav-items">
-        <button class="me-bnav-item active" data-page="dashboard" onclick="mePageNew('dashboard')"><span class="me-bnav-icon">📊</span><span>Home</span></button>
-        <button class="me-bnav-item" data-page="deals" onclick="mePageNew('deals')"><span class="me-bnav-icon">🔥</span><span>Deals</span><span class="me-bnav-badge">3</span></button>
-        <button class="me-bnav-item" data-page="redeem" onclick="mePageNew('redeem')"><span class="me-bnav-icon">✅</span><span>Redeem</span><span class="me-bnav-badge">7</span></button>
-        <button class="me-bnav-item" data-page="vouchers" onclick="mePageNew('vouchers')"><span class="me-bnav-icon">🎟️</span><span>Vouchers</span></button>
-        <button class="me-bnav-item" data-page="payouts" onclick="mePageNew('payouts')"><span class="me-bnav-icon">💰</span><span>Payouts</span></button>
-        <button class="me-bnav-item" data-page="reviews" onclick="mePageNew('reviews')"><span class="me-bnav-icon">⭐</span><span>Reviews</span></button>
+        <button class="me-bnav-item active" data-page="dashboard" onclick="mePageNew('dashboard')"><span>Home</span></button>
+        <button class="me-bnav-item" data-page="deals" onclick="mePageNew('deals')"><span>Deals</span><span class="me-bnav-badge">3</span></button>
+        <button class="me-bnav-item" data-page="redeem" onclick="mePageNew('redeem')"><span>Redeem</span><span class="me-bnav-badge">7</span></button>
+        <button class="me-bnav-item" data-page="vouchers" onclick="mePageNew('vouchers')"><span>Vouchers</span></button>
+        <button class="me-bnav-item" data-page="payouts" onclick="mePageNew('payouts')"><span>Payouts</span></button>
+        <button class="me-bnav-item" data-page="reviews" onclick="mePageNew('reviews')"><span>Reviews</span></button>
       </div>
     </nav>
   </div>
@@ -33121,7 +33121,7 @@ function _setupDealMap() {
     <!-- ── SECTION 1: PHOTO ── -->
     <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
       <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;display:flex;align-items:center;justify-content:space-between;">
-        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">📷 Deal Photos</div>
+        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Deal Photos</div>
         <span id="me-photo-count" style="font-size:11px;font-weight:700;color:#9A9AB0;">0/3 photos</span>
       </div>
       <div style="padding:16px;">
@@ -33133,7 +33133,7 @@ function _setupDealMap() {
     <!-- ── SECTION 2: DEAL INFO ── -->
     <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
       <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
-        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">🔥 Deal Info</div>
+        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Deal Info</div>
       </div>
       <div style="padding:16px;display:grid;gap:14px;">
         <div>
@@ -33231,7 +33231,7 @@ function _setupDealMap() {
     <!-- ── SECTION 3: SCHEDULE ── -->
     <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
       <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
-        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">📅 Schedule & Validity</div>
+        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Schedule & Validity</div>
         <div style="font-size:12px;color:#9A9AB0;margin-top:3px;">When does this deal run?</div>
       </div>
       <div style="padding:16px;display:grid;gap:14px;">
@@ -33286,7 +33286,7 @@ function _setupDealMap() {
     <!-- ── SECTION 3.5: ARRIVAL BOOKING ── -->
     <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
       <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
-        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">⏰ Arrival Booking</div>
+        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Arrival Booking</div>
         <div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Limit how many vouchers can be redeemed at the same time — customers pick an arrival time when buying</div>
       </div>
       <div style="padding:16px;">
@@ -33322,7 +33322,7 @@ function _setupDealMap() {
             <div id="me-bk-times-list" style="display:flex;flex-direction:column;gap:8px;"></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;">📆 Vouchers per date</div>
+            <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;">Vouchers per date</div>
             <button type="button" onclick="meBkFillAll()" style="background:#F5F5F7;border:1.5px solid #E8E8EC;color:#555;border-radius:8px;padding:4px 10px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Apply first row to all</button>
           </div>
           <div style="font-size:11px;color:#9A9AB0;margin-bottom:10px;">Dates come from your Start–End dates &amp; valid days. Time is optional — leave it empty and guests can arrive any time in the happy-hour window. Leave vouchers empty (or 0) to close a date.</div>
@@ -33335,7 +33335,7 @@ function _setupDealMap() {
     <!-- ── SECTION 3.6: REDEMPTION WINDOW ── -->
     <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
       <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
-        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">⏱️ Redemption Window</div>
+        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Redemption Window</div>
         <div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Vouchers can only be scanned during your happy-hour times — scans before or after are rejected</div>
       </div>
       <div style="padding:16px;">
@@ -33355,7 +33355,7 @@ function _setupDealMap() {
     <!-- ── SECTION 4: TERMS ── -->
     <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
       <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
-        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">📋 Terms & Conditions</div>
+        <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Terms & Conditions</div>
         <div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Optional but recommended</div>
       </div>
       <div style="padding:16px;">
