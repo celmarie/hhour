@@ -6725,6 +6725,7 @@ async function loadEventsFromSupabase(){
           emoji:row.emoji||catEmojis[row.category]||'🎉',
           title:row.title,desc:row.description||'',
           date:row.event_date||'',time:row.event_time||'19:00',
+          _createdAt:row.created_at||'',
           location:row.location||'',host:row.host_name||'Community',
           going:row.going||0,capacity:row.capacity||20,
           price:row.price||'Free',type:row.ticket_type||'free',
@@ -29778,12 +29779,22 @@ function _comEventDate(ev){
   if(iso){ var di=new Date(iso+'T00:00:00'); if(!isNaN(di)) return di; }
   var s = ((ev && (ev.date || ev.event_date)) || '').trim();
   if(!s) return null;
-  var now = new Date();
   var cleaned = s.replace(/^[A-Za-z]{3,},?\s*/, ''); // drop leading weekday
-  var d = new Date(cleaned + ' ' + now.getFullYear());
+  // The stored date carries NO year, so anchor it to the year the event was
+  // CREATED — "4 Jun" created in 2026 means June 2026 (a PAST event once today
+  // is later in 2026). Only when the date lands before its own creation day does
+  // it belong to the next year (e.g. created in December for a January event).
+  // (The old code instead rolled anything >31 days old into NEXT year, which
+  // made stale past events reappear as "upcoming".)
+  var cDate = (ev && (ev._createdAt || ev.created_at)) ? new Date(ev._createdAt || ev.created_at) : null;
+  if(cDate && isNaN(cDate)) cDate = null;
+  var anchorYear = cDate ? cDate.getFullYear() : (new Date()).getFullYear();
+  var d = new Date(cleaned + ' ' + anchorYear);
   if(isNaN(d)) return null;
-  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if((today - d) > 31*24*3600*1000) d = new Date(cleaned + ' ' + (now.getFullYear()+1));
+  if(cDate){
+    var cDay = new Date(cDate.getFullYear(), cDate.getMonth(), cDate.getDate());
+    if(d < cDay) d = new Date(cleaned + ' ' + (anchorYear + 1));
+  }
   return isNaN(d) ? null : d;
 }
 // True if the event is today or in the future (unparseable dates are kept).
