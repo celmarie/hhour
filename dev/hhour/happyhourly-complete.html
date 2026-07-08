@@ -22354,6 +22354,9 @@ function adminOpenDealReview(id, source){
     document.getElementById('adm-edit-was').value = deal.wasPrice||'';
     document.getElementById('adm-edit-cat').value = _canonCat(deal.cat);
     document.getElementById('adm-edit-website').value = deal.website||deal.social||'';
+    // Merchant deals carry no separate contributor-contact email (the merchant has an
+    // account) — hide the community-only Merchant's Email field here.
+    var _merEmRow = document.getElementById('adm-edit-email-row'); if(_merEmRow) _merEmRow.style.display = 'none';
     document.getElementById('adm-edit-date-start').value = deal.startDate||deal.start_date||'';
     document.getElementById('adm-edit-date-end').value = deal.endDate||deal.end_date||'';
     var timeParts = (deal.hours||'').split('–').map(function(t){return t.trim();});
@@ -22662,6 +22665,18 @@ function adminReviewDeal(id){
   document.getElementById('adm-edit-cat').value = deal.cat||'bars';
   document.getElementById('adm-edit-off').value = deal.off||'';
   document.getElementById('adm-edit-website').value = deal.website||deal.social||'';
+
+  // Merchant's Email (admin-only, community_deal_contacts) — show for community deals,
+  // prefill from the DB. Editable; saved by adminSaveEditsOnly.
+  var _emRow = document.getElementById('adm-edit-email-row'); if(_emRow) _emRow.style.display = '';
+  var _emEl  = document.getElementById('adm-edit-email');     if(_emEl)  _emEl.value = '';
+  var _cDbId = deal._dbId || (deal.id>=10000 ? deal.id-10000 : deal.id);
+  var _emSnap = id;
+  try {
+    db.from('community_deal_contacts').select('merchant_email').eq('deal_id', _cDbId).maybeSingle().then(function(r){
+      if(r && r.data && r.data.merchant_email && _admReviewDealId===_emSnap && _emEl) _emEl.value = r.data.merchant_email;
+    });
+  } catch(e){}
 
   // Parse dates
   document.getElementById('adm-edit-date-start').value = deal.startDate||deal.start_date||'';
@@ -23206,6 +23221,20 @@ async function adminSaveEditsOnly(){
         showToast('❌ Failed to save: '+error.message);
         return;
       }
+
+      // Merchant's Email (admin-only community_deal_contacts). Non-empty → upsert;
+      // cleared → delete the row. Best-effort: never fail the deal save over it.
+      try {
+        var _adEmail = (document.getElementById('adm-edit-email')||{value:''}).value.trim();
+        if(_adEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(_adEmail)){
+          var _mcu = await db.from('community_deal_contacts').upsert({ deal_id: dbId, merchant_email: _adEmail }, { onConflict: 'deal_id' });
+          if(_mcu && _mcu.error){ console.warn('[merchant-email] admin upsert failed:', _mcu.error.message); }
+          else if(window._admMerchantEmails){ window._admMerchantEmails[dbId] = _adEmail; }
+        } else if(!_adEmail){
+          await db.from('community_deal_contacts').delete().eq('deal_id', dbId);
+          if(window._admMerchantEmails){ delete window._admMerchantEmails[dbId]; }
+        }
+      } catch(e){ console.warn('[merchant-email] admin save', e); }
 
       // VERIFY the update actually worked by fetching the fresh deal
       var { data: verifyDeal, error: verifyErr } = await db.from('community_deals')
@@ -34005,6 +34034,12 @@ function _setupDealMap() {
           <div>
             <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Website / Social (optional)</label>
             <input id="adm-edit-website" placeholder="www.venue.com or @handle" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+          </div>
+
+          <div id="adm-edit-email-row">
+            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">🔒 Merchant's Email <span style="font-size:9px;font-weight:600;color:#12A150;text-transform:none;letter-spacing:0;">— admin-only</span></label>
+            <input id="adm-edit-email" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="email" placeholder="owner@venue.com" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+            <div style="font-size:10px;color:#9A9AB0;margin-top:5px;font-weight:500;line-height:1.4;">Private contact for this venue — never shown to customers. Submitted by the contributor, editable here.</div>
           </div>
 
         </div>
