@@ -4143,6 +4143,11 @@ function _loadGT(){
               <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Website / Instagram <span style="font-size:9px;font-weight:600;color:#9A9AB0;text-transform:none;letter-spacing:0;">— optional</span></label>
               <input id="uc-website" type="text" autocomplete="off" inputmode="url" placeholder="instagram.com/venue, @venue or website.com" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
             </div>
+            <div>
+              <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Merchant's Email <span style="font-size:9px;font-weight:600;color:#9A9AB0;text-transform:none;letter-spacing:0;">— optional</span></label>
+              <input id="uc-merchant-email" type="email" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" placeholder="owner@venue.com" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+              <div style="font-size:11px;color:#9A9AB0;margin-top:6px;font-weight:500;line-height:1.4;">🔒 Only visible to the Appie Hour team — never shown publicly. Helps us verify the deal with the venue.</div>
+            </div>
           </div>
           <div style="height:1px;background:#F0F0F4;margin:0 16px;"></div>
           <div style="padding:14px 18px 6px;">
@@ -14087,6 +14092,11 @@ function _submitDealInner(){
   var d=(document.getElementById('uc-deal-desc')||{value:''}).value.trim();
   var addr=(document.getElementById('uc-addr')||{value:''}).value.trim();
   var website=(document.getElementById('uc-website')||{value:''}).value.trim();   // optional site/Instagram
+  // Optional merchant contact — captured NOW because the form resets before the
+  // async DB insert finishes. Stored in community_deal_contacts (admin-only), never
+  // on the public community_deals row.
+  var mEmail=(document.getElementById('uc-merchant-email')||{value:''}).value.trim();
+  if(mEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mEmail)){ showToast('📧 That merchant email doesn\'t look right'); return; }
   if(!v){showToast('Please enter a venue name 📍');return;}
   if(!addr){showToast('Please enter an address 📍');return;}
   // Duplicate checker — venue NAME + ADDRESS together (chains share names across
@@ -14195,6 +14205,12 @@ function _submitDealInner(){
           showToast('⚠️ Deal saved locally only — DB error: ' + insErr.message);
         }
         if (row) { submission._dbId = row.id; submission.id = row.id + 10000; _setSlugForRow('community_deals', row.id, title); }
+        if (row && mEmail) {
+          // Best-effort: a missing table or RLS miss must never fail the submission.
+          var _mc = await db.from('community_deal_contacts').upsert(
+            { deal_id: row.id, merchant_email: mEmail, user_id: currentUser.id }, { onConflict: 'deal_id' });
+          if (_mc && _mc.error) console.warn('[merchant-email] not saved:', _mc.error.message);
+        }
         // keep _local = true so the merge in loadAdminData always preserves this item
       } catch (e) { console.warn('[Supabase] submitDeal failed', e); }
     })();
@@ -14243,7 +14259,7 @@ window._ucEditIntent = false;   // set by mcEditDeal so the goScreen hook keeps 
 
 // Reset the Share-a-Deal form to a clean "new deal" state (shared by submit + cancel).
 function _ucResetPostForm(){
-  ['uc-venue','uc-addr','uc-website','uc-deal-title','uc-deal-desc','uc-deal-price','uc-deal-was','uc-deal-start-date','uc-deal-end-date'].forEach(function(id){
+  ['uc-venue','uc-addr','uc-website','uc-merchant-email','uc-deal-title','uc-deal-desc','uc-deal-price','uc-deal-was','uc-deal-start-date','uc-deal-end-date'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.value='';
   });
   var tsReset=document.getElementById('uc-deal-time-start');if(tsReset)tsReset.value='17:00';
@@ -14283,6 +14299,14 @@ function _ucPrefillForm(deal){
   setv('uc-venue', deal.venue_name||'');
   setv('uc-addr', deal.address||'');
   setv('uc-website', deal.website||'');
+  // Merchant email lives in its own admin-only table; the owner may read back the
+  // one they provided (owner-select RLS), so prefill asynchronously.
+  setv('uc-merchant-email','');
+  try {
+    db.from('community_deal_contacts').select('merchant_email').eq('deal_id', deal.id).maybeSingle().then(function(r){
+      if(r && r.data && r.data.merchant_email && window._ucEditingId===deal.id) setv('uc-merchant-email', r.data.merchant_email);
+    });
+  } catch(e){}
   setv('uc-deal-title', deal.title||'');
   setv('uc-deal-desc', deal.description||'');
   setv('uc-deal-cat', deal.category||'bars');
@@ -14391,6 +14415,16 @@ async function _ucSaveEdit(f){
       if(photos.length){ patch.img=photos[0]||''; patch.img2=photos[1]||''; patch.img3=photos[2]||''; }
       return Object.assign({}, x, patch);
     }); } catch(e){}
+    // Merchant contact (admin-only table). Non-empty → upsert; empty → leave as-is
+    // (never silently wipe an email the admin may already be using).
+    try {
+      var _mEm=(document.getElementById('uc-merchant-email')||{value:''}).value.trim();
+      if(_mEm && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(_mEm)){
+        var _mc = await db.from('community_deal_contacts').upsert(
+          { deal_id: f.dbId, merchant_email: _mEm, user_id: currentUser.id }, { onConflict: 'deal_id' });
+        if(_mc && _mc.error) console.warn('[merchant-email] not saved:', _mc.error.message);
+      }
+    } catch(e){ console.warn('[merchant-email] not saved', e); }
     showToast('✅ Changes saved — still under review');
     _ucResetPostForm();
     _ucSetEditMode(false);
@@ -16140,6 +16174,14 @@ async function migrateBase64DealPhotos(){
 
 async function loadAdminData(){
   try {
+    // Merchant contact emails (admin-only table) — deal_id → email, shown in the
+    // review modal. Fire-and-forget: a missing table just leaves the map empty.
+    try {
+      db.from('community_deal_contacts').select('deal_id,merchant_email').then(function(r){
+        var m = {}; (((r && r.data) || [])).forEach(function(x){ m[x.deal_id] = x.merchant_email; });
+        window._admMerchantEmails = m;
+      });
+    } catch(e){}
     // ⚡ Kick off ALL independent admin queries in parallel with 8s timeout fallback per query
     var _pCD = withTimeout(
       // select('*') is resilient: a missing optional column won't error the whole
@@ -22408,6 +22450,8 @@ function adminReviewDeal(id){
       var priceStr = currSym + priceNum.toFixed(2);
       rows.push('<div style="display:flex;gap:6px;align-items:center;"><span>💰</span><span style="font-size:12px;color:#555;font-weight:500;">Was '+wasStr+' → now '+priceStr+'</span></div>');
     }
+    var _mEm = (window._admMerchantEmails||{})[deal._dbId || (deal.id>=10000 ? deal.id-10000 : deal.id)];
+    if(_mEm) rows.push('<div style="display:flex;gap:6px;align-items:center;"><span>📧</span><span style="font-size:12px;font-weight:600;"><a href="mailto:'+esc(_mEm)+'" style="color:#1D4ED8;text-decoration:none;">'+esc(_mEm)+'</a><span style="color:#9A9AB0;font-weight:600;"> · merchant contact (admin-only)</span></span></div>');
     extraEl.innerHTML = rows.length ? rows.join('') : '';
     extraEl.style.display = rows.length ? 'grid' : 'none';
   }
