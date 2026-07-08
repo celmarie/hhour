@@ -15594,8 +15594,18 @@ async function nativeOAuthLogin(provider){
     }
     var res = await plug.login({ provider: provider, options: { scopes: provider === 'apple' ? ['email','name'] : ['email','profile'] } });
     var r = (res && res.result) || {};
-    var idToken = r.idToken || (r.authentication && r.authentication.idToken) || '';
-    if(!idToken) return;                           // user closed the sheet
+    // Where the identity-token JWT lives differs by provider in this plugin:
+    //  • Google → result.idToken IS the OIDC id_token JWT.
+    //  • Apple (native) → result.idToken is the Apple AUTHORIZATION CODE (opaque,
+    //    not a JWT); the real identity-token JWT is result.accessToken.token.
+    // Supabase's signInWithIdToken needs the JWT, so pick the right field or Apple
+    // sign-in fails every time.
+    var idToken = (provider === 'apple')
+      ? ((r.accessToken && r.accessToken.token) || '')
+      : (r.idToken || '');
+    // Guard: only proceed with a real JWT (three dot-separated segments). A blank
+    // means the user closed the sheet; a non-JWT would just be rejected by Supabase.
+    if(!idToken || String(idToken).split('.').length !== 3) return;
     var { data, error } = await db.auth.signInWithIdToken({ provider: provider, token: idToken });
     if(error){ if(errEl) errEl.textContent = _friendlyAuthErr(error.message); return; }
     if(data && data.user){
