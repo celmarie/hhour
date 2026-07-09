@@ -20349,21 +20349,6 @@ function adminPage(page,btn){
     // Recent activity
     var recentSales = allPurchases.slice(0, 15);
 
-    // 14-day revenue series for the bar chart
-    var _anDays = [], _anRev = {};
-    for(var _di = 13; _di >= 0; _di--){
-      var _dt = new Date(); _dt.setDate(_dt.getDate() - _di);
-      var _k = _dt.toISOString().slice(0,10);
-      _anDays.push({ key:_k, lbl:_dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) });
-      _anRev[_k] = 0;
-    }
-    allPurchases.forEach(function(p){
-      if(!p.purchased_at) return;
-      var k = String(p.purchased_at).slice(0,10);
-      if(_anRev[k] != null) _anRev[k] += (parseFloat(p.deal_price)||0);
-    });
-    var _anMax = Math.max.apply(null, _anDays.map(function(d){ return _anRev[d.key]; }).concat([1]));
-
     html = '<div style="display:flex;flex-direction:column;gap:24px;">'
       // SECTION 1: Key Metrics
       +'<div>'
@@ -20432,21 +20417,8 @@ function adminPage(page,btn){
         +'</div>'
       +'</div>'
 
-      // SECTION 2.5: Revenue chart (last 14 days)
-      +'<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px;">'
-        +'<div style="font-size:15px;font-weight:900;color:#1A1A1A;margin-bottom:16px;">📈 Revenue — Last 14 Days</div>'
-        +'<div style="display:flex;align-items:flex-end;gap:5px;height:150px;">'
-        +_anDays.map(function(d){
-          var v = _anRev[d.key];
-          var h = Math.round(v / _anMax * 110);
-          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;min-width:0;height:100%;" title="'+d.lbl+': '+sym+v.toFixed(2)+'">'
-            +'<div style="font-size:9px;font-weight:700;color:#9A9AB0;white-space:nowrap;">'+(v>0?(sym+(v>=1000?(v/1000).toFixed(1)+'k':Math.round(v))):'')+'</div>'
-            +'<div style="width:100%;max-width:26px;height:'+Math.max(h,3)+'px;background:'+(v>0?'linear-gradient(180deg,#FF5533,#E8192C)':'#F0F0F3')+';border-radius:5px 5px 2px 2px;"></div>'
-            +'<div style="font-size:8.5px;color:#9A9AB0;font-weight:600;white-space:nowrap;">'+d.lbl.split(' ')[0]+'</div>'
-          +'</div>';
-        }).join('')
-        +'</div>'
-      +'</div>'
+      // SECTION 2.5: GMV & Revenue over time (range-selectable + platform take)
+      + admRenderRevenueChart(allPurchases, sym)
 
       // SECTION 3: Top Performers
       +'<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;overflow:hidden;">'
@@ -22397,6 +22369,80 @@ async function adminIgnoreReport(dealId){
 }
 
 // Fetch all platform purchases for the admin Analytics page (cached until refresh)
+// GMV & Revenue over time for the admin analytics page. Range-selectable
+// (14 / 30 / 90 days), showing platform GMV, YOUR take (GMV × commission%),
+// and the change vs the previous equal-length period — the "trend" the old
+// fixed 14-day chart couldn't give. Reads the up-to-500 most-recent purchases
+// already fetched into window._admPurchases; 90d buckets by week to stay legible.
+function admRenderRevenueChart(purchases, sym){
+  var RANGES = { 14:{days:14,bucket:1}, 30:{days:30,bucket:1}, 90:{days:90,bucket:7} };
+  var range = RANGES[window._admRevRange] ? window._admRevRange : 14;
+  var cfg = RANGES[range];
+  var commission = (window.finConfig && parseFloat(finConfig.commission)) || 0;
+  var DAY = 86400000;
+  var today0 = new Date(); today0.setHours(0,0,0,0); today0 = today0.getTime();
+  var days = cfg.days, bd = cfg.bucket, nB = Math.ceil(days/bd);
+  var winStart = today0 - (days-1)*DAY;
+  var prevStart = winStart - days*DAY;
+  var buckets = [];
+  for(var k=0;k<nB;k++){
+    var bs = winStart + k*bd*DAY;
+    buckets.push({ val:0, lbl:new Date(bs).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) });
+  }
+  var cur=0, prev=0, curCount=0, mx=0;
+  (purchases||[]).forEach(function(p){
+    if(!p.purchased_at) return;
+    var ts = new Date(p.purchased_at).getTime(); if(isNaN(ts)) return;
+    var price = parseFloat(p.deal_price)||0;
+    if(ts >= winStart && ts < today0 + DAY){
+      cur += price; curCount++;
+      var idx = Math.floor((ts - winStart)/(bd*DAY));
+      if(idx>=0 && idx<nB){ buckets[idx].val += price; if(buckets[idx].val>mx) mx=buckets[idx].val; }
+    } else if(ts >= prevStart && ts < winStart){
+      prev += price;
+    }
+  });
+  if(mx<=0) mx = 1;
+  var take = cur * commission/100;
+  function money(v){ return sym + (v>=1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(v<100?2:0)); }
+
+  var trendHtml = '';
+  if(prev>0){
+    var pct = Math.round((cur-prev)/prev*100), up = pct>=0;
+    trendHtml = '<span style="background:'+(up?'rgba(18,161,80,.1)':'rgba(232,25,44,.1)')+';color:'+(up?'#12A150':'#E8192C')+';font-size:11px;font-weight:800;padding:4px 9px;border-radius:14px;white-space:nowrap;">'+(up?'↑':'↓')+' '+Math.abs(pct)+'% vs prev '+range+'d</span>';
+  } else if(cur>0){
+    trendHtml = '<span style="background:rgba(18,161,80,.1);color:#12A150;font-size:11px;font-weight:800;padding:4px 9px;border-radius:14px;">▲ New sales</span>';
+  }
+  var btns = [14,30,90].map(function(r){
+    var on = (r===range);
+    return '<button onclick="window._admRevRange='+r+';adminPage(\'analytics\',null)" style="background:'+(on?'#1A1A1A':'#fff')+';color:'+(on?'#fff':'#6B7280')+';border:1.5px solid '+(on?'#1A1A1A':'#E8E8EC')+';border-radius:8px;padding:5px 11px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">'+r+'d</button>';
+  }).join('');
+
+  var labelEvery = Math.max(1, Math.ceil(nB/7)), showVals = nB<=14;
+  var bars = buckets.map(function(b,i){
+    var h = Math.round(b.val/mx*110);
+    var lbl = (i%labelEvery===0) ? b.lbl : '';
+    return '<div title="'+b.lbl+': '+sym+b.val.toFixed(2)+'" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;min-width:0;height:100%;">'
+      + (showVals ? '<div style="font-size:9px;font-weight:700;color:#9A9AB0;white-space:nowrap;">'+(b.val>0?money(b.val):'')+'</div>' : '')
+      + '<div style="width:100%;max-width:26px;height:'+Math.max(h,3)+'px;background:'+(b.val>0?'linear-gradient(180deg,#FF5533,#E8192C)':'#F0F0F3')+';border-radius:5px 5px 2px 2px;"></div>'
+      + '<div style="font-size:8.5px;color:#9A9AB0;font-weight:600;white-space:nowrap;">'+lbl+'</div>'
+    + '</div>';
+  }).join('');
+
+  return '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">'
+      + '<div style="font-size:15px;font-weight:900;color:#1A1A1A;">📈 GMV &amp; Revenue</div>'
+      + '<div style="display:flex;gap:6px;">'+btns+'</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">'
+      + '<div><div style="font-size:11px;color:#9A9AB0;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">GMV · last '+range+'d</div><div style="font-size:26px;font-weight:900;color:#1A1A1A;letter-spacing:-.5px;">'+money(cur)+'</div><div style="font-size:11px;color:#9A9AB0;font-weight:600;margin-top:2px;">'+curCount+' sale'+(curCount===1?'':'s')+'</div></div>'
+      + '<div><div style="font-size:11px;color:#9A9AB0;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Your take ('+commission+'%)</div><div style="font-size:26px;font-weight:900;color:#12A150;letter-spacing:-.5px;">'+money(take)+'</div><div style="font-size:11px;color:#9A9AB0;font-weight:600;margin-top:2px;">platform commission</div></div>'
+      + (trendHtml ? '<div style="margin-left:auto;align-self:center;">'+trendHtml+'</div>' : '')
+    + '</div>'
+    + '<div style="display:flex;align-items:flex-end;gap:'+(nB>30?'2px':'5px')+';height:150px;">'+bars+'</div>'
+    + '<div style="font-size:10.5px;color:#B8B8C4;margin-top:10px;">'+(cur>0?'':'No sales in this period yet · ')+'Buckets by '+(bd>1?'week':'day')+' · GMV is customer spend; your take is the '+commission+'% commission.</div>'
+  + '</div>';
+}
 async function adminFetchAnalyticsPurchases(){
   try {
     var res = await db.from('voucher_purchases')
