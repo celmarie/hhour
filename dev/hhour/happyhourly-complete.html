@@ -20607,6 +20607,9 @@ function adminPage(page,btn){
       // SECTION 2.8: Category performance (revenue by category)
       + admRenderCategory(allPurchases, sym)
 
+      // SECTION 2.9: User growth (signups over time + buyer rate)
+      + admRenderUserGrowth(allPurchases)
+
       // SECTION 3: Top Performers
       +'<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;overflow:hidden;">'
         +'<div style="padding:16px;border-bottom:1.5px solid #E8E8EC;">'
@@ -22768,6 +22771,55 @@ function admRenderCategory(purchases, sym){
   var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;">From each purchased deal’s category. Uncategorised sales are grouped under “Other”.</div>';
   return head + rows + foot + '</div>';
 }
+// User growth for the admin analytics page: new signups over the last 12 weeks
+// (from adminUsers[].joinedRaw), plus new-in-7/30-days and the signup→buyer rate
+// (distinct purchasing user_ids ÷ total users, from recent purchases).
+function admRenderUserGrowth(purchases){
+  var users = (typeof adminUsers !== 'undefined' && adminUsers) ? adminUsers : [];
+  var total = users.length;
+  var DAY = 86400000, WEEK = 7*DAY, now = Date.now();
+  var today0 = new Date(); today0.setHours(0,0,0,0); today0 = today0.getTime();
+  var nB = 12, winStart = today0 - (nB*7 - 1)*DAY;
+  var buckets = [];
+  for(var k=0;k<nB;k++){ var bs = winStart + k*WEEK; buckets.push({ val:0, lbl:new Date(bs).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) }); }
+  var new7=0, new30=0, mx=0;
+  users.forEach(function(u){
+    var t = u.joinedRaw ? new Date(u.joinedRaw).getTime() : null;
+    if(t===null || isNaN(t)) return;
+    if(now - t <= 7*DAY) new7++;
+    if(now - t <= 30*DAY) new30++;
+    if(t>=winStart && t < today0+DAY){ var idx = Math.floor((t-winStart)/WEEK); if(idx>=0 && idx<nB){ buckets[idx].val++; if(buckets[idx].val>mx) mx=buckets[idx].val; } }
+  });
+  if(mx<=0) mx=1;
+  var buyerSet={}; (purchases||[]).forEach(function(p){ if(p.user_id) buyerSet[p.user_id]=1; });
+  var buyers = Object.keys(buyerSet).length;
+  var buyerRate = total>0 ? Math.round(buyers/total*100) : null;
+
+  var head = '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">'
+    + '<div style="font-size:15px;font-weight:900;color:#1A1A1A;">📈 User Growth</div>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">New signups · last 12 weeks</span></div>';
+  if(!total){
+    return head + '<div style="padding:18px 4px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;">No users yet.</div></div>';
+  }
+  function tile(v,l){ return '<div style="flex:1;min-width:96px;background:#F9F9FB;border-radius:12px;padding:12px 14px;"><div style="font-size:22px;font-weight:900;color:#1A1A1A;letter-spacing:-.5px;">'+v+'</div><div style="font-size:11.5px;color:#6B7280;font-weight:600;">'+l+'</div></div>'; }
+  var tiles = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'
+    + tile(total, 'Total users')
+    + tile('+'+new30, 'New · 30 days')
+    + tile(buyerRate!=null?buyerRate+'%':'—', 'Signup → buyer')
+  + '</div>';
+  var labelEvery = 2;
+  var bars = buckets.map(function(b,i){
+    var h = Math.round(b.val/mx*100);
+    return '<div title="Week of '+b.lbl+': '+b.val+' new" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;min-width:0;height:100%;">'
+      + '<div style="font-size:9px;font-weight:700;color:#9A9AB0;white-space:nowrap;">'+(b.val>0?b.val:'')+'</div>'
+      + '<div style="width:100%;max-width:22px;height:'+Math.max(h,3)+'px;background:linear-gradient(180deg,#4facfe,#00c2ff);border-radius:5px 5px 2px 2px;"></div>'
+      + '<div style="font-size:8px;color:#9A9AB0;font-weight:600;white-space:nowrap;">'+((i%labelEvery===0)?b.lbl:'')+'</div>'
+    + '</div>';
+  }).join('');
+  var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;">'+new7+' new in the last 7 days. Signup→buyer = users who bought (recent) ÷ all users.</div>';
+  return head + tiles + '<div style="display:flex;align-items:flex-end;gap:4px;height:120px;">'+bars+'</div>' + foot + '</div>';
+}
 async function adminFetchAnalyticsPurchases(){
   try {
     var res = await db.from('voucher_purchases')
@@ -22789,7 +22841,8 @@ async function adminFetchAnalyticsPurchases(){
         venue_name: venue,
         customer_name: userName[r.user_id] || 'Customer',
         purchased_at: r.purchased_at,
-        cat: (d && d.category) || null
+        cat: (d && d.category) || null,
+        user_id: r.user_id
       };
     });
   } catch(e){
