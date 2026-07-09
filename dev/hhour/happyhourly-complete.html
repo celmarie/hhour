@@ -5590,7 +5590,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260709130928';
+var BUILD_VERSION = '20260709132006';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -32984,7 +32984,14 @@ function _setupDealMap() {
         // dot + halo where you actually are; the location button re-fetches on tap.
         navigator.geolocation.getCurrentPosition(function(p){
           _drawYouDot(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
-        }, function(){}, { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 });
+        }, function(err){
+          // No blue dot means we couldn't read your location. Tell you why, once,
+          // so it's clear this is a permission thing — not a missing feature.
+          if(err && err.code === 1 && !window._locHintShown){
+            window._locHintShown = true;
+            showToast('📍 Allow location for this site to see your blue dot on the map');
+          }
+        }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 });
       }
     } catch(e){}
 
