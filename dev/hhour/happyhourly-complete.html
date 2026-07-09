@@ -13069,7 +13069,7 @@ function calculateMerchantMetrics(){
   (vouchersData || []).forEach(function(v){
     (v.purchases || []).forEach(function(p){
       var price = parseFloat(p.price) || (v.priceNum || 0);
-      purchases.push({ code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, price:price, deal:v.name });
+      purchases.push({ code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, expiresAt:p.expires_at||null, price:price, deal:v.name });
       metrics.revenue.value += price;
     });
   });
@@ -13099,6 +13099,26 @@ function calculateMerchantMetrics(){
     purchases: purchases.length,
     redeemed: purchases.filter(function(p){ return p.status === 'used'; }).length
   };
+
+  // Outstanding & expiring vouchers — money customers have paid but NOT yet
+  // redeemed (status 'active'). Split into still-valid (a liability + a reminder
+  // opportunity), expiring within 7 days, and already-lapsed unredeemed (breakage).
+  var _now = Date.now(), _WEEK = 7*86400000;
+  var out = { count:0, value:0, expiringCount:0, expiringValue:0, expiredCount:0, expiredValue:0, soon:[] };
+  purchases.forEach(function(p){
+    if(p.status !== 'active') return;                       // only unredeemed, non-cancelled
+    var exp = p.expiresAt ? new Date(p.expiresAt).getTime() : null;
+    var hasExp = (exp !== null && !isNaN(exp));
+    if(hasExp && exp < _now){ out.expiredCount++; out.expiredValue += p.price; return; }
+    out.count++; out.value += p.price;
+    if(hasExp && (exp - _now) <= _WEEK){
+      out.expiringCount++; out.expiringValue += p.price;
+      out.soon.push({ deal:p.deal, code:p.code, buyer:p.buyer, exp:exp });
+    }
+  });
+  out.soon.sort(function(a,b){ return a.exp - b.exp; });
+  out.soon = out.soon.slice(0, 6);
+  metrics.outstanding = out;
 
   // Average rating from real reviews.
   if(dealReviews && Object.keys(dealReviews).length > 0){
@@ -13245,6 +13265,57 @@ function meRenderFunnel(metrics){
     + (overall!=null ? '📊 '+overall+'% of views end in a redemption' : 'Views aren’t being counted yet — the view→redeem rate will show once they are')
     + '</div>';
   return head + '<div class="me-card-body" style="padding:16px 18px 18px;">'+rows+foot+'</div></div>';
+}
+
+// Outstanding & expiring vouchers card for the merchant dashboard. Shows money
+// customers paid but haven't redeemed (a liability + a reminder opportunity),
+// what's expiring within 7 days, and anything already lapsed unredeemed.
+function meRenderOutstanding(metrics){
+  var o = metrics && metrics.outstanding;
+  var sym = (typeof finSym==='function') ? finSym() : '€';
+  var head = '<div class="me-card" style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
+    + '<div class="me-card-header"><span class="me-card-title">🎟 Outstanding Vouchers</span>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Paid, not yet redeemed</span></div>';
+  if(!o || (!o.count && !o.expiredCount)){
+    return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
+      + '<span class="me-empty-icon">🎉</span><div class="me-empty-title">Nothing outstanding</div>'
+      + '<div class="me-empty-text">Every voucher your customers bought has been redeemed.</div>'
+      + '</div></div></div>';
+  }
+  function money(v){ return sym + (v>=1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(2)); }
+  function rel(exp){
+    var ms = exp - Date.now();
+    if(ms <= 0) return 'now';
+    if(ms < 3600000) return 'in '+Math.max(1,Math.round(ms/60000))+'m';
+    if(ms < 86400000) return 'in '+Math.round(ms/3600000)+'h';
+    var d = Math.round(ms/86400000); return 'in '+d+' day'+(d===1?'':'s');
+  }
+  var tiles = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">'
+    + '<div style="flex:1;min-width:120px;background:#F9F9FB;border-radius:12px;padding:13px 15px;">'
+      + '<div style="font-size:24px;font-weight:900;color:#1A1A1A;letter-spacing:-.5px;">'+o.count+'</div>'
+      + '<div style="font-size:12px;color:#6B7280;font-weight:600;">Outstanding · '+money(o.value)+' held</div>'
+    + '</div>'
+    + '<div style="flex:1;min-width:120px;background:'+(o.expiringCount>0?'rgba(217,119,6,.08)':'#F9F9FB')+';border-radius:12px;padding:13px 15px;">'
+      + '<div style="font-size:24px;font-weight:900;color:'+(o.expiringCount>0?'#B45309':'#1A1A1A')+';letter-spacing:-.5px;">'+o.expiringCount+'</div>'
+      + '<div style="font-size:12px;color:#6B7280;font-weight:600;">Expiring &le; 7 days</div>'
+    + '</div>'
+  + '</div>';
+  var list = '';
+  if(o.soon.length){
+    list = '<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Expiring soonest</div>'
+      + o.soon.map(function(s){
+        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #F1F1F4;">'
+          + '<div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.deal||'Deal')+'</div>'
+          + '<div style="font-size:11px;color:#9A9AB0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.buyer||'Customer')+' · <code style="font-family:ui-monospace,Menlo,monospace;">'+esc(s.code||'')+'</code></div></div>'
+          + '<div style="font-size:12px;font-weight:800;color:#B45309;white-space:nowrap;flex-shrink:0;">'+rel(s.exp)+'</div>'
+        + '</div>';
+      }).join('');
+  }
+  var expired = o.expiredCount>0
+    ? '<div style="font-size:11.5px;color:#9A9AB0;font-weight:600;margin-top:12px;padding-top:10px;border-top:1px solid #F1F1F4;">⚠️ '+o.expiredCount+' voucher'+(o.expiredCount===1?'':'s')+' expired unredeemed ('+money(o.expiredValue)+') — never claimed.</div>'
+    : '';
+  var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:'+(list||expired?'10px':'2px')+';">A quick reminder to these customers can turn an unredeemed voucher into a visit.</div>';
+  return head + '<div class="me-card-body" style="padding:16px 18px 18px;">'+tiles+list+expired+foot+'</div></div>';
 }
 
 // Format relative time
@@ -25661,7 +25732,7 @@ async function loadMerchantData(){
     // 5. Kick off purchases query in parallel with deals processing
     var dealIds = (dbDeals||[]).map(function(d){return d.id;});
     var _pPurch = dealIds.length ? db.from('voucher_purchases')
-      .select('id,code,status,created_at,redeemed_at,deal_id,payment_method,paid_at,profiles(name),deals(title,price,slots_total,emoji)')
+      .select('id,code,status,created_at,redeemed_at,expires_at,deal_id,payment_method,paid_at,profiles(name),deals(title,price,slots_total,emoji)')
       .in('deal_id', dealIds)
       .order('created_at', {ascending:false})
       .limit(500)
@@ -25777,6 +25848,7 @@ async function loadMerchantData(){
             status: p.status || 'active',
             date: p.created_at,
             redeemedAt: p.redeemed_at || null,
+            expires_at: p.expires_at || null,
             price: priceNum,
             noShow: !!_nsSet[p.id]
           });
@@ -25812,7 +25884,7 @@ async function loadMerchantData(){
         try {
           var _vslim = vouchersData.map(function(v){
             return { id:v.id, name:v.name, emoji:v.emoji, sold:v.sold, redeemed:v.redeemed, total:v.total, priceNum:v.priceNum, price:v.price, rev:v.rev,
-              purchases: (v.purchases||[]).map(function(p){ return { id:p.id, code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, price:p.price, noShow:!!p.noShow }; }) };
+              purchases: (v.purchases||[]).map(function(p){ return { id:p.id, code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, expires_at:p.expires_at||null, price:p.price, noShow:!!p.noShow }; }) };
           });
           localStorage.setItem('hh_merch_vouchers_' + currentUser.id, JSON.stringify({v:_vslim, bal:meCurrentBalance, time:Date.now()}));
         } catch(e){}
@@ -25961,6 +26033,9 @@ function meRenderDashNew(){
 
       // ══ 3c. PEAK REDEMPTION TIMES (full-width heatmap) ══════════════════
       + meRenderPeakTimes(metrics)
+
+      // ══ 3d. OUTSTANDING & EXPIRING VOUCHERS ════════════════════════════
+      + meRenderOutstanding(metrics)
 
       // ══ 4. PAYOUT BAR (full width) ══════════════════════════════════════
       + '<div style="background:linear-gradient(135deg,#0f2027,#1a3a4a,#2c5364);border-radius:14px;padding:22px 24px;display:flex;align-items:center;gap:16px;border:1px solid rgba(255,255,255,.1);color:white;">'
