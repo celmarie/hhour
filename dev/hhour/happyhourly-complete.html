@@ -20601,6 +20601,9 @@ function adminPage(page,btn){
       // SECTION 2.6: Merchant activation funnel (applied → approved → selling)
       + admRenderMerchantFunnel(allPurchases)
 
+      // SECTION 2.7: Supply vs demand by city (sales per venue)
+      + admRenderSupplyDemand(allPurchases)
+
       // SECTION 3: Top Performers
       +'<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;overflow:hidden;">'
         +'<div style="padding:16px;border-bottom:1.5px solid #E8E8EC;">'
@@ -22669,6 +22672,55 @@ function admRenderMerchantFunnel(purchases){
   var foot = '<div style="font-size:11.5px;color:#6B7280;font-weight:600;margin-top:2px;">'
     + (act!=null ? '🎯 '+act+'% of approved venues have made a sale' : 'Approve merchants to start the funnel')
     + ' · selling counts venues with a sale in recent activity</div>';
+  return head + rows + foot + '</div>';
+}
+// Supply vs demand by city for the admin analytics page. Signal: SALES PER VENUE
+// per city — high means each venue is selling a lot, i.e. demand is outrunning
+// the number of venues (a place to add supply). Venues + city from adminMerchants;
+// sales mapped to city via venue name (same venues.name the purchase join uses).
+function admRenderSupplyDemand(purchases){
+  var all = (typeof adminMerchants !== 'undefined' && adminMerchants) ? adminMerchants : [];
+  var venues = all.filter(function(m){ return m._source !== 'application'; });
+  var cityOf = {}, cityStats = {};
+  venues.forEach(function(v){
+    var c = (v.city && v.city !== '—') ? v.city : 'Unknown';
+    if(v.name) cityOf[v.name] = c;
+    if(!cityStats[c]) cityStats[c] = { venues:0, sales:0, revenue:0 };
+    cityStats[c].venues++;
+  });
+  (purchases||[]).forEach(function(p){
+    var c = cityOf[p.venue_name || p.venue_id];
+    if(!c || !cityStats[c]) return;               // sale we can't map to a known city → skip
+    cityStats[c].sales++; cityStats[c].revenue += parseFloat(p.deal_price)||0;
+  });
+  var cities = Object.keys(cityStats).map(function(c){
+    var s = cityStats[c];
+    return { city:c, venues:s.venues, sales:s.sales, revenue:s.revenue, spv:(s.venues>0?s.sales/s.venues:0) };
+  }).filter(function(c){ return c.city !== 'Unknown' || c.sales>0; })
+    .sort(function(a,b){ return (b.spv-a.spv) || (b.sales-a.sales); });
+
+  var head = '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">'
+    + '<div style="font-size:15px;font-weight:900;color:#1A1A1A;">🗺️ Supply vs Demand</div>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Sales per venue, by city</span></div>';
+  if(!cities.length){
+    return head + '<div style="padding:18px 4px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;">No venues with a city set yet.</div></div>';
+  }
+  var maxSpv = Math.max.apply(null, cities.map(function(c){ return c.spv; }).concat([0.0001]));
+  var rows = cities.slice(0,8).map(function(c,i){
+    var w = Math.max(2, Math.round(c.spv/maxSpv*100));
+    var hot = (i===0 && c.spv>0);
+    var tag = hot ? '<span style="background:rgba(232,25,44,.1);color:#E8192C;font-size:10px;font-weight:800;padding:2px 7px;border-radius:12px;white-space:nowrap;">🔥 expand</span>' : '';
+    return '<div style="padding:9px 0;border-top:1px solid #F1F1F4;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px;">'
+        + '<span style="font-size:13px;font-weight:800;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(c.city)+' '+tag+'</span>'
+        + '<span style="font-size:13px;font-weight:900;color:#1A1A1A;white-space:nowrap;flex-shrink:0;">'+c.spv.toFixed(1)+'<span style="font-size:10px;color:#9A9AB0;font-weight:700;"> /venue</span></span>'
+      + '</div>'
+      + '<div style="height:8px;background:#F1F1F4;border-radius:5px;overflow:hidden;margin-bottom:4px;"><div style="height:100%;width:'+w+'%;background:linear-gradient(90deg,#FF8052,#E8192C);border-radius:5px;"></div></div>'
+      + '<div style="font-size:11px;color:#9A9AB0;font-weight:600;">'+c.venues+' venue'+(c.venues===1?'':'s')+' · '+c.sales+' sale'+(c.sales===1?'':'s')+'</div>'
+    + '</div>';
+  }).join('');
+  var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;">More sales per venue = demand outrunning supply — good places to add venues. Sales counted from recent activity.</div>';
   return head + rows + foot + '</div>';
 }
 async function adminFetchAnalyticsPurchases(){
