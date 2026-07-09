@@ -32929,16 +32929,25 @@ function _setupDealMap() {
     try {
       if (navigator.geolocation) {
         if (window._youDotWatch) { try { navigator.geolocation.clearWatch(window._youDotWatch); } catch(e){} }
-        window._youDot = null;
+        // Clear any stale dot/halo from a previous map open on this same map object.
+        try { if(window._youDot) _gmapObj.removeLayer(window._youDot); if(window._youAcc) _gmapObj.removeLayer(window._youAcc); } catch(e){}
+        window._youDot = null; window._youAcc = null;
+        // enableHighAccuracy:true → real GPS (not coarse WiFi/IP), so the dot sits
+        // where you actually are. The halo shows how precise the current fix is.
         window._youDotWatch = navigator.geolocation.watchPosition(function(p){
           try {
             if (!_gmapObj) return;
             var ll = [p.coords.latitude, p.coords.longitude];
+            var acc = p.coords.accuracy || 0;   // metres of uncertainty
+            if (acc > 0) {
+              if (!window._youAcc) { window._youAcc = L.circle(ll, { radius: acc, color:'#4285F4', weight:1, fillColor:'#4285F4', fillOpacity:.12, interactive:false }).addTo(_gmapObj); }
+              else { window._youAcc.setLatLng(ll); window._youAcc.setRadius(acc); }
+            }
             if (!window._youDot) {
               window._youDot = L.circleMarker(ll, { radius: 7, color: '#ffffff', weight: 2, fillColor: '#4285F4', fillOpacity: 1 }).addTo(_gmapObj).bindPopup('You are here');
             } else { window._youDot.setLatLng(ll); }
           } catch(e){}
-        }, function(){}, { enableHighAccuracy: false, maximumAge: 15000, timeout: 20000 });
+        }, function(){}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
       }
     } catch(e){}
 
