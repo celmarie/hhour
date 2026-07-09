@@ -13290,7 +13290,7 @@ function meRenderFunnel(metrics){
       + '</div></div></div>';
   }
   var top = Math.max(f.views, f.purchases, f.redeemed, 1);
-  function pct(n,d){ return d>0 ? Math.round(n/d*100) : null; }
+  function pct(n,d){ return d>0 ? Math.min(100, Math.round(n/d*100)) : null; }
   function fmt(n){ return n>=1000 ? (n/1000).toFixed(1)+'k' : String(n); }
   var stages = [
     { icon:'👁', label:'Views',     val:f.views,     color:'#6366F1', conv:null,                     convLbl:'' },
@@ -22857,7 +22857,7 @@ function admRenderUserGrowth(purchases){
   if(mx<=0) mx=1;
   var buyerSet={}; (purchases||[]).forEach(function(p){ if(p.user_id) buyerSet[p.user_id]=1; });
   var buyers = Object.keys(buyerSet).length;
-  var buyerRate = total>0 ? Math.round(buyers/total*100) : null;
+  var buyerRate = total>0 ? Math.min(100, Math.round(buyers/total*100)) : null;
 
   var head = '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px;">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">'
@@ -28452,12 +28452,16 @@ function meRenderPayoutsPage(){
       + '</div>'
     : '';
 
-  // ── Earnings statement (gross → platform fee → net → paid out → available) ──
+  // ── Earnings statement (gross → platform commission → net) ──────────────────
+  // An EARNINGS breakdown, not a payout reconciliation. Counts only valid sales
+  // (active/used; cancelled & refunded excluded). Under pay-at-venue the merchant
+  // collects gross at the venue and commission is settled separately, so net does
+  // NOT tie to the online payout balance in the hero — the footer says which model.
   var _grossSales = 0, _voucherCount = 0;
-  (typeof vouchersData !== 'undefined' ? vouchersData : []).forEach(function(v){ (v.purchases||[]).forEach(function(p){ _grossSales += parseFloat(p.price)||0; _voucherCount++; }); });
+  (typeof vouchersData !== 'undefined' ? vouchersData : []).forEach(function(v){ (v.purchases||[]).forEach(function(p){ if(p.status && p.status !== 'active' && p.status !== 'used') return; _grossSales += parseFloat(p.price)||0; _voucherCount++; }); });
   var _fee = _grossSales * (finConfig.commission||0) / 100;
   var _netEarned = _grossSales - _fee;
-  var _paidOut = (typeof mePayoutHistory !== 'undefined' ? mePayoutHistory : []).reduce(function(s,p){ return s + (String(p.status)==='Paid' ? (parseFloat(p.amount)||0) : 0); }, 0);
+  var _onsite = (typeof PAY_ONSITE_ONLY !== 'undefined' && PAY_ONSITE_ONLY);
   var _stmtRow = function(label, val, o){ o=o||{}; return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:'+(o.big?'10px 0':'7px 0')+';'+(o.border?'border-top:1.5px solid #E8E8EC;':'')+'">'
     + '<span style="font-size:'+(o.big?'14px':'13px')+';font-weight:'+(o.big?'800':'600')+';color:'+(o.big?'#1A1A1A':'#6B7280')+';font-family:Inter,sans-serif;">'+label+'</span>'
     + '<span style="font-size:'+(o.big?'16px':'14px')+';font-weight:'+(o.big?'900':'700')+';color:'+(o.color||'#1A1A1A')+';font-variant-numeric:tabular-nums;font-family:Inter,sans-serif;">'+val+'</span></div>'; };
@@ -28465,11 +28469,13 @@ function meRenderPayoutsPage(){
     + '<div class="me-card-header"><span class="me-card-title">💶 Earnings Statement</span><span style="font-size:11px;color:#9A9AB0;font-weight:600;font-family:Inter,sans-serif;">All-time</span></div>'
     + '<div class="me-card-body" style="padding:14px 18px 18px;">'
       + _stmtRow('Gross sales'+(_voucherCount?' · '+_voucherCount+' voucher'+(_voucherCount===1?'':'s'):''), sym+_grossSales.toFixed(2))
-      + _stmtRow('Platform fee ('+(finConfig.commission||0)+'%)', '−'+sym+_fee.toFixed(2), {color:'#E8192C'})
-      + _stmtRow('Net earnings', sym+_netEarned.toFixed(2), {big:true, border:true, color:'#12A150'})
-      + _stmtRow('Paid out', '−'+sym+_paidOut.toFixed(2), {color:'#9A9AB0'})
-      + _stmtRow('Available now', sym+net, {big:true, border:true, color:'#12A150'})
-      + '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;font-family:Inter,sans-serif;">Net earnings minus payouts already sent. “Available now” is your current withdrawable balance.</div>'
+      + _stmtRow('Platform commission ('+(finConfig.commission||0)+'%)', '−'+sym+_fee.toFixed(2), {color:'#E8192C'})
+      + _stmtRow('Your net earnings', sym+_netEarned.toFixed(2), {big:true, border:true, color:'#12A150'})
+      + '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;font-family:Inter,sans-serif;">'
+        + (_onsite
+            ? 'Customers pay at your venue, so you collect the gross directly — the '+(finConfig.commission||0)+'% commission is settled separately (not withdrawn here).'
+            : 'Your net earnings flow to the payout balance shown above.')
+      + '</div>'
     + '</div>'
   + '</div>';
 
