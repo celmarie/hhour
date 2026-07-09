@@ -32388,25 +32388,42 @@ async function mapCityGo(){
 
 // 📍 "My location" button on the deal map — recenter on a fresh GPS fix,
 // falling back to the last remembered position if the fix fails/denied.
+// Draw / move the Google-style blue "you are here" dot (+ accuracy halo).
+function _drawYouDot(lat, lng, acc){
+  if(!_gmapObj || typeof L==='undefined') return;
+  try {
+    var ll = [lat, lng];
+    if(acc && acc > 0){
+      if(!window._youAcc) window._youAcc = L.circle(ll, { radius:acc, color:'#4285F4', weight:1, opacity:.35, fillColor:'#4285F4', fillOpacity:.15, interactive:false }).addTo(_gmapObj);
+      else { window._youAcc.setLatLng(ll); window._youAcc.setRadius(acc); }
+    }
+    if(!window._youDot) window._youDot = L.circleMarker(ll, { radius:8, color:'#ffffff', weight:3, fillColor:'#4285F4', fillOpacity:1, className:'you-dot' }).addTo(_gmapObj).bindPopup('You are here');
+    else window._youDot.setLatLng(ll);
+  } catch(e){}
+}
 function mapGoMyLocation(){
   var btn = document.getElementById('map-loc-btn');
   if(btn) btn.style.opacity = '.5';
-  function done(lat, lng){
+  function done(lat, lng, acc){
     if(btn) btn.style.opacity = '1';
     _geoSave(lat, lng);
-    if(_gmapObj){ try { _gmapObj.setView([lat, lng], Math.max(_gmapObj.getZoom(), 14)); } catch(e){} }
+    _drawYouDot(lat, lng, acc);                                 // ← show the blue dot on you
+    if(_gmapObj){ try { _gmapObj.setView([lat, lng], Math.max(_gmapObj.getZoom(), 15)); } catch(e){} }
   }
-  function fail(){
+  function fail(err){
     if(btn) btn.style.opacity = '1';
     var c = _geoCached();
-    if(c) done(c.lat, c.lng);
-    else showToast('📍 Allow location access to find you on the map');
+    if(c){ done(c.lat, c.lng); return; }                        // fall back to last known spot
+    var denied = err && err.code === 1;                         // PERMISSION_DENIED
+    showToast(denied
+      ? '📍 Location is blocked — turn it on for this site in your browser/phone settings, then tap again'
+      : '📍 Couldn’t get your location — check location is on and try again');
   }
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
-      function(p){ done(p.coords.latitude, p.coords.longitude); },
+      function(p){ done(p.coords.latitude, p.coords.longitude, p.coords.accuracy); },
       fail,
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 });
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 20000 });
   } else fail();
 }
 
