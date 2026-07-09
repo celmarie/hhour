@@ -32528,16 +32528,25 @@ function _initMapClusterer(){
       _gmapCluster = L.markerClusterGroup({
         chunkedLoading: true, spiderfyOnMaxZoom: true,
         // How close (in screen pixels) two venues must be before they collapse into a
-        // single numbered bubble. Kept TIGHT when zoomed in so distinct-but-nearby
-        // venues stay as SEPARATE pins — a little bubble overlap is fine (Agoda-style)
-        // rather than hiding two places behind a "2". Widened when zoomed out so a
-        // dense city still folds down to a handful of bubbles instead of hundreds of
-        // DOM pins (the iOS memory-crash guard the original 55 was protecting).
+        // single numbered bubble.
+        //
+        // SAFETY FIRST: a dense city can put hundreds of venues in one view. At
+        // neighbourhood zoom and wider we MUST keep a WIDE radius so those always fold
+        // into a handful of bubbles — letting them render as individual pins floods the
+        // map and is a real iOS memory-crash source (see MAP_MAX_PINS, which trusts
+        // clustering to collapse up to 400 pins into a few DOM nodes). Every value here
+        // is >= the original flat 55 at zoom <= 15, so it can never flood worse than the
+        // proven-safe baseline.
+        //
+        // Only at STREET level (16+) — where the viewport spans a few blocks and holds
+        // few venues no matter how dense the city — do we cluster tight, so distinct-
+        // but-close venues show as separate pins (a little overlap is fine, Agoda-style).
         maxClusterRadius: function(zoom){
-          if(zoom >= 16) return 10;   // street level → only near-identical venues merge
-          if(zoom >= 14) return 20;   // neighbourhood → split the close-but-distinct ones
-          if(zoom >= 12) return 45;   // district
-          return 70;                  // whole city / region → keep it light on memory
+          if(zoom >= 17) return 12;   // deep street level → separate near-identical venues
+          if(zoom >= 16) return 30;   // street level → distinct-but-close venues separate
+          if(zoom >= 14) return 60;   // neighbourhood → wide (>= original 55): cannot flood
+          if(zoom >= 12) return 90;   // district/city → cluster hard; 100s of venues can't flood
+          return 120;                 // region → a handful of big bubbles only
         },
         // Multiple pins grouped together → a "•••" pin (Agoda-style) colored by what's
         // inside: purple = football, red = community happy hours, blue = verified
