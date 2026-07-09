@@ -20610,6 +20610,9 @@ function adminPage(page,btn){
       // SECTION 2.9: User growth (signups over time + buyer rate)
       + admRenderUserGrowth(allPurchases)
 
+      // SECTION 2.10: Dormant merchants (approved, no recent sales)
+      + admRenderDormant(allPurchases)
+
       // SECTION 3: Top Performers
       +'<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;overflow:hidden;">'
         +'<div style="padding:16px;border-bottom:1.5px solid #E8E8EC;">'
@@ -22819,6 +22822,42 @@ function admRenderUserGrowth(purchases){
   }).join('');
   var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;">'+new7+' new in the last 7 days. Signup→buyer = users who bought (recent) ÷ all users.</div>';
   return head + tiles + '<div style="display:flex;align-items:flex-end;gap:4px;height:120px;">'+bars+'</div>' + foot + '</div>';
+}
+// Dormant merchants for the admin analytics page: approved venues with NO recent
+// sales — the nurture/outreach list (complements the existing top-venues board).
+// Venues from adminMerchants (excl. pending applications); "has a sale" from the
+// loaded purchases (by venue name). Newest un-activated venues first.
+function admRenderDormant(purchases){
+  var all = (typeof adminMerchants !== 'undefined' && adminMerchants) ? adminMerchants : [];
+  var venues = all.filter(function(m){ return m._source !== 'application'; });
+  var soldSet = {};
+  (purchases||[]).forEach(function(p){ var v = p.venue_name || p.venue_id; if(v && v !== '—') soldSet[v] = 1; });
+  var dormant = venues.filter(function(v){ return v.name && !soldSet[v.name]; })
+    .sort(function(a,b){ return new Date(b.created_at||0) - new Date(a.created_at||0); });
+
+  var head = '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">'
+    + '<div style="font-size:15px;font-weight:900;color:#1A1A1A;">😴 Dormant Merchants</div>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Approved · no recent sales</span></div>';
+  if(!venues.length){
+    return head + '<div style="padding:18px 4px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;">No approved venues yet.</div></div>';
+  }
+  if(!dormant.length){
+    return head + '<div style="padding:18px 4px;text-align:center;color:#12A150;font-size:13px;font-weight:700;">🎉 Every approved venue has a recent sale.</div></div>';
+  }
+  var pctDormant = Math.round(dormant.length / venues.length * 100);
+  var summary = '<div style="font-size:12px;color:#6B7280;font-weight:600;margin-bottom:10px;"><b style="color:#1A1A1A;">'+dormant.length+'</b> of '+venues.length+' venues ('+pctDormant+'%) have no recent sales — worth a nudge.</div>';
+  var rows = dormant.slice(0,8).map(function(v){
+    var city = (v.city && v.city !== '—') ? v.city : '';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid #F1F1F4;">'
+      + '<div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(v.name)+'</div>'
+      + (city ? '<div style="font-size:11px;color:#9A9AB0;">'+esc(city)+'</div>' : '')+'</div>'
+      + '<span style="font-size:11px;font-weight:800;color:#B45309;background:rgba(217,119,6,.1);border-radius:12px;padding:3px 9px;white-space:nowrap;flex-shrink:0;">no sales</span>'
+    + '</div>';
+  }).join('');
+  var more = dormant.length>8 ? '<div style="font-size:11px;color:#9A9AB0;font-weight:600;margin-top:8px;">+'+(dormant.length-8)+' more</div>' : '';
+  var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;">Based on recent purchase activity. A quick check-in or promo can reactivate these venues.</div>';
+  return head + summary + rows + more + foot + '</div>';
 }
 async function adminFetchAnalyticsPurchases(){
   try {
