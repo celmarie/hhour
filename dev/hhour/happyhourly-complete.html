@@ -29,8 +29,15 @@
   /* Bottom-left map corner: zoom +/- on top, attribution UNDERNEATH, compact.
      (OpenStreetMap's license requires keeping the credit visible, so it stays —
      tiny, prefix-less, and out of the way.) */
-  /* Google-style "you are here" dot: crisp blue with a soft drop shadow. */
-  .you-dot { filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
+  /* Google-style "you are here" dot — a real DOM marker (divIcon) so it paints on
+     every renderer (the old canvas circleMarker silently failed to draw on iOS). */
+  .you-dot-wrap { pointer-events:none; }
+  .you-dot-core { position:absolute; left:3px; top:3px; width:16px; height:16px; border-radius:50%;
+    background:#4285F4; border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+  .you-dot-pulse { position:absolute; left:0; top:0; width:22px; height:22px; border-radius:50%;
+    background:rgba(66,133,244,.28); animation:youDotPulse 2.2s ease-out infinite; }
+  @keyframes youDotPulse { 0%{ transform:scale(.55); opacity:.85; } 100%{ transform:scale(1.9); opacity:0; } }
+  @media (prefers-reduced-motion: reduce){ .you-dot-pulse{ animation:none; } }
   .leaflet-bottom.leaflet-left { display: flex; flex-direction: column; align-items: flex-start; }
   .leaflet-bottom.leaflet-left .leaflet-control-zoom { order: 1; }
   .leaflet-bottom.leaflet-left .leaflet-control-attribution {
@@ -5590,7 +5597,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260709153700';
+var BUILD_VERSION = '20260709154602';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -32393,12 +32400,25 @@ function _drawYouDot(lat, lng, acc){
   if(!_gmapObj || typeof L==='undefined') return;
   try {
     var ll = [lat, lng];
+    // Accuracy halo (still a canvas circle — decorative; the dot no longer depends on it).
     if(acc && acc > 0){
       if(!window._youAcc) window._youAcc = L.circle(ll, { radius:acc, color:'#4285F4', weight:1, opacity:.35, fillColor:'#4285F4', fillOpacity:.15, interactive:false }).addTo(_gmapObj);
       else { window._youAcc.setLatLng(ll); window._youAcc.setRadius(acc); }
     }
-    if(!window._youDot) window._youDot = L.circleMarker(ll, { radius:8, color:'#ffffff', weight:3, fillColor:'#4285F4', fillOpacity:1, className:'you-dot' }).addTo(_gmapObj).bindPopup('You are here');
-    else window._youDot.setLatLng(ll);
+    // The blue "you are here" dot as a DOM marker (divIcon). The old L.circleMarker
+    // used the canvas renderer, which silently failed to paint on iOS Safari even
+    // though the location was found — a plain HTML marker renders on every renderer,
+    // exactly like the €/⚽ deal pins that always show.
+    if(!window._youDot){
+      var youIcon = L.divIcon({
+        className: 'you-dot-wrap',
+        html: '<div class="you-dot-pulse"></div><div class="you-dot-core"></div>',
+        iconSize: [22,22], iconAnchor: [11,11]
+      });
+      window._youDot = L.marker(ll, { icon: youIcon, interactive:false, keyboard:false, zIndexOffset:10000 }).addTo(_gmapObj);
+    } else {
+      window._youDot.setLatLng(ll);
+    }
   } catch(e){}
 }
 // ONE real location fix. Prefers the native Capacitor Geolocation plugin (which
