@@ -3094,7 +3094,7 @@ function _loadGT(){
     <div style="max-width:1200px;margin:0 auto;display:flex;align-items:flex-start;gap:16px;justify-content:space-between;flex-wrap:wrap;">
       <div style="flex:1;min-width:200px;">
         <div style="font-weight:800;color:#1A1A1A;margin-bottom:4px;">🍪 Cookie Preferences</div>
-        <div style="font-size:12px;color:var(--t3);line-height:1.5;">We use cookies to enhance your experience. Essential cookies are always on. Customize your preferences or accept all.</div>
+        <div style="font-size:12px;color:var(--t3);line-height:1.5;">We use only essential cookies plus privacy-friendly, cookieless analytics. We don’t use advertising cookies or track you across other apps or websites.</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0;">
         <button onclick="stCookieConsentReject()" style="background:#F5F5F7;color:#555;border:none;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Customize</button>
@@ -5368,7 +5368,8 @@ function _loadGT(){
       <div class="vd-hdr"><button class="vd-back" onclick="goBack()">‹</button><div class="vd-hdr-title">Cookie Policy 🍪</div></div>
       <div style="padding:20px;background:white;color:var(--text);font-size:14px;line-height:1.6;">
         <h2 style="font-size:20px;font-weight:900;margin-bottom:12px;color:#1A1A1A;">Cookie Preferences</h2>
-        <p style="font-size:13px;color:var(--t3);margin-bottom:20px;">We use cookies to improve your experience. Manage your preferences below.</p>
+        <p style="font-size:13px;color:var(--t3);margin-bottom:14px;">We use cookies to improve your experience. Manage your preferences below.</p>
+        <div style="background:#EAF7EE;border:1px solid #BFE6C9;border-radius:12px;padding:12px 14px;margin-bottom:20px;font-size:12.5px;color:#1A6B34;font-weight:600;line-height:1.55;">✅ We do <b>not</b> track you across other apps or websites, show you targeted ads, or sell or share your data with advertisers or data brokers.</div>
 
         <!-- Essential Cookies -->
         <div style="background:#F9F9FB;border-radius:12px;padding:14px;margin-bottom:12px;border-left:4px solid var(--red);">
@@ -5389,23 +5390,10 @@ function _loadGT(){
             <div style="font-size:18px;flex-shrink:0;">📈</div>
             <div style="flex:1;">
               <div style="font-weight:800;color:#1A1A1A;margin-bottom:4px;">Analytics Cookies</div>
-              <div style="font-size:12px;color:var(--t3);margin-bottom:8px;">Help us understand how you use the app to improve features.</div>
-              <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Usage tracking • Performance • User behavior</div>
+              <div style="font-size:12px;color:var(--t3);margin-bottom:8px;">Privacy-friendly, first-party analytics to improve the app. Never used for advertising and never shared with third parties.</div>
+              <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Aggregate usage • Performance</div>
             </div>
             <div class="st-tog on" id="st-tog-cookies-analytics" onclick="stToggleCookie('analytics',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
-          </div>
-        </div>
-
-        <!-- Marketing Cookies -->
-        <div style="background:#F9F9FB;border-radius:12px;padding:14px;margin-bottom:12px;">
-          <div style="display:flex;align-items:flex-start;gap:10px;">
-            <div style="font-size:18px;flex-shrink:0;">📢</div>
-            <div style="flex:1;">
-              <div style="font-weight:800;color:#1A1A1A;margin-bottom:4px;">Marketing Cookies</div>
-              <div style="font-size:12px;color:var(--t3);margin-bottom:8px;">Show you personalized ads and promotions.</div>
-              <div style="font-size:11px;color:#9A9AB0;font-weight:600;">Targeted ads • Promotions • Retargeting</div>
-            </div>
-            <div class="st-tog" id="st-tog-cookies-marketing" onclick="stToggleCookie('marketing',this)" style="flex-shrink:0;margin-top:2px;"><div class="st-tok"></div></div>
           </div>
         </div>
 
@@ -5430,7 +5418,7 @@ function _loadGT(){
         <button onclick="stCookieSavePreferences()" style="width:100%;background:white;color:var(--red);border:1.5px solid var(--red);border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:32px;">Save Preferences</button>
 
         <h3 style="font-size:16px;font-weight:900;margin-top:24px;margin-bottom:12px;color:#1A1A1A;">What Are Cookies?</h3>
-        <p style="font-size:13px;color:var(--t2);margin-bottom:16px;">Cookies are small text files stored on your device that help us remember your preferences and understand how you use our app. We also use similar technologies like pixels and web beacons.</p>
+        <p style="font-size:13px;color:var(--t2);margin-bottom:16px;">Cookies are small text files stored on your device that help us keep you signed in, remember your preferences, and measure app performance. We do not use advertising cookies, tracking pixels, or web beacons.</p>
 
         <h3 style="font-size:16px;font-weight:900;margin-top:20px;margin-bottom:12px;color:#1A1A1A;">How We Use Cookies</h3>
         <p style="font-size:13px;color:var(--t2);margin-bottom:16px;">We use cookies to provide core functionality, analyze how our app is used, remember your preferences, and deliver personalized content and advertisements.</p>
@@ -9308,6 +9296,14 @@ function stCookieConsentReject(){
 
 function stShowCookieConsentBanner(){
   try {
+    // Native iOS/Android app: never show a cookie prompt. The app sets NO tracking
+    // cookies (analytics is Vercel's cookieless counter; PostHog is unconfigured/off),
+    // yet App Review treats any "cookies" prompt as cross-app tracking that would need
+    // App Tracking Transparency — the exact reason for the 5.1.2(i) rejection. No prompt
+    // + no tracking = compliant. The website keeps its banner (see also phConsentGranted).
+    var isNative = false;
+    try { isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch(e){}
+    if(isNative) return;
     var shown = localStorage.getItem('hh-cookie-consent-shown');
     if(!shown){
       var banner = document.getElementById('cookie-consent-banner');
