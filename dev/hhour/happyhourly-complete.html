@@ -9788,6 +9788,26 @@ var _userLoc = null;
 var _geoCache = {};
 try { _geoCache = JSON.parse(localStorage.getItem('hh_geo_cache')||'{}'); } catch(e){}
 var _geoPending = {};
+
+// Shared geocode cache in the DB (public.geo_cache): every address is geocoded
+// ONCE, ever — the result is saved to the DB and reused by every visitor, so we
+// never re-geocode per device. Batch-loaded into _geoCache on first map open.
+var _geoCacheDBLoaded = false;
+function _loadGeoCacheDB(cb){
+  if(_geoCacheDBLoaded || typeof db==='undefined'){ if(cb) cb(); return; }
+  _geoCacheDBLoaded = true;
+  try {
+    db.from('geo_cache').select('addr,lat,lng').then(function(r){
+      try {
+        (r && r.data ? r.data : []).forEach(function(row){
+          if(row.addr && row.lat!=null && row.lng!=null) _geoCache[String(row.addr)] = { lat:+row.lat, lng:+row.lng };
+        });
+        localStorage.setItem('hh_geo_cache', JSON.stringify(_geoCache));
+      } catch(e){}
+      if(cb) cb();
+    }, function(){ if(cb) cb(); });
+  } catch(e){ if(cb) cb(); }
+}
 function _haversineKm(lat1,lng1,lat2,lng2){
   var R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
   var s=Math.sin(dLat/2)*Math.sin(dLat/2)
@@ -9810,6 +9830,9 @@ function _geocodeCached(addr, cb){
         loc = { lat: res[0].geometry.location.lat(), lng: res[0].geometry.location.lng() };
         _geoCache[key] = loc;
         try { localStorage.setItem('hh_geo_cache', JSON.stringify(_geoCache)); } catch(e){}
+        // Write through to the shared DB cache so no other device re-geocodes this
+        // address (authenticated users only; guests still cache locally).
+        try { if(typeof db!=='undefined' && currentUser) db.from('geo_cache').upsert({ addr:key, lat:loc.lat, lng:loc.lng }, { onConflict:'addr' }).then(function(){}, function(){}); } catch(e){}
       }
       (_geoPending[key]||[]).forEach(function(f){ f(loc); });
       delete _geoPending[key];
@@ -32707,8 +32730,10 @@ function _geocodePlaceDeals(deals, placeFn) {
     if (i >= uncached.length) return;
     var item = uncached[i++];
     _geocodeCached(item.addr, function(loc){
+      // Place only if we found a real location. If it can't be geocoded, leave it
+      // OFF the map — never dump it on the Barcelona fallback (that piled every
+      // un-located venue onto one wrong spot).
       if (loc) placeFn(item.deal, loc.lat, loc.lng);
-      else placeFn(item.deal, FALLBACK.lat, FALLBACK.lng);
       setTimeout(next, 120);
     });
   })();
@@ -32790,6 +32815,7 @@ function initDealMap() {
   if(_mapOff) _mapOff.style.display = 'none';
   if(_mapEl && _mapEl.style.display === 'none') _mapEl.style.display = '';
   if(_mapVl && _mapVl.style.display === 'none') _mapVl.style.display = '';
+  _loadGeoCacheDB();   // pull the shared address→coords cache so pins land instantly
   if (GMAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
     document.getElementById('map-loading').style.display = 'none';
     document.getElementById('map-nokey').style.display = 'block';
