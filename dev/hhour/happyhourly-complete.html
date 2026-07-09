@@ -13182,6 +13182,24 @@ function calculateMerchantMetrics(){
     for(var k=0; k<metrics.chartData.length; k++){ if(metrics.chartData[k].ts === t){ metrics.chartData[k].value += p.price; break; } }
   });
 
+  // Sales-over-time summary for the Performance Overview card: this week vs last
+  // week revenue (trend), and how many vouchers were sold vs redeemed this week.
+  var _wkNow = Date.now(), _DAYm = 86400000, st = { thisRev:0, lastRev:0, sold:0, redeemed:0, pct:null };
+  purchases.forEach(function(p){
+    var d = p.date ? new Date(p.date).getTime() : null;
+    if(d !== null && !isNaN(d)){
+      var age = _wkNow - d;
+      if(age <= 7*_DAYm){ st.thisRev += p.price; st.sold++; }
+      else if(age <= 14*_DAYm){ st.lastRev += p.price; }
+    }
+    if(p.status === 'used' && p.redeemedAt){
+      var rd = new Date(p.redeemedAt).getTime();
+      if(!isNaN(rd) && (_wkNow - rd) <= 7*_DAYm) st.redeemed++;
+    }
+  });
+  st.pct = st.lastRev > 0 ? Math.round((st.thisRev - st.lastRev) / st.lastRev * 100) : null;
+  metrics.salesTrend = st;
+
   return metrics;
 }
 
@@ -26381,7 +26399,10 @@ function meRenderDashNew(){
             +'<span class="me-card-title">📊 Performance Overview</span>'
             +'<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Last 7 days</span>'
           +'</div>'
-          +'<div class="me-card-body" style="flex:1;display:flex;align-items:center;padding:20px;">'+svg+'</div>'
+          +'<div class="me-card-body" style="flex:1;display:flex;align-items:center;padding:20px 20px 8px;">'+svg+'</div>'
+          + (function(){ var st = metrics.salesTrend||{};
+              var trend = (st.pct!=null) ? '<span style="background:'+(st.pct>=0?'rgba(18,161,80,.1)':'rgba(232,25,44,.1)')+';color:'+(st.pct>=0?'#12A150':'#E8192C')+';font-size:11px;font-weight:800;padding:3px 8px;border-radius:12px;white-space:nowrap;">'+(st.pct>=0?'↑':'↓')+' '+Math.abs(st.pct)+'% vs last wk</span>' : '';
+              return '<div style="padding:0 20px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#6B7280;font-weight:700;font-family:Inter,sans-serif;"><span>'+sym+(st.thisRev||0).toFixed(0)+' this week</span>'+trend+'<span style="color:#9A9AB0;font-weight:600;margin-left:auto;">'+(st.sold||0)+' sold · '+(st.redeemed||0)+' redeemed</span></div>'; })()
         +'</div>'
 
         // RECENT REDEMPTIONS
