@@ -28431,7 +28431,28 @@ function meRenderPayoutsPage(){
       + '</div>'
     : '';
 
-  return '<div style="display:flex;flex-direction:column;gap:20px;">'+hero + onsiteNote + history + bank + terms+'</div>';
+  // ── Earnings statement (gross → platform fee → net → paid out → available) ──
+  var _grossSales = 0, _voucherCount = 0;
+  (typeof vouchersData !== 'undefined' ? vouchersData : []).forEach(function(v){ (v.purchases||[]).forEach(function(p){ _grossSales += parseFloat(p.price)||0; _voucherCount++; }); });
+  var _fee = _grossSales * (finConfig.commission||0) / 100;
+  var _netEarned = _grossSales - _fee;
+  var _paidOut = (typeof mePayoutHistory !== 'undefined' ? mePayoutHistory : []).reduce(function(s,p){ return s + (String(p.status)==='Paid' ? (parseFloat(p.amount)||0) : 0); }, 0);
+  var _stmtRow = function(label, val, o){ o=o||{}; return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:'+(o.big?'10px 0':'7px 0')+';'+(o.border?'border-top:1.5px solid #E8E8EC;':'')+'">'
+    + '<span style="font-size:'+(o.big?'14px':'13px')+';font-weight:'+(o.big?'800':'600')+';color:'+(o.big?'#1A1A1A':'#6B7280')+';font-family:Inter,sans-serif;">'+label+'</span>'
+    + '<span style="font-size:'+(o.big?'16px':'14px')+';font-weight:'+(o.big?'900':'700')+';color:'+(o.color||'#1A1A1A')+';font-variant-numeric:tabular-nums;font-family:Inter,sans-serif;">'+val+'</span></div>'; };
+  var statement = '<div class="me-card">'
+    + '<div class="me-card-header"><span class="me-card-title">💶 Earnings Statement</span><span style="font-size:11px;color:#9A9AB0;font-weight:600;font-family:Inter,sans-serif;">All-time</span></div>'
+    + '<div class="me-card-body" style="padding:14px 18px 18px;">'
+      + _stmtRow('Gross sales'+(_voucherCount?' · '+_voucherCount+' voucher'+(_voucherCount===1?'':'s'):''), sym+_grossSales.toFixed(2))
+      + _stmtRow('Platform fee ('+(finConfig.commission||0)+'%)', '−'+sym+_fee.toFixed(2), {color:'#E8192C'})
+      + _stmtRow('Net earnings', sym+_netEarned.toFixed(2), {big:true, border:true, color:'#12A150'})
+      + _stmtRow('Paid out', '−'+sym+_paidOut.toFixed(2), {color:'#9A9AB0'})
+      + _stmtRow('Available now', sym+net, {big:true, border:true, color:'#12A150'})
+      + '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;font-family:Inter,sans-serif;">Net earnings minus payouts already sent. “Available now” is your current withdrawable balance.</div>'
+    + '</div>'
+  + '</div>';
+
+  return '<div style="display:flex;flex-direction:column;gap:20px;">'+hero + statement + onsiteNote + history + bank + terms+'</div>';
 }
 async function meLoadBankDetails(){
   var el = document.getElementById('me-bank-display');
