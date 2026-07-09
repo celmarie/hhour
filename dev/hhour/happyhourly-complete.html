@@ -32526,7 +32526,19 @@ function _initMapClusterer(){
   try {
     if(typeof L !== 'undefined' && L.markerClusterGroup && _gmapObj){
       _gmapCluster = L.markerClusterGroup({
-        chunkedLoading: true, maxClusterRadius: 55, spiderfyOnMaxZoom: true,
+        chunkedLoading: true, spiderfyOnMaxZoom: true,
+        // How close (in screen pixels) two venues must be before they collapse into a
+        // single numbered bubble. Kept TIGHT when zoomed in so distinct-but-nearby
+        // venues stay as SEPARATE pins — a little bubble overlap is fine (Agoda-style)
+        // rather than hiding two places behind a "2". Widened when zoomed out so a
+        // dense city still folds down to a handful of bubbles instead of hundreds of
+        // DOM pins (the iOS memory-crash guard the original 55 was protecting).
+        maxClusterRadius: function(zoom){
+          if(zoom >= 16) return 10;   // street level → only near-identical venues merge
+          if(zoom >= 14) return 20;   // neighbourhood → split the close-but-distinct ones
+          if(zoom >= 12) return 45;   // district
+          return 70;                  // whole city / region → keep it light on memory
+        },
         // Multiple pins grouped together → a "•••" pin (Agoda-style) colored by what's
         // inside: purple = football, red = community happy hours, blue = verified
         // merchants. Mixed clusters take the majority (football wins ties).
