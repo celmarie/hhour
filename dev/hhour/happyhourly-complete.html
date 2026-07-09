@@ -5590,7 +5590,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260709132006';
+var BUILD_VERSION = '20260709153700';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -32401,30 +32401,74 @@ function _drawYouDot(lat, lng, acc){
     else window._youDot.setLatLng(ll);
   } catch(e){}
 }
+// ONE real location fix. Prefers the native Capacitor Geolocation plugin (which
+// works inside the iOS/Android app's webview, where raw navigator.geolocation can
+// be silently blocked); falls back to the browser API on the web.
+// onOk(lat, lng, accuracy); onFail(err) where err.code 1 = permission denied.
+function _mapLocateOnce(onOk, onFail){
+  var nat = null;
+  try { nat = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation; } catch(e){}
+  if(nat && nat.getCurrentPosition){
+    nat.getCurrentPosition({ enableHighAccuracy:true, timeout:15000, maximumAge:30000 })
+      .then(function(p){ onOk(p.coords.latitude, p.coords.longitude, p.coords.accuracy); })
+      .catch(function(e){ if(onFail) onFail(e || {}); });
+    return;
+  }
+  if(!navigator.geolocation){ if(onFail) onFail({ code:2 }); return; }
+  navigator.geolocation.getCurrentPosition(
+    function(p){ onOk(p.coords.latitude, p.coords.longitude, p.coords.accuracy); },
+    function(e){ if(onFail) onFail(e || {}); },
+    { enableHighAccuracy:true, timeout:15000, maximumAge:30000 });
+}
+// Persistent, tappable nudge on the map when we have NO location fix — so the missing
+// blue dot reads as "turn on location", not a broken feature. Tapping shows the steps.
+function _mapLocHint(show){
+  var el = document.getElementById('map-loc-hint');
+  if(show){
+    if(!el){
+      var wrap = document.getElementById('map-wrap'); if(!wrap) return;
+      el = document.createElement('div');
+      el.id = 'map-loc-hint';
+      el.onclick = _mapLocHelp;
+      // Sits along the bottom BETWEEN the zoom control (bottom-left) and the
+      // location button (bottom-right) so it covers neither.
+      el.style.cssText = 'position:absolute;left:60px;right:66px;bottom:14px;z-index:500;background:#1A1A1A;color:#fff;font-family:Inter,sans-serif;font-size:12px;font-weight:700;line-height:1.35;padding:10px 13px;border-radius:12px;box-shadow:0 3px 12px rgba(0,0,0,.3);cursor:pointer;text-align:center;';
+      el.innerHTML = '📍 Turn on location to see your blue dot — <u>tap for how</u>';
+      wrap.appendChild(el);
+    }
+    el.style.display = '';
+  } else if(el){ el.remove(); }
+}
+function _mapLocHelp(){
+  alert('To show your location (the blue dot) on the map:\n\n1.  Open your phone’s Settings\n2.  Privacy & Security → Location Services → turn ON\n3.  Scroll to Safari (or Appie Hour) → set to “While Using the App”\n4.  Come back here, pull down to refresh, then tap the location button again');
+}
 function mapGoMyLocation(){
   var btn = document.getElementById('map-loc-btn');
   if(btn) btn.style.opacity = '.5';
-  function done(lat, lng, acc){
+  function done(lat, lng, acc, save){
     if(btn) btn.style.opacity = '1';
-    _geoSave(lat, lng);
+    if(save !== false) _geoSave(lat, lng);                      // only a REAL fresh fix updates the cache…
     _drawYouDot(lat, lng, acc);                                 // ← show the blue dot on you
+    _mapLocHint(false);                                         // got it → clear the nudge
     if(_gmapObj){ try { _gmapObj.setView([lat, lng], Math.max(_gmapObj.getZoom(), 15)); } catch(e){} }
   }
   function fail(err){
     if(btn) btn.style.opacity = '1';
     var c = _geoCached();
-    if(c){ done(c.lat, c.lng); return; }                        // fall back to last known spot
-    var denied = err && err.code === 1;                         // PERMISSION_DENIED
-    showToast(denied
-      ? '📍 Location is blocked — turn it on for this site in your browser/phone settings, then tap again'
-      : '📍 Couldn’t get your location — check location is on and try again');
+    if(c){ done(c.lat, c.lng, undefined, false); return; }      // show last-known spot WITHOUT re-stamping it fresh
+    _mapLocHint(true);                                          // no fix → always leave an obvious way back on
+    var gen = '📍 Couldn’t get your location — check location is on and try again';
+    // Whether to pop the step-by-step help depends on a real DENIAL. On the web the
+    // error carries code===1; the NATIVE Capacitor plugin never sets that, so ask it.
+    var nat=null; try{ nat = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation; }catch(e){}
+    if(nat && nat.checkPermissions){
+      nat.checkPermissions()
+        .then(function(s){ if(s && s.location === 'denied') _mapLocHelp(); else showToast(gen); })
+        .catch(function(){ showToast(gen); });
+    } else if(err && err.code === 1){ _mapLocHelp(); }          // web permission denied
+    else { showToast(gen); }
   }
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      function(p){ done(p.coords.latitude, p.coords.longitude, p.coords.accuracy); },
-      fail,
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 20000 });
-  } else fail();
+  _mapLocateOnce(function(lat, lng, acc){ done(lat, lng, acc); }, fail);
 }
 
 function _buildHomeMapSrc(lat, lng) {
@@ -32482,10 +32526,12 @@ function _initMapClusterer(){
             else if(n.c >= n.v)                        col = '#E8192C';   // 👥 community deals
             else                                       col = '#2563EB';   // ✓ verified merchants
           } catch(e){}
-          var html = '<div style="position:relative;transform:translate(-50%,-100%);width:max-content;">'
-            + '<div style="background:'+col+';color:#fff;padding:6px 13px;border-radius:14px;font-family:Inter,sans-serif;font-weight:900;font-size:12px;line-height:1;letter-spacing:2px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1.5px solid #fff;">•••</div>'
-            + '<div style="width:0;height:0;margin:-1px auto 0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid '+col+';filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));"></div>'
-            + '</div>';
+          // Round badge with the COUNT of venues grouped here (Google-Maps style) —
+          // tapping it zooms in and splits the group into individual pins. A distinct
+          // circle (vs the pointed price pills) reads clearly as "N venues, tap to open".
+          var count = cluster.getChildCount();
+          var sz = count < 10 ? 34 : (count < 100 ? 40 : 46);
+          var html = '<div style="transform:translate(-50%,-50%);width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+col+';color:#fff;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-weight:900;font-size:'+(count<100?15:13)+'px;box-shadow:0 2px 8px rgba(0,0,0,.4);border:3px solid rgba(255,255,255,.92);">'+count+'</div>';
           return L.divIcon({ className:'hh-cluster-pin', html: html, iconSize:[0,0], iconAnchor:[0,0] });
         }
       });
@@ -32974,25 +33020,22 @@ function _setupDealMap() {
     // fallback center, which used to paint the dot in the wrong place), and it
     // follows the user while the map is open.
     try {
-      if (navigator.geolocation) {
-        // Stop any old CONTINUOUS watch — it kept the GPS + map redrawing forever
-        // and piled memory on iOS (a crash contributor). Clear any stale dot/halo.
-        try { if(window._youDotWatch){ navigator.geolocation.clearWatch(window._youDotWatch); window._youDotWatch = null; } } catch(e){}
-        try { if(window._youDot) _gmapObj.removeLayer(window._youDot); if(window._youAcc) _gmapObj.removeLayer(window._youAcc); } catch(e){}
-        window._youDot = null; window._youAcc = null;
-        // ONE real GPS fix on open (not a live watch). Draws the blue "you are here"
-        // dot + halo where you actually are; the location button re-fetches on tap.
-        navigator.geolocation.getCurrentPosition(function(p){
-          _drawYouDot(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
-        }, function(err){
-          // No blue dot means we couldn't read your location. Tell you why, once,
-          // so it's clear this is a permission thing — not a missing feature.
-          if(err && err.code === 1 && !window._locHintShown){
-            window._locHintShown = true;
-            showToast('📍 Allow location for this site to see your blue dot on the map');
-          }
-        }, { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 });
-      }
+      // Stop any old CONTINUOUS watch — it kept the GPS + map redrawing forever and
+      // piled memory on iOS (a crash contributor). Clear any stale dot/halo.
+      try { if(window._youDotWatch){ navigator.geolocation.clearWatch(window._youDotWatch); window._youDotWatch = null; } } catch(e){}
+      try { if(window._youDot) _gmapObj.removeLayer(window._youDot); if(window._youAcc) _gmapObj.removeLayer(window._youAcc); } catch(e){}
+      window._youDot = null; window._youAcc = null;
+      // ONE real fix on open (native plugin inside the app, browser GPS on the web).
+      // Success → draw the blue "you are here" dot + halo; denied → show the turn-on
+      // nudge so the missing dot reads as a permission thing, not a broken feature.
+      _mapLocateOnce(function(lat, lng, acc){
+        _drawYouDot(lat, lng, acc); _mapLocHint(false);
+      }, function(err){
+        // Any failure (denied, timed out, unavailable) → show the passive, tappable
+        // nudge. The native plugin doesn't set code===1 on denial, so don't gate on it;
+        // a real fix later just clears the nudge again.
+        _mapLocHint(true);
+      });
     } catch(e){}
 
     var verifiedDeals = (typeof vouchers !== 'undefined' ? vouchers : []).filter(function(v){ return v.verified !== false; });
