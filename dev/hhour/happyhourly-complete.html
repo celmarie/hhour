@@ -32975,26 +32975,16 @@ function _setupDealMap() {
     // follows the user while the map is open.
     try {
       if (navigator.geolocation) {
-        if (window._youDotWatch) { try { navigator.geolocation.clearWatch(window._youDotWatch); } catch(e){} }
-        // Clear any stale dot/halo from a previous map open on this same map object.
+        // Stop any old CONTINUOUS watch — it kept the GPS + map redrawing forever
+        // and piled memory on iOS (a crash contributor). Clear any stale dot/halo.
+        try { if(window._youDotWatch){ navigator.geolocation.clearWatch(window._youDotWatch); window._youDotWatch = null; } } catch(e){}
         try { if(window._youDot) _gmapObj.removeLayer(window._youDot); if(window._youAcc) _gmapObj.removeLayer(window._youAcc); } catch(e){}
         window._youDot = null; window._youAcc = null;
-        // enableHighAccuracy:true → real GPS (not coarse WiFi/IP), so the dot sits
-        // where you actually are. The halo shows how precise the current fix is.
-        window._youDotWatch = navigator.geolocation.watchPosition(function(p){
-          try {
-            if (!_gmapObj) return;
-            var ll = [p.coords.latitude, p.coords.longitude];
-            var acc = p.coords.accuracy || 0;   // metres of uncertainty
-            if (acc > 0) {
-              if (!window._youAcc) { window._youAcc = L.circle(ll, { radius: acc, color:'#4285F4', weight:1, opacity:.35, fillColor:'#4285F4', fillOpacity:.15, interactive:false }).addTo(_gmapObj); }
-              else { window._youAcc.setLatLng(ll); window._youAcc.setRadius(acc); }
-            }
-            if (!window._youDot) {
-              window._youDot = L.circleMarker(ll, { radius: 8, color: '#ffffff', weight: 3, fillColor: '#4285F4', fillOpacity: 1, className: 'you-dot' }).addTo(_gmapObj).bindPopup('You are here');
-            } else { window._youDot.setLatLng(ll); }
-          } catch(e){}
-        }, function(){}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+        // ONE real GPS fix on open (not a live watch). Draws the blue "you are here"
+        // dot + halo where you actually are; the location button re-fetches on tap.
+        navigator.geolocation.getCurrentPosition(function(p){
+          _drawYouDot(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
+        }, function(){}, { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 });
       }
     } catch(e){}
 
