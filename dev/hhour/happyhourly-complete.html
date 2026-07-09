@@ -13074,6 +13074,23 @@ function calculateMerchantMetrics(){
     });
   });
 
+  // Peak redemption times — a weekday × hour heatmap of REAL redemptions (used
+  // vouchers) so the merchant can see when customers actually show up and tune
+  // their happy-hour window to match. Keyed to redeemedAt (falls back to the
+  // purchase date for older rows that predate the redeemed_at column).
+  var pt = { grid: [], total: 0, max: 0, busiest: null, byHour: [], byDay: [] };
+  for(var _d=0; _d<7; _d++){ pt.grid.push([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]); pt.byDay.push(0); }
+  for(var _h=0; _h<24; _h++){ pt.byHour.push(0); }
+  purchases.forEach(function(p){
+    if(p.status !== 'used') return;
+    var when = new Date(p.redeemedAt || p.date || 0);
+    if(isNaN(when.getTime()) || when.getTime() === 0) return;
+    var dow = when.getDay(), hr = when.getHours();
+    pt.grid[dow][hr]++; pt.byDay[dow]++; pt.byHour[hr]++; pt.total++;
+    if(pt.grid[dow][hr] > pt.max){ pt.max = pt.grid[dow][hr]; pt.busiest = { day: dow, hour: hr, count: pt.grid[dow][hr] }; }
+  });
+  metrics.peakTimes = pt;
+
   // Average rating from real reviews.
   if(dealReviews && Object.keys(dealReviews).length > 0){
     var totalRating = 0, reviewCount = 0;
@@ -13107,6 +13124,77 @@ function calculateMerchantMetrics(){
   });
 
   return metrics;
+}
+
+// Peak Redemption Times heatmap (weekday × hour) for the merchant dashboard.
+// Renders metrics.peakTimes into a compact, horizontally-scrollable grid so the
+// merchant can see when customers actually redeem and tune their hours to match.
+// All inline-styled (immune to the #merch-root reset), light-theme to match the
+// surrounding dashboard cards. No user input flows in — day names are constants
+// and counts are numbers — so no escaping is needed.
+function meRenderPeakTimes(metrics){
+  var pt = metrics && metrics.peakTimes;
+  var order = [1,2,3,4,5,6,0];            // display Mon-first (getDay(): 0=Sun)
+  var dayShort = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var dayLong  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  function h12(h){ h=((h%24)+24)%24; var v=h%12; if(v===0)v=12; return v+(h<12?'a':'p'); }
+  function hRange(h){ var ap1=h<12?'am':'pm'; var v1=h%12||12; var n=(h+1)%24; var ap2=n<12?'am':'pm'; var v2=n%12||12; return v1+(ap1!==ap2?ap1:'')+'–'+v2+ap2; }
+
+  var head = '<div class="me-card" style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
+    + '<div class="me-card-header"><span class="me-card-title">🕐 Peak Redemption Times</span>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">When customers redeem</span></div>';
+
+  if(!pt || !pt.total){
+    return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
+      + '<span class="me-empty-icon">🕐</span><div class="me-empty-title">No redemptions yet</div>'
+      + '<div class="me-empty-text">Once customers start redeeming vouchers, your busiest days and hours appear here.</div>'
+      + '</div></div></div>';
+  }
+
+  var max = pt.max || 1;
+  function cellBg(c){ if(!c) return '#F1F1F4'; return 'rgba(232,25,44,'+(0.18+0.82*(c/max)).toFixed(2)+')'; }
+
+  var hdr = '<div style="display:flex;align-items:center;gap:3px;"><div style="width:34px;flex:0 0 34px;"></div>';
+  for(var h=0; h<24; h++){
+    hdr += '<div style="width:14px;flex:0 0 14px;font-size:9px;color:#B8B8C4;font-family:Inter,sans-serif;white-space:nowrap;overflow:visible;">'
+      + (h%3===0 ? h12(h) : '') + '</div>';
+  }
+  hdr += '</div>';
+
+  var rows = '';
+  order.forEach(function(dow){
+    var r = '<div style="display:flex;align-items:center;gap:3px;margin-top:3px;">'
+      + '<div style="width:34px;flex:0 0 34px;font-size:11px;color:#6B7280;font-weight:600;font-family:Inter,sans-serif;">'+dayShort[dow]+'</div>';
+    for(var h2=0; h2<24; h2++){
+      var c = pt.grid[dow][h2];
+      r += '<div title="'+dayLong[dow]+' '+h12(h2)+' · '+c+' redemption'+(c===1?'':'s')+'" style="width:14px;height:14px;flex:0 0 14px;border-radius:3px;background:'+cellBg(c)+';"></div>';
+    }
+    rows += r + '</div>';
+  });
+
+  var b = pt.busiest;
+  var busiestLine = b ? ('🔥 Busiest: <b style="color:#1A1A1A;">'+dayLong[b.day]+' '+hRange(b.hour)+'</b> · '+b.count+' redemption'+(b.count===1?'':'s')) : '';
+  var bd=0, bdi=-1; for(var i=0;i<7;i++){ if(pt.byDay[i]>bd){ bd=pt.byDay[i]; bdi=i; } }
+  var dayLine = bdi>=0 ? ('📅 Most on <b style="color:#1A1A1A;">'+dayLong[bdi]+'s</b>') : '';
+  var legend = '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#9A9AB0;margin-left:auto;">Less'
+    + '<span style="display:inline-flex;gap:2px;">'
+    + '<span style="width:11px;height:11px;border-radius:2px;background:#F1F1F4;"></span>'
+    + '<span style="width:11px;height:11px;border-radius:2px;background:rgba(232,25,44,.35);"></span>'
+    + '<span style="width:11px;height:11px;border-radius:2px;background:rgba(232,25,44,.65);"></span>'
+    + '<span style="width:11px;height:11px;border-radius:2px;background:rgba(232,25,44,1);"></span>'
+    + '</span>More</div>';
+
+  return head
+    + '<div class="me-card-body" style="padding:16px 18px 18px;">'
+      + '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;font-size:12px;color:#6B7280;font-weight:600;margin-bottom:14px;">'
+        + (busiestLine ? '<span>'+busiestLine+'</span>' : '')
+        + (dayLine ? '<span>'+dayLine+'</span>' : '')
+        + legend
+      + '</div>'
+      + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;"><div style="min-width:445px;">'+hdr+rows+'</div></div>'
+      + '<div style="font-size:10.5px;color:#B8B8C4;margin-top:10px;">Based on '+pt.total+' redemption'+(pt.total===1?'':'s')+' · shown in your local time</div>'
+    + '</div>'
+  + '</div>';
 }
 
 // Format relative time
@@ -25721,6 +25809,9 @@ function meRenderDashNew(){
         +'</div>'
 
       +'</div>' // me-dashv2-cols
+
+      // ══ 3b. PEAK REDEMPTION TIMES (full-width heatmap) ══════════════════
+      + meRenderPeakTimes(metrics)
 
       // ══ 4. PAYOUT BAR (full width) ══════════════════════════════════════
       + '<div style="background:linear-gradient(135deg,#0f2027,#1a3a4a,#2c5364);border-radius:14px;padding:22px 24px;display:flex;align-items:center;gap:16px;border:1px solid rgba(255,255,255,.1);color:white;">'
