@@ -20613,6 +20613,9 @@ function adminPage(page,btn){
       // SECTION 2.10: Dormant merchants (approved, no recent sales)
       + admRenderDormant(allPurchases)
 
+      // SECTION 2.11: Redemption rate & voucher liability
+      + admRenderRedemption(allPurchases, sym)
+
       // SECTION 3: Top Performers
       +'<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;overflow:hidden;">'
         +'<div style="padding:16px;border-bottom:1.5px solid #E8E8EC;">'
@@ -22859,6 +22862,49 @@ function admRenderDormant(purchases){
   var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;">Based on recent purchase activity. A quick check-in or promo can reactivate these venues.</div>';
   return head + summary + rows + more + foot + '</div>';
 }
+// Redemption rate & liability for the admin analytics page. Platform-wide: sold
+// vs redeemed (rate), outstanding voucher liability (paid, unredeemed, still
+// valid) and breakage (paid, unredeemed, already expired). status/expires_at now
+// carried on the purchase mapping. Cancelled/other statuses are excluded from sold.
+function admRenderRedemption(purchases, sym){
+  var now = Date.now();
+  var sold=0, redeemed=0, outCount=0, outVal=0, brkCount=0, brkVal=0;
+  (purchases||[]).forEach(function(p){
+    var price = parseFloat(p.deal_price)||0;
+    if(p.status === 'used'){ sold++; redeemed++; }
+    else if(p.status === 'active'){
+      sold++;
+      var exp = p.expires_at ? new Date(p.expires_at).getTime() : null;
+      if(exp!==null && !isNaN(exp) && exp < now){ brkCount++; brkVal += price; }
+      else { outCount++; outVal += price; }
+    }
+  });
+  var rate = sold>0 ? Math.round(redeemed/sold*100) : null;
+  function money(v){ return sym + (v>=1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(v<100?2:0)); }
+
+  var head = '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">'
+    + '<div style="font-size:15px;font-weight:900;color:#1A1A1A;">✅ Redemption &amp; Liability</div>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Sold vs redeemed</span></div>';
+  if(!sold){
+    return head + '<div style="padding:18px 4px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;">No vouchers sold yet.</div></div>';
+  }
+  var barW = rate!=null ? rate : 0;
+  var rateBlock = '<div style="margin-bottom:16px;">'
+    + '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">'
+      + '<span style="font-size:28px;font-weight:900;color:#12A150;letter-spacing:-.5px;">'+(rate!=null?rate+'%':'—')+'</span>'
+      + '<span style="font-size:12px;color:#9A9AB0;font-weight:600;">'+redeemed+' of '+sold+' vouchers redeemed</span>'
+    + '</div>'
+    + '<div style="height:10px;background:#F1F1F4;border-radius:6px;overflow:hidden;"><div style="height:100%;width:'+barW+'%;background:linear-gradient(90deg,#34d058,#12A150);border-radius:6px;"></div></div>'
+  + '</div>';
+  function tile(v,l,c){ return '<div style="flex:1;min-width:120px;background:#F9F9FB;border-radius:12px;padding:12px 14px;"><div style="font-size:20px;font-weight:900;color:'+(c||'#1A1A1A')+';letter-spacing:-.5px;">'+v+'</div><div style="font-size:11.5px;color:#6B7280;font-weight:600;">'+l+'</div></div>'; }
+  var tiles = '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+    + tile(money(outVal), 'Outstanding liability · '+outCount+' held', '#B45309')
+    + tile(money(brkVal), 'Breakage · '+brkCount+' expired unredeemed', '#9A9AB0')
+  + '</div>';
+  var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:12px;">Liability = money customers hold in valid, unredeemed vouchers. Breakage = paid but expired unclaimed. From recent activity.</div>';
+  return head + rateBlock + tiles + foot + '</div>';
+}
 async function adminFetchAnalyticsPurchases(){
   try {
     var res = await db.from('voucher_purchases')
@@ -22881,7 +22927,9 @@ async function adminFetchAnalyticsPurchases(){
         customer_name: userName[r.user_id] || 'Customer',
         purchased_at: r.purchased_at,
         cat: (d && d.category) || null,
-        user_id: r.user_id
+        user_id: r.user_id,
+        status: r.status,
+        expires_at: r.expires_at
       };
     });
   } catch(e){
