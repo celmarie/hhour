@@ -29,6 +29,8 @@
   /* Bottom-left map corner: zoom +/- on top, attribution UNDERNEATH, compact.
      (OpenStreetMap's license requires keeping the credit visible, so it stays —
      tiny, prefix-less, and out of the way.) */
+  /* Google-style "you are here" dot: crisp blue with a soft drop shadow. */
+  .you-dot { filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
   .leaflet-bottom.leaflet-left { display: flex; flex-direction: column; align-items: flex-start; }
   .leaflet-bottom.leaflet-left .leaflet-control-zoom { order: 1; }
   .leaflet-bottom.leaflet-left .leaflet-control-attribution {
@@ -32936,8 +32938,10 @@ function _setupDealMap() {
       _gmapObj.on('popupopen',  function(){ _mapOverlayVis(true);  });
       _gmapObj.on('popupclose', function(){ _mapOverlayVis(false); });
     } catch(e){}
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors',
+    // CARTO "Voyager" — a clean, colourful Google-like basemap. Still RASTER
+    // tiles (not vector/WebGL), so it stays safe on iOS Safari and is free.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+      maxZoom: 20, subdomains: 'abcd', attribution: '&copy; OpenStreetMap &copy; CARTO',
       // iOS memory safety: keep almost no off-screen tiles and only load tiles once
       // panning/zooming settles — zooming far out otherwise stacks hundreds of tiles
       // across zoom levels and WebKit kills the page ("crashes while doing nothing").
@@ -32966,11 +32970,11 @@ function _setupDealMap() {
             var ll = [p.coords.latitude, p.coords.longitude];
             var acc = p.coords.accuracy || 0;   // metres of uncertainty
             if (acc > 0) {
-              if (!window._youAcc) { window._youAcc = L.circle(ll, { radius: acc, color:'#4285F4', weight:1, fillColor:'#4285F4', fillOpacity:.12, interactive:false }).addTo(_gmapObj); }
+              if (!window._youAcc) { window._youAcc = L.circle(ll, { radius: acc, color:'#4285F4', weight:1, opacity:.35, fillColor:'#4285F4', fillOpacity:.15, interactive:false }).addTo(_gmapObj); }
               else { window._youAcc.setLatLng(ll); window._youAcc.setRadius(acc); }
             }
             if (!window._youDot) {
-              window._youDot = L.circleMarker(ll, { radius: 7, color: '#ffffff', weight: 2, fillColor: '#4285F4', fillOpacity: 1 }).addTo(_gmapObj).bindPopup('You are here');
+              window._youDot = L.circleMarker(ll, { radius: 8, color: '#ffffff', weight: 3, fillColor: '#4285F4', fillOpacity: 1, className: 'you-dot' }).addTo(_gmapObj).bindPopup('You are here');
             } else { window._youDot.setLatLng(ll); }
           } catch(e){}
         }, function(){}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
