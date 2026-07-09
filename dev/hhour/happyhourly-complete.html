@@ -2473,6 +2473,18 @@ body, button, input, textarea, select {
 }
 
 /* Print styles */
+/* Print-to-PDF report isolation. When _openPrintReport() puts a report in
+   #hh-print-root and sets body.hh-printing, print ONLY the report. Gated on the
+   class so normal page printing (below) is unaffected. */
+#hh-print-root { display: none; }
+@media print {
+  body.hh-printing { background: #fff !important; }
+  body.hh-printing * { visibility: hidden !important; }
+  body.hh-printing #hh-print-root, body.hh-printing #hh-print-root * { visibility: visible !important; }
+  body.hh-printing #hh-print-root { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
+  body.hh-printing #hh-print-root .hh-pr-page { page-break-after: always; }
+  @page { margin: 14mm; }
+}
 @media print {
   .me-sidebar,
   .me-hnav,
@@ -20587,7 +20599,10 @@ function adminPage(page,btn){
       +'<div>'
         +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
           +'<div style="font-size:16px;font-weight:900;color:#1A1A1A;">📊 Platform Overview</div>'
-          +'<button onclick="window._admPurchases=null;adminPage(\'analytics\',null)" title="Refresh data" style="background:white;border:1.5px solid #E8E8EC;border-radius:9px;padding:6px 13px;font-size:12px;font-weight:800;color:#555;cursor:pointer;font-family:Inter,sans-serif;">↻ Refresh</button>'
+          +'<div style="display:flex;gap:8px;flex-shrink:0;">'
+            +'<button onclick="_openPrintReport(\'Appie Hour — Platform Analytics\', admBuildReportHTML())" title="Export as PDF" style="background:#1A1A1A;border:1.5px solid #1A1A1A;border-radius:9px;padding:6px 13px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:Inter,sans-serif;">📄 Export PDF</button>'
+            +'<button onclick="window._admPurchases=null;adminPage(\'analytics\',null)" title="Refresh data" style="background:white;border:1.5px solid #E8E8EC;border-radius:9px;padding:6px 13px;font-size:12px;font-weight:800;color:#555;cursor:pointer;font-family:Inter,sans-serif;">↻ Refresh</button>'
+          +'</div>'
         +'</div>'
         +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">'
           +'<div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:12px;padding:16px;color:white;">'
@@ -26375,6 +26390,9 @@ function meRenderDashNew(){
         +'</button>'
       +'</div>'
 
+      // ══ 1b. EXPORT REPORT (PDF) ═════════════════════════════════════════
+      + '<button onclick="_openPrintReport(\'Appie Hour — Merchant Report\', meBuildReportHTML())" style="width:100%;background:#fff;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;font-weight:800;color:#1A1A1A;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 2px rgba(0,0,0,.05);">📄 Save report as PDF</button>'
+
       // ══ 2. PERFORMANCE METRICS (always 4-up on desktop, 2x2 below) ═══════
       + '<div class="me-dashv2-stats">'
         + statCard('📊','rgba(232,25,44,.1)', (metrics.revenue.trend>0 ? trendPill(metrics.revenue.trend) : ''),
@@ -28356,6 +28374,131 @@ async function meUpdateMerchantPassword(){
     fail((e && e.message) || 'Could not update password — please sign in again and retry.');
   }
   if(btn){ btn.disabled = false; btn.textContent = 'Update Password'; }
+}
+
+// ══ PDF export (print-to-PDF) ════════════════════════════════════════════════
+// No heavy library (jsPDF/html2canvas would be an iOS memory risk). Instead we
+// render a clean, print-styled report into #hh-print-root and trigger the OS
+// print dialog → "Save as PDF". Isolation is handled by the body.hh-printing CSS.
+function _openPrintReport(title, innerHtml){
+  try {
+    var root = document.getElementById('hh-print-root');
+    if(!root){ root = document.createElement('div'); root.id = 'hh-print-root'; document.body.appendChild(root); }
+    root.innerHTML = innerHtml || '';
+    var prevTitle = document.title;
+    try { document.title = title; } catch(e){}   // hints the saved-PDF filename
+    document.body.classList.add('hh-printing');
+    var done = false;
+    var cleanup = function(){ if(done) return; done = true; try { document.body.classList.remove('hh-printing'); document.title = prevTitle; root.innerHTML = ''; } catch(e){} window.removeEventListener('afterprint', cleanup); };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(function(){ try { window.print(); } catch(e){ cleanup(); try{ showToast('Printing isn’t available here — open appiehour.com in your browser to save as PDF'); }catch(_){} } }, 150);
+    setTimeout(cleanup, 60000);   // fallback: afterprint doesn't always fire on iOS
+  } catch(e){ try { showToast('Could not open the report'); } catch(_){} }
+}
+function _prMoney(sym, v){ return sym + (parseFloat(v)||0).toFixed(2); }
+function _prShell(title, subtitle, body){
+  var now = new Date();
+  var d = now.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) + ' · ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  return '<div class="hh-pr-page" style="font-family:Inter,-apple-system,sans-serif;color:#1A1A1A;max-width:720px;margin:0 auto;padding:6px 4px 24px;">'
+    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #E8192C;padding-bottom:12px;margin-bottom:20px;">'
+      + '<div><div style="font-size:12px;font-weight:900;color:#E8192C;letter-spacing:1px;">APPIE HOUR</div>'
+        + '<div style="font-size:22px;font-weight:900;margin-top:3px;">'+esc(title)+'</div>'
+        + (subtitle ? '<div style="font-size:13px;color:#6B7280;font-weight:600;margin-top:2px;">'+esc(subtitle)+'</div>' : '')+'</div>'
+      + '<div style="text-align:right;font-size:10.5px;color:#9A9AB0;font-weight:600;line-height:1.5;">Generated<br>'+d+'</div>'
+    + '</div>'
+    + body
+    + '<div style="border-top:1px solid #E8E8EC;margin-top:22px;padding-top:10px;font-size:10px;color:#B8B8C4;text-align:center;">Appie Hour · appiehour.com · Figures reflect data at the time of generation.</div>'
+  + '</div>';
+}
+function _prSection(heading, rowsHtml){
+  return '<div style="margin-bottom:20px;page-break-inside:avoid;">'
+    + '<div style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:#1A1A1A;border-bottom:1px solid #E8E8EC;padding-bottom:6px;margin-bottom:8px;">'+esc(heading)+'</div>'
+    + rowsHtml
+  + '</div>';
+}
+// label/value are trusted HTML built by the callers; any user data is esc()'d there.
+function _prRow(label, value, o){ o=o||{};
+  return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:5px 0;'+(o.border?'border-top:1px solid #F1F1F4;':'')+'">'
+    + '<span style="font-size:13px;color:#4B5563;font-weight:'+(o.big?'800':'600')+';">'+label+'</span>'
+    + '<span style="font-size:'+(o.big?'15px':'13px')+';font-weight:'+(o.big?'900':'700')+';color:'+(o.color||'#1A1A1A')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+value+'</span>'
+  + '</div>';
+}
+// Merchant report → print HTML, from the merchant's own metrics.
+function meBuildReportHTML(){
+  var m = (typeof calculateMerchantMetrics==='function') ? calculateMerchantMetrics() : {};
+  var sym = (typeof finSym==='function') ? finSym() : '€';
+  var venue = (typeof meVenueName!=='undefined' && meVenueName) ? meVenueName : 'Your venue';
+  var f = m.funnel||{}, o = m.outstanding||{}, ns = m.noShow||{}, rep = m.repeat||{}, stt = m.salesTrend||{}, pt = m.peakTimes||{};
+  var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var busiest = (pt.busiest) ? (DAYS[pt.busiest.day]+' ~'+((pt.busiest.hour%12)||12)+(pt.busiest.hour<12?'am':'pm')) : '—';
+  var gross=0, vc=0; (typeof vouchersData!=='undefined'?vouchersData:[]).forEach(function(v){ (v.purchases||[]).forEach(function(p){ if(p.status && p.status!=='active' && p.status!=='used') return; gross+=parseFloat(p.price)||0; vc++; }); });
+  var comm = (typeof finConfig!=='undefined' && finConfig.commission!=null) ? parseFloat(finConfig.commission) : 0;
+  var fee = gross*comm/100, net = gross-fee;
+  var body = ''
+    + _prSection('Overview',
+        _prRow('Revenue (all-time)', _prMoney(sym, (m.revenue&&m.revenue.value)||0))
+      + _prRow('Deal views', String((m.dealViews&&m.dealViews.value)||0), {border:true})
+      + _prRow('Active deals', String((m.activeDeals&&m.activeDeals.count)||0)+' ('+((m.activeDeals&&m.activeDeals.scheduled)||0)+' scheduled)', {border:true})
+      + _prRow('Average rating', ((m.avgRating&&m.avgRating.value)||'—')+((m.avgRating&&m.avgRating.reviewCount)?' · '+m.avgRating.reviewCount+' reviews':''), {border:true}))
+    + _prSection('This week',
+        _prRow('Revenue', _prMoney(sym, stt.thisRev||0))
+      + _prRow('Vouchers sold', String(stt.sold||0), {border:true})
+      + _prRow('Vouchers redeemed', String(stt.redeemed||0), {border:true})
+      + (stt.pct!=null ? _prRow('vs last week', (stt.pct>=0?'+':'')+stt.pct+'%', {border:true, color:(stt.pct>=0?'#12A150':'#E8192C')}) : ''))
+    + _prSection('Conversion funnel',
+        _prRow('Views', String(f.views||0))
+      + _prRow('Purchases', String(f.purchases||0)+(f.views>0?' ('+Math.min(100,Math.round((f.purchases||0)/f.views*100))+'% of views)':''), {border:true})
+      + _prRow('Redeemed', String(f.redeemed||0)+(f.purchases>0?' ('+Math.min(100,Math.round((f.redeemed||0)/f.purchases*100))+'% of buyers)':''), {border:true}))
+    + _prSection('Redemptions & vouchers',
+        _prRow('Busiest window', busiest)
+      + _prRow('Outstanding vouchers', String(o.count||0)+' · '+_prMoney(sym, o.value||0)+' held', {border:true})
+      + _prRow('Expiring within 7 days', String(o.expiringCount||0), {border:true})
+      + _prRow('No-shows (all-time)', String(ns.total||0)+(ns.rate!=null?' · '+ns.rate+'% of expected':''), {border:true}))
+    + _prSection('Customers',
+        _prRow('Distinct customers', String(rep.customers||0))
+      + _prRow('Returning (2+ visits)', String(rep.returning||0)+(rep.rate!=null?' · '+rep.rate+'% repeat rate':''), {border:true}))
+    + _prSection('Earnings statement (all-time)',
+        _prRow('Gross sales'+(vc?' · '+vc+' vouchers':''), _prMoney(sym, gross))
+      + _prRow('Platform commission ('+comm+'%)', '−'+_prMoney(sym, fee), {border:true, color:'#E8192C'})
+      + _prRow('Your net earnings', _prMoney(sym, net), {big:true, border:true, color:'#12A150'}));
+  return _prShell('Merchant Report', venue, body);
+}
+// Admin platform report → print HTML, from the loaded admin analytics data.
+function admBuildReportHTML(){
+  var sym = (typeof finSym==='function') ? finSym() : '€';
+  var purchases = (typeof window!=='undefined' && window._admPurchases) ? window._admPurchases : [];
+  var venuesAll = (typeof adminMerchants!=='undefined' && adminMerchants) ? adminMerchants : [];
+  var venues = venuesAll.filter(function(x){ return x._source!=='application'; });
+  var pending = venuesAll.filter(function(x){ return x._source==='application'; }).length;
+  var users = (typeof adminUsers!=='undefined' && adminUsers) ? adminUsers.length : 0;
+  var comm = (typeof finConfig!=='undefined' && finConfig.commission!=null) ? parseFloat(finConfig.commission) : 0;
+  var gross=0, redeemed=0, soldCount=0, sellingSet={}, catRev={};
+  purchases.forEach(function(p){
+    var price = parseFloat(p.deal_price)||0;
+    if(p.status==='used' || p.status==='active'){ gross+=price; soldCount++; if(p.status==='used') redeemed++; }
+    var v = p.venue_name||p.venue_id; if(v && v!=='—') sellingSet[v]=1;
+    var c = p.cat ? ((typeof _canonCat==='function')?_canonCat(p.cat):p.cat) : 'other'; catRev[c]=(catRev[c]||0)+price;
+  });
+  var take = gross*comm/100, selling = Object.keys(sellingSet).length;
+  var redRate = soldCount>0 ? Math.round(redeemed/soldCount*100) : null;
+  var topCat = Object.keys(catRev).sort(function(a,b){ return catRev[b]-catRev[a]; })[0] || '—';
+  var openReports = (typeof dealReports!=='undefined'?dealReports.length:0) + (typeof adminMistakeReports!=='undefined'?adminMistakeReports.length:0);
+  var body = ''
+    + _prSection('Platform overview',
+        _prRow('Total venues', String(venues.length)+(pending?' · '+pending+' pending':''))
+      + _prRow('Total users', String(users), {border:true})
+      + _prRow('GMV (recent activity)', _prMoney(sym, gross), {border:true})
+      + _prRow('Platform take ('+comm+'%)', _prMoney(sym, take), {big:true, border:true, color:'#12A150'}))
+    + _prSection('Sales & redemption',
+        _prRow('Vouchers sold (recent)', String(soldCount))
+      + _prRow('Redeemed', String(redeemed)+(redRate!=null?' · '+redRate+'%':''), {border:true}))
+    + _prSection('Merchant activation',
+        _prRow('Approved venues', String(venues.length))
+      + _prRow('Venues with a sale', String(selling)+(venues.length>0?' · '+Math.min(100,Math.round(selling/venues.length*100))+'%':''), {border:true}))
+    + _prSection('Category & moderation',
+        _prRow('Top category by revenue', esc(topCat))
+      + _prRow('Open reports / flags', String(openReports), {border:true}));
+  return _prShell('Platform Analytics', 'All venues', body);
 }
 
 function meRenderPayoutsPage(){
