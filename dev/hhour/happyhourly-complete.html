@@ -20470,6 +20470,9 @@ function adminPage(page,btn){
       // SECTION 2.5: GMV & Revenue over time (range-selectable + platform take)
       + admRenderRevenueChart(allPurchases, sym)
 
+      // SECTION 2.6: Merchant activation funnel (applied → approved → selling)
+      + admRenderMerchantFunnel(allPurchases)
+
       // SECTION 3: Top Performers
       +'<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;overflow:hidden;">'
         +'<div style="padding:16px;border-bottom:1.5px solid #E8E8EC;">'
@@ -22492,6 +22495,53 @@ function admRenderRevenueChart(purchases, sym){
     + '<div style="display:flex;align-items:flex-end;gap:'+(nB>30?'2px':'5px')+';height:150px;">'+bars+'</div>'
     + '<div style="font-size:10.5px;color:#B8B8C4;margin-top:10px;">'+(cur>0?'':'No sales in this period yet · ')+'Buckets by '+(bd>1?'week':'day')+' · GMV is customer spend; your take is the '+commission+'% commission.</div>'
   + '</div>';
+}
+// Merchant activation funnel for the admin analytics page: Applied → Approved →
+// Selling, so you see where merchants stall. Applied = everyone in the pipeline
+// (adminMerchants = pending applications + approved venues); Approved = venues;
+// Selling = distinct venues with a sale in the loaded purchases. ("Posted a deal"
+// would sit between Approved and Selling but needs per-venue deal data the admin
+// client doesn't load, so it's omitted for now.)
+function admRenderMerchantFunnel(purchases){
+  var all = (typeof adminMerchants !== 'undefined' && adminMerchants) ? adminMerchants : [];
+  var pending  = all.filter(function(m){ return m._source === 'application'; }).length;
+  var approved = all.filter(function(m){ return m._source !== 'application'; }).length;
+  var applied  = all.length;
+  var sellingSet = {};
+  (purchases||[]).forEach(function(p){ var v = p.venue_name || p.venue_id; if(v && v !== '—') sellingSet[v] = 1; });
+  var selling = Object.keys(sellingSet).length;
+
+  var head = '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">'
+    + '<div style="font-size:15px;font-weight:900;color:#1A1A1A;">🚀 Merchant Activation</div>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Applied → Approved → Selling</span></div>';
+  if(!applied){
+    return head + '<div style="padding:18px 4px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;">No merchants in the pipeline yet.</div></div>';
+  }
+  var top = Math.max(applied, approved, selling, 1);
+  function pct(n,d){ return d>0 ? Math.min(100, Math.round(n/d*100)) : null; }
+  var stages = [
+    { icon:'📥', label:'Applied',  val:applied,  color:'#6366F1', conv:null,                  convLbl:'', sub:(pending>0?(pending+' pending review'):'all reviewed') },
+    { icon:'✅', label:'Approved', val:approved, color:'#12A150', conv:pct(approved,applied), convLbl:'approved', sub:'' },
+    { icon:'💰', label:'Selling',  val:selling,  color:'#E8192C', conv:pct(selling,approved), convLbl:'of approved have sold', sub:'' }
+  ];
+  var rows = stages.map(function(s){
+    var w = Math.max(2, Math.round(s.val/top*100));
+    var right = (s.conv!=null) ? '<span style="font-size:11px;font-weight:700;color:'+s.color+';white-space:nowrap;">'+s.conv+'% '+s.convLbl+'</span>'
+              : (s.sub ? '<span style="font-size:11px;font-weight:600;color:#9A9AB0;white-space:nowrap;">'+s.sub+'</span>' : '');
+    return '<div style="margin-bottom:12px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px;">'
+        + '<span style="font-size:13px;font-weight:800;color:#1A1A1A;">'+s.icon+' '+s.label+'</span>'
+        + '<span style="display:flex;align-items:center;gap:10px;"><span style="font-size:15px;font-weight:900;color:#1A1A1A;">'+s.val+'</span>'+right+'</span>'
+      + '</div>'
+      + '<div style="height:12px;background:#F1F1F4;border-radius:6px;overflow:hidden;"><div style="height:100%;width:'+w+'%;background:'+s.color+';border-radius:6px;"></div></div>'
+    + '</div>';
+  }).join('');
+  var act = pct(selling, approved);
+  var foot = '<div style="font-size:11.5px;color:#6B7280;font-weight:600;margin-top:2px;">'
+    + (act!=null ? '🎯 '+act+'% of approved venues have made a sale' : 'Approve merchants to start the funnel')
+    + ' · selling counts venues with a sale in recent activity</div>';
+  return head + rows + foot + '</div>';
 }
 async function adminFetchAnalyticsPurchases(){
   try {
