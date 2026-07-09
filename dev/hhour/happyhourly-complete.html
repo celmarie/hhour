@@ -13136,6 +13136,20 @@ function calculateMerchantMetrics(){
     list: nsList
   };
 
+  // Repeat customers — new vs returning buyers, keyed by buyer name (anonymous
+  // "Customer" rows are skipped so they don't merge into one fake super-customer).
+  var byBuyer = {};
+  purchases.forEach(function(p){ var b = (p.buyer||'').trim(); if(!b || b === 'Customer') return; byBuyer[b] = (byBuyer[b]||0) + 1; });
+  var _buyerNames = Object.keys(byBuyer);
+  var _returning = _buyerNames.filter(function(b){ return byBuyer[b] >= 2; });
+  var _topRet = _returning.map(function(b){ return { name:b, count:byBuyer[b] }; }).sort(function(a,b){ return b.count - a.count; })[0] || null;
+  metrics.repeat = {
+    customers: _buyerNames.length,
+    returning: _returning.length,
+    rate: _buyerNames.length > 0 ? Math.round(_returning.length / _buyerNames.length * 100) : null,
+    top: _topRet
+  };
+
   // Average rating from real reviews.
   if(dealReviews && Object.keys(dealReviews).length > 0){
     var totalRating = 0, reviewCount = 0;
@@ -13373,6 +13387,29 @@ function meRenderNoShow(metrics){
   }
   var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:'+(list?'10px':'2px')+';">Rate = no-shows ÷ expected guests (redeemed + no-shows). Consistently high? Consider a deposit or stricter booking window.</div>';
   return head + '<div class="me-card-body" style="padding:16px 18px 18px;">'+tiles+list+foot+'</div></div>';
+}
+
+// Repeat-customer card (compact) for the merchant dashboard: distinct customers,
+// how many are returning (bought 2+ times), the repeat rate, and the most loyal.
+function meRenderRepeat(metrics){
+  var r = metrics && metrics.repeat;
+  var head = '<div class="me-card" style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
+    + '<div class="me-card-header"><span class="me-card-title">🔁 Repeat Customers</span>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">New vs returning</span></div>';
+  if(!r || !r.customers){
+    return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
+      + '<span class="me-empty-icon">🔁</span><div class="me-empty-title">No customers yet</div>'
+      + '<div class="me-empty-text">Once people redeem your deals, you’ll see how many come back.</div>'
+      + '</div></div></div>';
+  }
+  function tile(v,l,c){ return '<div style="flex:1;min-width:96px;background:#F9F9FB;border-radius:12px;padding:12px 14px;"><div style="font-size:22px;font-weight:900;color:'+(c||'#1A1A1A')+';letter-spacing:-.5px;">'+v+'</div><div style="font-size:11.5px;color:#6B7280;font-weight:600;">'+l+'</div></div>'; }
+  var tiles = '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+    + tile(r.customers, 'Customers')
+    + tile(r.returning, 'Returning (2+)', r.returning>0?'#12A150':null)
+    + tile(r.rate!=null?r.rate+'%':'—', 'Repeat rate')
+  + '</div>';
+  var loyal = r.top ? '<div style="font-size:11.5px;color:#6B7280;font-weight:600;margin-top:12px;">⭐ Most loyal: <b style="color:#1A1A1A;">'+esc(r.top.name)+'</b> · '+r.top.count+' visits</div>' : '';
+  return head + '<div class="me-card-body" style="padding:16px 18px 18px;">'+tiles+loyal+'</div></div>';
 }
 
 // Format relative time
@@ -26384,6 +26421,9 @@ function meRenderDashNew(){
 
       // ══ 3e. NO-SHOW REPORT ═════════════════════════════════════════════
       + meRenderNoShow(metrics)
+
+      // ══ 3f. REPEAT CUSTOMERS (compact) ═════════════════════════════════
+      + meRenderRepeat(metrics)
 
       // ══ 4. PAYOUT BAR (full width) ══════════════════════════════════════
       + '<div style="background:linear-gradient(135deg,#0f2027,#1a3a4a,#2c5364);border-radius:14px;padding:22px 24px;display:flex;align-items:center;gap:16px;border:1px solid rgba(255,255,255,.1);color:white;">'
