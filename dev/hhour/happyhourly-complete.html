@@ -9450,6 +9450,8 @@ function meOpenCreate(){
   // Pre-select platform currency
   var curSel=document.getElementById('me-deal-currency');
   if(curSel && typeof finConfig!=='undefined') curSel.value=finConfig.currency||'EUR';
+  _meCurrencyUserSet=false;                                  // fresh form → allow auto-detect
+  setTimeout(function(){ try{ meDetectVenueCurrency(); }catch(e){} }, 0);   // set currency from the venue's country
   // Set today as default start date, 30 days later as default end
   var today=new Date();
   var end=new Date(today.getTime()+30*86400000);
@@ -25311,6 +25313,21 @@ function aRenderFinance(){
 var meCurrentBalance=0;
 var meVenueId=null;
 var meVenueName='';
+var _meCurrencyUserSet=false;   // true once the merchant hand-picks a currency → don't auto-override
+// Auto-set the merchant deal currency from the venue's country (parity with the
+// customer "Share a Deal" form). Runs on new-deal form open; the merchant can
+// still override the dropdown afterwards.
+function meDetectVenueCurrency(){
+  var curEl=document.getElementById('me-deal-currency');
+  if(!curEl || _meCurrencyUserSet) return;
+  if(!meVenueId || typeof db==='undefined') return;
+  try {
+    db.from('venues').select('address').eq('id', meVenueId).maybeSingle().then(function(r){
+      var addr=(r && r.data && r.data.address) || '';
+      if(addr) suggestCurrencyFromAddress(addr, 'me-deal-currency');
+    }).catch(function(){});
+  } catch(e){}
+}
 var dealsData=[];
 var vouchersData=[];
 var meVoucherPurchaseMap={};  // dealId -> voucher summary incl. purchases list
@@ -32040,43 +32057,87 @@ var _countryNameMap = {
   // fallback: use code
 };
 
-function suggestCurrencyFromAddress(address){
-  if(!address || typeof google==='undefined') return;
-  try {
-    var geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ address: address }, function(results, status){
-      if(status === 'OK' && results[0] && results[0].address_components){
-        var cc = results[0].address_components.find(function(c){ return c.types.includes('country'); });
-        if(cc) suggestCurrencyFromCountryCode(cc.short_name);
-      }
-    });
-  } catch(e){}
+// Country name/keyword (as it appears in a written address) → currency. Fallback
+// for when Google geocoding isn't loaded, or the geocoder returns no country.
+var _addrCountryCur = {
+  'united kingdom':'GBP','england':'GBP','scotland':'GBP','wales':'GBP','northern ireland':'GBP','u.k.':'GBP',' uk':'GBP',
+  'united states':'USD','u.s.a':'USD',' usa':'USD',
+  'philippines':'PHP','spain':'EUR','españa':'EUR','portugal':'EUR','france':'EUR','deutschland':'EUR','germany':'EUR',
+  'italy':'EUR','italia':'EUR','netherlands':'EUR','nederland':'EUR','belgium':'EUR','belgië':'EUR','austria':'EUR',
+  'österreich':'EUR','finland':'EUR','greece':'EUR','ireland':'EUR','malta':'EUR','slovakia':'EUR','slovenia':'EUR',
+  'croatia':'EUR','estonia':'EUR','latvia':'EUR','lithuania':'EUR','luxembourg':'EUR','cyprus':'EUR',
+  'switzerland':'CHF','schweiz':'CHF','suisse':'CHF','sweden':'SEK','sverige':'SEK','norway':'NOK','norge':'NOK',
+  'denmark':'DKK','danmark':'DKK','poland':'PLN','polska':'PLN','czech':'CZK','czechia':'CZK','hungary':'HUF',
+  'romania':'RON','bulgaria':'BGN','ukraine':'UAH','iceland':'ISK','albania':'ALL','shqipëri':'ALL',
+  'canada':'CAD','mexico':'MXN','méxico':'MXN','brazil':'BRL','brasil':'BRL','argentina':'ARS','chile':'CLP',
+  'colombia':'COP','peru':'PEN','perú':'PEN',
+  'japan':'JPY','china':'CNY','south korea':'KRW','korea':'KRW','india':'INR','australia':'AUD','new zealand':'NZD',
+  'singapore':'SGD','hong kong':'HKD','taiwan':'TWD','thailand':'THB','vietnam':'VND','việt nam':'VND',
+  'malaysia':'MYR','indonesia':'IDR','pakistan':'PKR','bangladesh':'BDT',
+  'united arab emirates':'AED','uae':'AED','saudi arabia':'SAR','qatar':'QAR','kuwait':'KWD','bahrain':'BHD',
+  'oman':'OMR','israel':'ILS','turkey':'TRY','türkiye':'TRY','egypt':'EGP','south africa':'ZAR','nigeria':'NGN',
+  'kenya':'KES','ghana':'GHS'
+};
+// Guess the currency from an address STRING (no geocoding). Country names usually
+// sit at the end, so we scan longest-key-first to avoid partial matches.
+function currencyFromAddressString(address){
+  if(!address) return null;
+  var s = ' ' + String(address).toLowerCase().replace(/\s+/g,' ') + ' ';
+  var keys = Object.keys(_addrCountryCur).sort(function(a,b){ return b.length - a.length; });
+  for(var i=0;i<keys.length;i++){
+    var k = keys[i];
+    if(s.indexOf(k.charAt(0)===' '?k:(' '+k)) !== -1 || s.indexOf(k+' ') !== -1 || s.indexOf(', '+k.trim()) !== -1) return _addrCountryCur[k];
+  }
+  return null;
 }
 
-function suggestCurrencyFromCountryCode(countryCode){
+// Apply a detected currency to a form's currency field ('uc-deal-currency' by
+// default, or 'me-deal-currency' for the merchant form). Never overrides FREE,
+// nor a currency the merchant deliberately picked.
+function _applyDetectedCurrency(cur, targetField, label){
+  if(!cur) return;
+  targetField = targetField || 'uc-deal-currency';
+  var curEl = document.getElementById(targetField);
+  if(!curEl) return;
+  if(curEl.value === 'FREE'){ if(targetField==='uc-deal-currency') _ucAutoCurrency = cur; return; }
+  if(targetField==='me-deal-currency' && _meCurrencyUserSet) return;   // merchant chose manually
+  if(targetField==='uc-deal-currency') _ucAutoCurrency = cur;
+  if(curEl.value === cur) return;   // already correct — no toast spam
+  curEl.value = cur;
+  var old = document.getElementById('currency-mismatch-banner'); if(old) old.remove();
+  if(targetField==='uc-deal-currency' && typeof ucUpdateCurrencyPreview === 'function') ucUpdateCurrencyPreview();
+  if(targetField==='me-deal-currency' && typeof meUpdateCurrencyPreview === 'function') meUpdateCurrencyPreview();
+  showToast('📍 Currency set to '+cur+(label?(' ('+label+')'):''));
+}
+
+// address → currency, for either form. Prefers precise Google geocoding; falls
+// back to reading the country out of the address string.
+function suggestCurrencyFromAddress(address, targetField){
+  if(!address) return;
+  if(typeof google !== 'undefined' && google.maps){
+    try {
+      new google.maps.Geocoder().geocode({ address: address }, function(results, status){
+        if(status === 'OK' && results[0] && results[0].address_components){
+          var cc = results[0].address_components.find(function(c){ return c.types.includes('country'); });
+          if(cc){ suggestCurrencyFromCountryCode(cc.short_name, targetField); return; }
+        }
+        _applyDetectedCurrency(currencyFromAddressString(address), targetField);   // geocode had no country
+      });
+      return;
+    } catch(e){}
+  }
+  _applyDetectedCurrency(currencyFromAddressString(address), targetField);          // no google loaded
+}
+
+function suggestCurrencyFromCountryCode(countryCode, targetField){
   if(!countryCode) return;
   var code = countryCode.toUpperCase();
-  var suggestedCurrency = _countryCurrencyMap[code];
-  if(!suggestedCurrency) return; // unknown country — leave as-is
-
-  var curEl = document.getElementById('uc-deal-currency');
-  if(!curEl) return;
-  var isFreeMode = curEl.value === 'FREE';
-  if(isFreeMode) { _ucAutoCurrency = suggestedCurrency; return; } // remember but don't override FREE
-
-  // Always force-set — no user prompt, no mismatch banner
-  _ucAutoCurrency = suggestedCurrency;
-  curEl.value = suggestedCurrency;
-  // Remove any stale mismatch banner from before this change
-  var old = document.getElementById('currency-mismatch-banner');
-  if(old) old.remove();
-  if(typeof ucUpdateCurrencyPreview === 'function') ucUpdateCurrencyPreview();
-  // Full country name (built into the browser) — the short map only covered a few
-  // countries, so e.g. Finland showed as bare "FI" in the toast.
+  var cur = _countryCurrencyMap[code];
+  if(!cur) return; // unknown country — leave as-is
   var countryName;
   try { countryName = new Intl.DisplayNames(['en'], { type:'region' }).of(code) || code; }
   catch(e){ countryName = _countryNameMap[code] || code; }
-  showToast('📍 Currency auto-set to '+suggestedCurrency+' ('+countryName+')');
+  _applyDetectedCurrency(cur, targetField, countryName);
 }
 
 function initAddressAutocomplete() {
@@ -33409,7 +33470,7 @@ function _setupDealMap() {
           <div>
             <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Deal Price <span style="color:#E8192C;">*</span></label>
             <div style="display:flex;gap:0;border:2px solid #E8E8EC;border-radius:12px;overflow:hidden;background:#F5F5F7;" id="me-price-wrap" onfocusin="this.style.borderColor='#E8192C'" onfocusout="this.style.borderColor='#E8E8EC'">
-              <select id="me-deal-currency" onchange="meUpdateCurrencyPreview()" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 8px 0 10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:#E8192C;outline:none;cursor:pointer;flex-shrink:0;height:50px;">
+              <select id="me-deal-currency" onchange="_meCurrencyUserSet=true;meUpdateCurrencyPreview()" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 8px 0 10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:#E8192C;outline:none;cursor:pointer;flex-shrink:0;height:50px;">
                 <option value="EUR">€ EUR - Europe</option>
                 <option value="USD">$ USD - USA</option>
                 <option value="GBP">£ GBP - UK</option>
