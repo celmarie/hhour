@@ -13069,7 +13069,7 @@ function calculateMerchantMetrics(){
   (vouchersData || []).forEach(function(v){
     (v.purchases || []).forEach(function(p){
       var price = parseFloat(p.price) || (v.priceNum || 0);
-      purchases.push({ code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, expiresAt:p.expires_at||null, price:price, deal:v.name });
+      purchases.push({ code:p.code, buyer:p.buyer, status:p.status, date:p.date, redeemedAt:p.redeemedAt||null, expiresAt:p.expires_at||null, noShow:!!p.noShow, price:price, deal:v.name });
       metrics.revenue.value += price;
     });
   });
@@ -13119,6 +13119,22 @@ function calculateMerchantMetrics(){
   out.soon.sort(function(a,b){ return a.exp - b.exp; });
   out.soon = out.soon.slice(0, 6);
   metrics.outstanding = out;
+
+  // No-show report — reported no-shows (meNoShowStats is authoritative for the
+  // count) plus a rate against guests who were EXPECTED (redeemed + no-shows) and
+  // a recent list of the purchase-flagged no-shows (deal, buyer, date).
+  var _ns = (typeof meNoShowStats !== 'undefined' && meNoShowStats) ? meNoShowStats : { total:0, month:0 };
+  var _expected = metrics.funnel.redeemed + (_ns.total || 0);
+  var nsList = purchases.filter(function(p){ return p.noShow; })
+    .sort(function(a,b){ return new Date(b.date||0) - new Date(a.date||0); })
+    .slice(0, 6)
+    .map(function(p){ return { deal:p.deal, buyer:p.buyer, date:p.date }; });
+  metrics.noShow = {
+    total: _ns.total || 0,
+    month: _ns.month || 0,
+    rate: _expected > 0 ? Math.round((_ns.total || 0) / _expected * 100) : null,
+    list: nsList
+  };
 
   // Average rating from real reviews.
   if(dealReviews && Object.keys(dealReviews).length > 0){
@@ -13316,6 +13332,47 @@ function meRenderOutstanding(metrics){
     : '';
   var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:'+(list||expired?'10px':'2px')+';">A quick reminder to these customers can turn an unredeemed voucher into a visit.</div>';
   return head + '<div class="me-card-body" style="padding:16px 18px 18px;">'+tiles+list+expired+foot+'</div></div>';
+}
+
+// No-Show report card for the merchant dashboard. Complements the headline
+// no-show count tile with the no-show RATE (vs guests who were expected) and a
+// recent list, so the merchant can follow up and decide whether to tighten
+// booking rules. Reads metrics.noShow.
+function meRenderNoShow(metrics){
+  var n = metrics && metrics.noShow;
+  var head = '<div class="me-card" style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
+    + '<div class="me-card-header"><span class="me-card-title">🚷 No-Show Report</span>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Bought/booked, didn’t arrive</span></div>';
+  if(!n || (!n.total && (!n.list || !n.list.length))){
+    return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
+      + '<span class="me-empty-icon">🎉</span><div class="me-empty-title">No no-shows reported</div>'
+      + '<div class="me-empty-text">Every guest who was expected has shown up. Report a no-show from the voucher scanner.</div>'
+      + '</div></div></div>';
+  }
+  var tiles = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">'
+    + '<div style="flex:1;min-width:120px;background:#F9F9FB;border-radius:12px;padding:13px 15px;">'
+      + '<div style="font-size:24px;font-weight:900;color:#1A1A1A;letter-spacing:-.5px;">'+n.total+'</div>'
+      + '<div style="font-size:12px;color:#6B7280;font-weight:600;">Reported · '+n.month+' this month</div>'
+    + '</div>'
+    + '<div style="flex:1;min-width:120px;background:'+(n.rate!=null && n.rate>=15?'rgba(232,25,44,.07)':'#F9F9FB')+';border-radius:12px;padding:13px 15px;">'
+      + '<div style="font-size:24px;font-weight:900;color:'+(n.rate!=null && n.rate>=15?'#E8192C':'#1A1A1A')+';letter-spacing:-.5px;">'+(n.rate!=null?n.rate+'%':'—')+'</div>'
+      + '<div style="font-size:12px;color:#6B7280;font-weight:600;">of expected guests</div>'
+    + '</div>'
+  + '</div>';
+  var list = '';
+  if(n.list && n.list.length){
+    list = '<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Recent no-shows</div>'
+      + n.list.map(function(s){
+        var when = s.date ? new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
+        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #F1F1F4;">'
+          + '<div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.buyer||'Customer')+'</div>'
+          + '<div style="font-size:11px;color:#9A9AB0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.deal||'Deal')+'</div></div>'
+          + '<div style="font-size:12px;font-weight:700;color:#9A9AB0;white-space:nowrap;flex-shrink:0;">'+when+'</div>'
+        + '</div>';
+      }).join('');
+  }
+  var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:'+(list?'10px':'2px')+';">Rate = no-shows ÷ expected guests (redeemed + no-shows). Consistently high? Consider a deposit or stricter booking window.</div>';
+  return head + '<div class="me-card-body" style="padding:16px 18px 18px;">'+tiles+list+foot+'</div></div>';
 }
 
 // Format relative time
@@ -26036,6 +26093,9 @@ function meRenderDashNew(){
 
       // ══ 3d. OUTSTANDING & EXPIRING VOUCHERS ════════════════════════════
       + meRenderOutstanding(metrics)
+
+      // ══ 3e. NO-SHOW REPORT ═════════════════════════════════════════════
+      + meRenderNoShow(metrics)
 
       // ══ 4. PAYOUT BAR (full width) ══════════════════════════════════════
       + '<div style="background:linear-gradient(135deg,#0f2027,#1a3a4a,#2c5364);border-radius:14px;padding:22px 24px;display:flex;align-items:center;gap:16px;border:1px solid rgba(255,255,255,.1);color:white;">'
