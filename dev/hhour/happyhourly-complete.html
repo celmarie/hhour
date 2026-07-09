@@ -20604,6 +20604,9 @@ function adminPage(page,btn){
       // SECTION 2.7: Supply vs demand by city (sales per venue)
       + admRenderSupplyDemand(allPurchases)
 
+      // SECTION 2.8: Category performance (revenue by category)
+      + admRenderCategory(allPurchases, sym)
+
       // SECTION 3: Top Performers
       +'<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;overflow:hidden;">'
         +'<div style="padding:16px;border-bottom:1.5px solid #E8E8EC;">'
@@ -22723,10 +22726,52 @@ function admRenderSupplyDemand(purchases){
   var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;">More sales per venue = demand outrunning supply — good places to add venues. Sales counted from recent activity.</div>';
   return head + rows + foot + '</div>';
 }
+// Category performance for the admin analytics page: sales + revenue by category,
+// from the verified deal's `category` (normalised with _canonCat, which merges
+// legacy drink slugs into gastronomy). Shows which category actually drives money.
+function admRenderCategory(purchases, sym){
+  var LBL = { gastronomy:{e:'🍽️',l:'Gastronomy'}, beauty:{e:'💅',l:'Beauty & Wellness'}, travel:{e:'✈️',l:'Travel'}, hotel:{e:'🏨',l:'Hotel'}, other:{e:'🏷️',l:'Other'} };
+  function label(id){
+    try { if(typeof appCategories !== 'undefined' && appCategories){ var f = appCategories.filter(function(a){ return a.id===id; })[0]; if(f) return { e:f.emoji||'🏷️', l:f.label||id }; } } catch(e){}
+    return LBL[id] || { e:'🏷️', l: id.charAt(0).toUpperCase()+id.slice(1) };
+  }
+  var stats = {};
+  (purchases||[]).forEach(function(p){
+    var c = p.cat ? ((typeof _canonCat==='function') ? _canonCat(p.cat) : p.cat) : 'other';
+    if(!stats[c]) stats[c] = { sales:0, revenue:0 };
+    stats[c].sales++; stats[c].revenue += parseFloat(p.deal_price)||0;
+  });
+  var cats = Object.keys(stats).map(function(c){ return { id:c, sales:stats[c].sales, revenue:stats[c].revenue }; })
+    .sort(function(a,b){ return (b.revenue-a.revenue) || (b.sales-a.sales); });
+
+  var head = '<div style="background:white;border-radius:12px;border:1.5px solid #E8E8EC;padding:16px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">'
+    + '<div style="font-size:15px;font-weight:900;color:#1A1A1A;">🏷️ Category Performance</div>'
+    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Revenue by category</span></div>';
+  if(!cats.length){
+    return head + '<div style="padding:18px 4px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;">No categorised sales yet.</div></div>';
+  }
+  function money(v){ return sym + (v>=1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(v<100?2:0)); }
+  var maxRev = Math.max.apply(null, cats.map(function(c){ return c.revenue; }).concat([0.0001]));
+  var rows = cats.map(function(c){
+    var lb = label(c.id);
+    var w = Math.max(2, Math.round(c.revenue/maxRev*100));
+    return '<div style="padding:9px 0;border-top:1px solid #F1F1F4;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px;">'
+        + '<span style="font-size:13px;font-weight:800;color:#1A1A1A;">'+lb.e+' '+esc(lb.l)+'</span>'
+        + '<span style="font-size:13px;font-weight:900;color:#1A1A1A;white-space:nowrap;">'+money(c.revenue)+'</span>'
+      + '</div>'
+      + '<div style="height:8px;background:#F1F1F4;border-radius:5px;overflow:hidden;margin-bottom:4px;"><div style="height:100%;width:'+w+'%;background:linear-gradient(90deg,#764ba2,#667eea);border-radius:5px;"></div></div>'
+      + '<div style="font-size:11px;color:#9A9AB0;font-weight:600;">'+c.sales+' sale'+(c.sales===1?'':'s')+'</div>'
+    + '</div>';
+  }).join('');
+  var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:10px;">From each purchased deal’s category. Uncategorised sales are grouped under “Other”.</div>';
+  return head + rows + foot + '</div>';
+}
 async function adminFetchAnalyticsPurchases(){
   try {
     var res = await db.from('voucher_purchases')
-      .select('*, deals(id,title,price,venues(name))')
+      .select('*, deals(id,title,price,category,venues(name))')
       .order('purchased_at',{ascending:false})
       .limit(500);
     var rows = (res && res.data) || [];
@@ -22743,7 +22788,8 @@ async function adminFetchAnalyticsPurchases(){
         venue_id: venue,
         venue_name: venue,
         customer_name: userName[r.user_id] || 'Customer',
-        purchased_at: r.purchased_at
+        purchased_at: r.purchased_at,
+        cat: (d && d.category) || null
       };
     });
   } catch(e){
