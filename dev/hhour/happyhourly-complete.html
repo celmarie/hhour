@@ -30,14 +30,13 @@
      (OpenStreetMap's license requires keeping the credit visible, so it stays —
      tiny, prefix-less, and out of the way.) */
   /* Google-style "you are here" dot — a real DOM marker (divIcon) so it paints on
-     every renderer (the old canvas circleMarker silently failed to draw on iOS). */
+     every renderer (the old canvas circleMarker silently failed to draw on iOS).
+     Deliberately STATIC: an earlier infinite pulse animation kept a composited
+     layer repainting over the map and crashed the iOS app ("A problem repeatedly
+     occurred") once a location fix drew the dot — so the dot no longer animates. */
   .you-dot-wrap { pointer-events:none; }
   .you-dot-core { position:absolute; left:3px; top:3px; width:16px; height:16px; border-radius:50%;
     background:#4285F4; border:3px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
-  .you-dot-pulse { position:absolute; left:0; top:0; width:22px; height:22px; border-radius:50%;
-    background:rgba(66,133,244,.28); animation:youDotPulse 2.2s ease-out infinite; }
-  @keyframes youDotPulse { 0%{ transform:scale(.55); opacity:.85; } 100%{ transform:scale(1.9); opacity:0; } }
-  @media (prefers-reduced-motion: reduce){ .you-dot-pulse{ animation:none; } }
   .leaflet-bottom.leaflet-left { display: flex; flex-direction: column; align-items: flex-start; }
   .leaflet-bottom.leaflet-left .leaflet-control-zoom { order: 1; }
   .leaflet-bottom.leaflet-left .leaflet-control-attribution {
@@ -32412,7 +32411,7 @@ function _drawYouDot(lat, lng, acc){
     if(!window._youDot){
       var youIcon = L.divIcon({
         className: 'you-dot-wrap',
-        html: '<div class="you-dot-pulse"></div><div class="you-dot-core"></div>',
+        html: '<div class="you-dot-core"></div>',
         iconSize: [22,22], iconAnchor: [11,11]
       });
       window._youDot = L.marker(ll, { icon: youIcon, interactive:false, keyboard:false, zIndexOffset:10000 }).addTo(_gmapObj);
