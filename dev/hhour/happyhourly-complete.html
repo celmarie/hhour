@@ -5596,7 +5596,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260710142502';
+var BUILD_VERSION = '20260710152416';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -22335,6 +22335,10 @@ async function adminApproveDeal(id){
   // Convert to ucDeals format (submission uses venue/desc; render functions expect name/deal)
   // Use _dbId+10000 to match the ID format dbUCToLocal produces, so clicks always resolve
   var ucDealId = deal._dbId ? (deal._dbId + 10000) : deal.id;
+  // Carry the deal's schedule blocks through to the live customer feed so multi-time
+  // windows show immediately after approval (not just after a reload). Block 0 seeds
+  // the legacy timeFrom/timeTo the countdown uses.
+  var _apBlk = (function(){ try { return _dealSchedules(deal)[0] || {from:17,to:22}; } catch(e){ return {from:17,to:22}; } })();
   var ucDeal = {
     id: ucDealId, _dbId: deal._dbId, _sessionAdded: true,
     emoji: deal.emoji || '📣',
@@ -22355,7 +22359,8 @@ async function adminApproveDeal(id){
     ago: 'Just now', timeLeft: '3h 00m',
     claimed: deal.claimed || 0,
     days: deal.days || '', hours: deal.hours || '',
-    timeFrom: 17, timeTo: 22,
+    schedules: deal.schedules || null,
+    timeFrom: _apBlk.from, timeTo: _apBlk.to,
     verified: false, type: 'community',
     discPct: deal.discPct || 0,
     tags: ['Community'], perks: deal.perks || [],
@@ -23265,6 +23270,7 @@ function adminOpenDealReview(id, source){
     document.querySelectorAll('#adm-edit-days button').forEach(function(btn){
       admSetDayChip(btn, allDays || activeDays.indexOf(btn.dataset.day) > -1);
     });
+    admLoadSchedBlocks(deal);   // extra day+time windows (multi-schedule)
     // Buttons: only Save + Delete (no approve/reject for merchant)
     document.getElementById('adm-rev-approve-btn').style.display = 'none';
     document.getElementById('adm-rev-reject-btn').style.display = '';
@@ -23531,6 +23537,7 @@ function adminReviewDeal(id){
     btn.style.color = isActive ? 'white' : '#1A1A1A';
     btn.style.borderColor = isActive ? '#E8192C' : '#E8E8EC';
   });
+  admLoadSchedBlocks(deal);   // extra day+time windows (multi-schedule)
 
   // Photos are loaded via admSeedEditPhotoPreview below (line ~9753)
 
@@ -23592,6 +23599,7 @@ function adminReviewDeal(id){
     var on = allDays || activeDays.indexOf(btn.dataset.day) > -1;
     admSetDayChip(btn, on);
   });
+  admLoadSchedBlocks(deal);   // extra day+time windows (multi-schedule)
 
   // Seed photo preview in edit form
   admSeedEditPhotoPreview(deal.img||'', deal.img2||'', deal.img3||'');
@@ -23738,6 +23746,12 @@ function admCollectEdits(){
   // so the newest addition is always the last item. If only one photo, that's slot 0.
   var photoToSave = _admPhotos[_admPhotos.length - 1] || _admEditPhotoDataUrl || null;
 
+  // Multiple schedule blocks: block 0 = the main Days/Time fields above; extras
+  // from #adm-extra-sched-blocks. days/hours below still mirror block 0 (unchanged
+  // format); `schedules` is the full JSON array, saved when the column exists.
+  var _schedBlocks = (typeof admCollectSchedules==='function') ? admCollectSchedules() : [];
+  var _schedJson = _schedBlocks.length ? JSON.stringify(_schedBlocks.map(function(b){ return { days: b.days||'Daily', from: +b.from, to: +b.to }; })) : undefined;
+
   return {
     deal:     document.getElementById('adm-edit-title').value.trim(),
     name:     document.getElementById('adm-edit-venue').value.trim(),
@@ -23751,6 +23765,7 @@ function admCollectEdits(){
     desc:     document.getElementById('adm-edit-desc').value.trim(),
     hours:    fmt12(ts)+' – '+fmt12(te),
     days:     activeDays.length ? activeDays.join(', ') : 'Daily',
+    schedules: _schedJson,
     off:      off,
     discPct:  (!isNaN(priceN)&&!isNaN(wasN)&&wasN>0) ? Math.round((wasN-priceN)/wasN*100) : 0,
     img:      photoToSave,
@@ -23784,12 +23799,18 @@ async function adminSaveAndApprove(){
     was_price: edits.wasPrice !== null ? edits.wasPrice : deal.wasPrice,
     hours: edits.hours || deal.hours,
     days: edits.days || deal.days,
+    schedules: edits.schedules || deal.schedules,
     website: edits.website || deal.website || '',
     start_date: edits.startDate || null,
     end_date: edits.endDate || null,
   };
   try {
     var _sar = await db.from('community_deals').update(updatePayload).eq('id', dbId);
+    if(_sar.error && /schedules/.test(_sar.error.message||'')){
+      // schedules column not added yet (add_deal_schedules.sql not run) — save the rest.
+      delete updatePayload.schedules;
+      _sar = await db.from('community_deals').update(updatePayload).eq('id', dbId);
+    }
     if(_sar.error && /start_date|end_date/.test(_sar.error.message||'')){
       // Date columns not in the table yet (add_deal_dates.sql not run) — save the rest.
       delete updatePayload.start_date; delete updatePayload.end_date;
@@ -24034,6 +24055,7 @@ async function adminSaveEditsOnly(){
         was_price: edits.wasPrice,
         hours: edits.hours,
         days: edits.days,
+        schedules: edits.schedules,
         off_label: edits.off,
         category: edits.cat,
         emoji: edits.emoji||undefined,
@@ -24048,6 +24070,13 @@ async function adminSaveEditsOnly(){
       mUpdate.image_url = allPhotosM.length > 1 ? JSON.stringify(allPhotosM) : (allPhotosM[0] || '');
       console.log('[adminSaveEditsOnly] Full update object:', mUpdate);
       var { error } = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
+      if(error && /schedules/.test(error.message||'')){
+        // schedules column not added yet (add_deal_schedules.sql not run) — save the
+        // rest; block 0 still persists via days/hours.
+        delete mUpdate.schedules;
+        var _mrt = await db.from('deals').update(mUpdate).eq('id', _admReviewDealId);
+        error = _mrt.error;
+      }
       if(error){
         console.error('Merchant update error:', error);
         console.error('Update object was:', mUpdate);
@@ -24087,6 +24116,7 @@ async function adminSaveEditsOnly(){
         was_price: edits.wasPrice,
         hours: edits.hours,
         days: edits.days,
+        schedules: edits.schedules,
         category: edits.cat,
         emoji: edits.emoji||undefined,
         currency: edits.currency||'EUR',
@@ -24101,6 +24131,13 @@ async function adminSaveEditsOnly(){
       var allPhotos = [savedImg1, savedImg2, savedImg3].filter(Boolean);
       cUpdate.image_url = allPhotos.length > 1 ? JSON.stringify(allPhotos) : (allPhotos[0] || '');
       var { error, data } = await db.from('community_deals').update(cUpdate).eq('id', dbId);
+      if(error && /schedules/.test(error.message||'')){
+        // schedules column not added yet (add_deal_schedules.sql not run) — save the
+        // rest; block 0 still persists via days/hours.
+        delete cUpdate.schedules;
+        var _rs = await db.from('community_deals').update(cUpdate).eq('id', dbId);
+        error = _rs.error; data = _rs.data;
+      }
       if(error && /start_date|end_date/.test(error.message||'')){
         // Date columns not in the table yet (add_deal_dates.sql not run) — save the rest.
         delete cUpdate.start_date; delete cUpdate.end_date;
@@ -30083,6 +30120,25 @@ function ucAddSchedBlock(block){ var box=document.getElementById('uc-extra-sched
 function ucResetSchedBlocks(){ var box=document.getElementById('uc-extra-sched-blocks'); if(box) box.innerHTML=''; }
 function ucCollectSchedules(){ return _collectSchedules(ucGetActiveDays(), 'uc-deal-time-start', 'uc-deal-time-end', 'uc-extra-sched-blocks'); }
 
+// Admin edit form — block 0 = #adm-edit-time-start/end + #adm-edit-days chips
+// (active = red background, matching admToggleDay); extras live in
+// #adm-extra-sched-blocks. admCollectSchedules() returns every block as {days,from,to}.
+function admGetActiveDays(){
+  var days=[];
+  document.querySelectorAll('#adm-edit-days button').forEach(function(b){
+    if(b.style.background==='rgb(232, 25, 44)'||b.style.background==='#E8192C') days.push(b.dataset.day);
+  });
+  return days;
+}
+function admAddSchedBlock(block){ var box=document.getElementById('adm-extra-sched-blocks'); if(!box) return; box.appendChild(_buildXSchedBlock(block,'adminRefreshPreview')); }
+function admResetSchedBlocks(){ var box=document.getElementById('adm-extra-sched-blocks'); if(box) box.innerHTML=''; }
+function admCollectSchedules(){ return _collectSchedules(admGetActiveDays(), 'adm-edit-time-start', 'adm-edit-time-end', 'adm-extra-sched-blocks'); }
+// Prefill: block 0 already fills the main Days/Time fields — append blocks 1+ here.
+function admLoadSchedBlocks(deal){
+  admResetSchedBlocks();
+  try { var blks=_dealSchedules(deal); for(var i=1;i<blks.length;i++) admAddSchedBlock(blks[i]); } catch(e){}
+}
+
 function meUpdateSchedulePreview(){
   var sd=document.getElementById('me-deal-start-date');
   var ed=document.getElementById('me-deal-end-date');
@@ -35471,6 +35527,10 @@ function _setupDealMap() {
               <button type="button" data-day="Sun" onclick="admToggleDay(this)" style="padding:6px 12px;border-radius:20px;border:1.5px solid #E8E8EC;background:white;font-size:12px;font-weight:700;color:#9A9AB0;cursor:pointer;font-family:Inter,sans-serif;transition:all .15s;">Sun</button>
             </div>
           </div>
+
+          <!-- Extra day+time schedule blocks (block 0 = the Days/Time fields above) -->
+          <div id="adm-extra-sched-blocks" style="display:grid;gap:10px;"></div>
+          <button type="button" onclick="admAddSchedBlock()" style="align-self:start;background:rgba(232,25,44,.06);border:1.5px dashed rgba(232,25,44,.35);border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:800;color:#E8192C;cursor:pointer;font-family:Inter,sans-serif;">+ Add another time block</button>
 
           <div>
             <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Description</label>
