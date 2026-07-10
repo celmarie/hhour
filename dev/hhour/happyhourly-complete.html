@@ -5596,7 +5596,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260710015741';
+var BUILD_VERSION = '20260710142502';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -28464,25 +28464,86 @@ function meBuildReportHTML(){
   return _prShell('Merchant Report', venue, body);
 }
 // Admin platform report → print HTML, from the loaded admin analytics data.
+// Mirrors all 8 on-screen admin reports (overview, sales/redemption+liability,
+// activation, supply/demand, dormant, category, user growth, moderation). Money
+// figures come from window._admPurchases (the 500 most-recent rows), so they read
+// "recent activity"; venue/user counts are full. Aggregations are re-derived here
+// (not by calling the admRender* fns) so the print output stays clean-styled.
 function admBuildReportHTML(){
   var sym = (typeof finSym==='function') ? finSym() : '€';
   var purchases = (typeof window!=='undefined' && window._admPurchases) ? window._admPurchases : [];
   var venuesAll = (typeof adminMerchants!=='undefined' && adminMerchants) ? adminMerchants : [];
   var venues = venuesAll.filter(function(x){ return x._source!=='application'; });
   var pending = venuesAll.filter(function(x){ return x._source==='application'; }).length;
-  var users = (typeof adminUsers!=='undefined' && adminUsers) ? adminUsers.length : 0;
+  var usersArr = (typeof adminUsers!=='undefined' && adminUsers) ? adminUsers : [];
+  var users = usersArr.length;
   var comm = (typeof finConfig!=='undefined' && finConfig.commission!=null) ? parseFloat(finConfig.commission) : 0;
-  var gross=0, redeemed=0, soldCount=0, sellingSet={}, catRev={};
+  var now = Date.now(), DAY = 86400000;
+  var _muted = function(t){ return '<div style="font-size:12px;color:#9A9AB0;font-weight:600;padding:4px 0;">'+t+'</div>'; };
+
+  // ── Sales / redemption / liability / category / selling-set (one pass) ──
+  var gross=0, redeemed=0, soldCount=0, outCount=0, outVal=0, brkCount=0, brkVal=0;
+  var sellingSet={}, soldSet={}, catRev={}, catSales={};
   purchases.forEach(function(p){
     var price = parseFloat(p.deal_price)||0;
-    if(p.status==='used' || p.status==='active'){ gross+=price; soldCount++; if(p.status==='used') redeemed++; }
-    var v = p.venue_name||p.venue_id; if(v && v!=='—') sellingSet[v]=1;
-    var c = p.cat ? ((typeof _canonCat==='function')?_canonCat(p.cat):p.cat) : 'other'; catRev[c]=(catRev[c]||0)+price;
+    if(p.status==='used'){ gross+=price; soldCount++; redeemed++; }
+    else if(p.status==='active'){
+      gross+=price; soldCount++;
+      var exp = p.expires_at ? new Date(p.expires_at).getTime() : null;
+      if(exp!==null && !isNaN(exp) && exp<now){ brkCount++; brkVal+=price; }
+      else { outCount++; outVal+=price; }
+    }
+    var v = p.venue_name||p.venue_id; if(v && v!=='—'){ sellingSet[v]=1; soldSet[v]=1; }
+    var c = p.cat ? ((typeof _canonCat==='function')?_canonCat(p.cat):p.cat) : 'other';
+    catRev[c]=(catRev[c]||0)+price; catSales[c]=(catSales[c]||0)+1;
   });
   var take = gross*comm/100, selling = Object.keys(sellingSet).length;
   var redRate = soldCount>0 ? Math.round(redeemed/soldCount*100) : null;
-  var topCat = Object.keys(catRev).sort(function(a,b){ return catRev[b]-catRev[a]; })[0] || '—';
-  var openReports = (typeof dealReports!=='undefined'?dealReports.length:0) + (typeof adminMistakeReports!=='undefined'?adminMistakeReports.length:0);
+
+  // Category breakdown (revenue-ranked), with friendly labels.
+  var CATL = {gastronomy:'Gastronomy',beauty:'Beauty & Wellness',travel:'Travel',hotel:'Hotel',other:'Other'};
+  var catLabel = function(id){ return CATL[id] || (id.charAt(0).toUpperCase()+id.slice(1)); };
+  var cats = Object.keys(catRev).map(function(c){ return {id:c, rev:catRev[c], sales:catSales[c]||0}; })
+    .sort(function(a,b){ return (b.rev-a.rev) || (b.sales-a.sales); });
+  var topCat = cats.length ? catLabel(cats[0].id) : '—';
+
+  // ── Supply vs demand: sales per venue, by city ──
+  var cityOf={}, cityStats={};
+  venues.forEach(function(v){
+    var c=(v.city && v.city!=='—')?v.city:'Unknown';
+    if(v.name) cityOf[v.name]=c;
+    if(!cityStats[c]) cityStats[c]={venues:0, sales:0};
+    cityStats[c].venues++;
+  });
+  purchases.forEach(function(p){ var c=cityOf[p.venue_name||p.venue_id]; if(c && cityStats[c]) cityStats[c].sales++; });
+  var cities = Object.keys(cityStats).map(function(c){
+    var s=cityStats[c]; return {city:c, venues:s.venues, sales:s.sales, spv:(s.venues>0?s.sales/s.venues:0)};
+  }).filter(function(c){ return c.city!=='Unknown' || c.sales>0; })
+    .sort(function(a,b){ return (b.spv-a.spv) || (b.sales-a.sales); });
+
+  // ── Dormant: approved venues with no recent sale ──
+  var dormant = venues.filter(function(v){ return v.name && !soldSet[v.name]; })
+    .sort(function(a,b){ return new Date(b.created_at||0) - new Date(a.created_at||0); });
+
+  // ── User growth ──
+  var new7=0, new30=0;
+  usersArr.forEach(function(u){
+    var t=u.joinedRaw?new Date(u.joinedRaw).getTime():null;
+    if(t===null || isNaN(t)) return;
+    if(now-t<=7*DAY) new7++;
+    if(now-t<=30*DAY) new30++;
+  });
+  var buyerSet={}; purchases.forEach(function(p){ if(p.user_id) buyerSet[p.user_id]=1; });
+  var buyerRate = users>0 ? Math.min(100, Math.round(Object.keys(buyerSet).length/users*100)) : null;
+
+  // ── Moderation: open queues + most-flagged deals ──
+  var reports=(typeof dealReports!=='undefined' && dealReports)?dealReports:[];
+  var mistakes=(typeof adminMistakeReports!=='undefined' && adminMistakeReports)?adminMistakeReports:[];
+  var byDeal={};
+  reports.forEach(function(r){ var k=(r.name||'Deal')+'||'+(r.venue||''); if(!byDeal[k]) byDeal[k]={name:r.name||'Deal', venue:r.venue||'', count:0}; byDeal[k].count++; });
+  var flagged = Object.keys(byDeal).map(function(k){ return byDeal[k]; }).sort(function(a,b){ return b.count-a.count; }).slice(0,5);
+
+  // ── Body ──
   var body = ''
     + _prSection('Platform overview',
         _prRow('Total venues', String(venues.length)+(pending?' · '+pending+' pending':''))
@@ -28491,13 +28552,49 @@ function admBuildReportHTML(){
       + _prRow('Platform take ('+comm+'%)', _prMoney(sym, take), {big:true, border:true, color:'#12A150'}))
     + _prSection('Sales & redemption',
         _prRow('Vouchers sold (recent)', String(soldCount))
-      + _prRow('Redeemed', String(redeemed)+(redRate!=null?' · '+redRate+'%':''), {border:true}))
+      + _prRow('Redeemed', String(redeemed)+(redRate!=null?' · '+redRate+'%':''), {border:true})
+      + _prRow('Outstanding liability', _prMoney(sym, outVal)+' · '+outCount+' held', {border:true, color:'#B45309'})
+      + _prRow('Breakage (expired unredeemed)', _prMoney(sym, brkVal)+' · '+brkCount, {border:true}))
     + _prSection('Merchant activation',
-        _prRow('Approved venues', String(venues.length))
+        _prRow('Approved venues', String(venues.length)+(pending?' · '+pending+' pending':''))
       + _prRow('Venues with a sale', String(selling)+(venues.length>0?' · '+Math.min(100,Math.round(selling/venues.length*100))+'%':''), {border:true}))
-    + _prSection('Category & moderation',
-        _prRow('Top category by revenue', esc(topCat))
-      + _prRow('Open reports / flags', String(openReports), {border:true}));
+    + _prSection('Supply vs demand — sales per venue, by city',
+        (cities.length
+          ? cities.slice(0,8).map(function(c,i){
+              return _prRow(esc(c.city)+' <span style="color:#9A9AB0;font-weight:600;">· '+c.venues+' venue'+(c.venues===1?'':'s')+'</span>',
+                c.spv.toFixed(1)+' <span style="font-size:11px;color:#9A9AB0;font-weight:700;">/venue</span> · '+c.sales+' sale'+(c.sales===1?'':'s'), {border:i>0});
+            }).join('')
+          : _muted('No venues with a city set yet.')))
+    + _prSection('Dormant merchants — approved, no recent sales',
+        (!venues.length
+          ? _muted('No approved venues yet.')
+          : (!dormant.length
+              ? '<div style="font-size:12.5px;color:#12A150;font-weight:700;padding:4px 0;">Every approved venue has a recent sale.</div>'
+              : _prRow('Dormant venues', String(dormant.length)+' of '+venues.length+' · '+Math.round(dormant.length/venues.length*100)+'%', {big:true, color:'#B45309'})
+                + dormant.slice(0,8).map(function(v){
+                    var city=(v.city && v.city!=='—')?' <span style="color:#9A9AB0;font-weight:600;">· '+esc(v.city)+'</span>':'';
+                    return _prRow(esc(v.name)+city, '<span style="color:#B45309;font-weight:800;">no sales</span>', {border:true});
+                  }).join('')
+                + (dormant.length>8 ? _muted('+'+(dormant.length-8)+' more') : ''))))
+    + _prSection('Category performance — revenue by category',
+        (cats.length
+          ? cats.map(function(c,i){ return _prRow(esc(catLabel(c.id)), _prMoney(sym, c.rev)+' · '+c.sales+' sale'+(c.sales===1?'':'s'), {border:i>0}); }).join('')
+          : _muted('No categorised sales yet.')))
+    + _prSection('User growth',
+        _prRow('Total users', String(users))
+      + _prRow('New · last 7 days', '+'+new7, {border:true})
+      + _prRow('New · last 30 days', '+'+new30, {border:true})
+      + _prRow('Signup → buyer', (buyerRate!=null?buyerRate+'%':'—'), {border:true, color:'#12A150'}))
+    + _prSection('Moderation health',
+        _prRow('Open deal reports', String(reports.length))
+      + _prRow('Correction reports', String(mistakes.length), {border:true})
+      + (flagged.length
+          ? '<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin:8px 0 2px;">Most-flagged deals</div>'
+            + flagged.map(function(d,i){
+                var venue=d.venue?' <span style="color:#9A9AB0;font-weight:600;">· '+esc(d.venue)+'</span>':'';
+                return _prRow(esc(d.name)+venue, '<span style="color:#E8192C;font-weight:800;">'+d.count+' report'+(d.count===1?'':'s')+'</span>', {border:i>0});
+              }).join('')
+          : ((reports.length+mistakes.length)===0 ? '<div style="font-size:12.5px;color:#12A150;font-weight:700;padding:8px 0 2px;">All clear — no open reports or flags.</div>' : '')));
   return _prShell('Platform Analytics', 'All venues', body);
 }
 
