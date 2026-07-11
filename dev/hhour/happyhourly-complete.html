@@ -1388,7 +1388,7 @@ body.translated-ltr,body.translated-rtl{top:0 !important;margin-top:0 !important
 }
 
 .me-action-card.redeem {
-  background: linear-gradient(135deg, #0f2027 0%, #2c5364 100%);
+  background: linear-gradient(135deg, #20232A 0%, #15171C 100%);
   color: white;
 }
 
@@ -1419,16 +1419,16 @@ body.translated-ltr,body.translated-rtl{top:0 !important;margin-top:0 !important
 
 .me-stat-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid var(--me-border);
-  padding: 32px 24px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: 18px 16px;
+  box-shadow: 0 1px 3px rgba(16,24,40,.05);
   transition: box-shadow 0.2s;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  min-height: 160px;
+  min-height: 120px;
   justify-content: center;
 }
 
@@ -5596,7 +5596,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260711174710';
+var BUILD_VERSION = '20260711195012';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -13229,9 +13229,9 @@ function meRenderPeakTimes(metrics){
   function h12(h){ h=((h%24)+24)%24; var v=h%12; if(v===0)v=12; return v+(h<12?'a':'p'); }
   function hRange(h){ var ap1=h<12?'am':'pm'; var v1=h%12||12; var n=(h+1)%24; var ap2=n<12?'am':'pm'; var v2=n%12||12; return v1+(ap1!==ap2?ap1:'')+'–'+v2+ap2; }
 
-  var head = '<div class="me-card" style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
+  var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
     + '<div class="me-card-header"><span class="me-card-title">🕐 Peak Redemption Times</span>'
-    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">When customers redeem</span></div>';
+    + '<span style="font-size:11px;color:#6B7280;font-weight:600;">When customers redeem</span></div>';
 
   if(!pt || !pt.total){
     return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
@@ -13265,7 +13265,7 @@ function meRenderPeakTimes(metrics){
   var busiestLine = b ? ('🔥 Busiest: <b style="color:#1A1A1A;">'+dayLong[b.day]+' '+hRange(b.hour)+'</b> · '+b.count+' redemption'+(b.count===1?'':'s')) : '';
   var bd=0, bdi=-1; for(var i=0;i<7;i++){ if(pt.byDay[i]>bd){ bd=pt.byDay[i]; bdi=i; } }
   var dayLine = bdi>=0 ? ('📅 Most on <b style="color:#1A1A1A;">'+dayLong[bdi]+'s</b>') : '';
-  var legend = '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#9A9AB0;margin-left:auto;">Less'
+  var legend = '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#6B7280;margin-left:auto;">Less'
     + '<span style="display:inline-flex;gap:2px;">'
     + '<span style="width:11px;height:11px;border-radius:2px;background:#F1F1F4;"></span>'
     + '<span style="width:11px;height:11px;border-radius:2px;background:rgba(232,25,44,.35);"></span>'
@@ -13292,9 +13292,9 @@ function meRenderPeakTimes(metrics){
 // buying it, and actually redeeming it. Inline-styled, light-theme.
 function meRenderFunnel(metrics){
   var f = metrics && metrics.funnel;
-  var head = '<div class="me-card" style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
+  var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
     + '<div class="me-card-header"><span class="me-card-title">🔻 Deal Funnel</span>'
-    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Views → Buy → Redeem</span></div>';
+    + '<span style="font-size:11px;color:#6B7280;font-weight:600;">Views → Buy → Redeem</span></div>';
   if(!f || (!f.views && !f.purchases && !f.redeemed)){
     return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
       + '<span class="me-empty-icon">🔻</span><div class="me-empty-title">No activity yet</div>'
@@ -13333,9 +13333,9 @@ function meRenderFunnel(metrics){
 function meRenderOutstanding(metrics){
   var o = metrics && metrics.outstanding;
   var sym = (typeof finSym==='function') ? finSym() : '€';
-  var head = '<div class="me-card" style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
+  var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
     + '<div class="me-card-header"><span class="me-card-title">🎟 Outstanding Vouchers</span>'
-    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Paid, not yet redeemed</span></div>';
+    + '<span style="font-size:11px;color:#6B7280;font-weight:600;">Paid, not yet redeemed</span></div>';
   if(!o || (!o.count && !o.expiredCount)){
     return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
       + '<span class="me-empty-icon">🎉</span><div class="me-empty-title">Nothing outstanding</div>'
@@ -13362,17 +13362,17 @@ function meRenderOutstanding(metrics){
   + '</div>';
   var list = '';
   if(o.soon.length){
-    list = '<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Expiring soonest</div>'
+    list = '<div style="font-size:11px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Expiring soonest</div>'
       + o.soon.map(function(s){
         return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #F1F1F4;">'
           + '<div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.deal||'Deal')+'</div>'
-          + '<div style="font-size:11px;color:#9A9AB0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.buyer||'Customer')+' · <code style="font-family:ui-monospace,Menlo,monospace;">'+esc(s.code||'')+'</code></div></div>'
+          + '<div style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.buyer||'Customer')+' · <code style="font-family:ui-monospace,Menlo,monospace;">'+esc(s.code||'')+'</code></div></div>'
           + '<div style="font-size:12px;font-weight:800;color:#B45309;white-space:nowrap;flex-shrink:0;">'+rel(s.exp)+'</div>'
         + '</div>';
       }).join('');
   }
   var expired = o.expiredCount>0
-    ? '<div style="font-size:11.5px;color:#9A9AB0;font-weight:600;margin-top:12px;padding-top:10px;border-top:1px solid #F1F1F4;">⚠️ '+o.expiredCount+' voucher'+(o.expiredCount===1?'':'s')+' expired unredeemed ('+money(o.expiredValue)+') — never claimed.</div>'
+    ? '<div style="font-size:11.5px;color:#6B7280;font-weight:600;margin-top:12px;padding-top:10px;border-top:1px solid #F1F1F4;">⚠️ '+o.expiredCount+' voucher'+(o.expiredCount===1?'':'s')+' expired unredeemed ('+money(o.expiredValue)+') — never claimed.</div>'
     : '';
   var foot = '<div style="font-size:11px;color:#B8B8C4;margin-top:'+(list||expired?'10px':'2px')+';">A quick reminder to these customers can turn an unredeemed voucher into a visit.</div>';
   return head + '<div class="me-card-body" style="padding:16px 18px 18px;">'+tiles+list+expired+foot+'</div></div>';
@@ -13384,9 +13384,9 @@ function meRenderOutstanding(metrics){
 // booking rules. Reads metrics.noShow.
 function meRenderNoShow(metrics){
   var n = metrics && metrics.noShow;
-  var head = '<div class="me-card" style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
+  var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
     + '<div class="me-card-header"><span class="me-card-title">🚷 No-Show Report</span>'
-    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Bought/booked, didn’t arrive</span></div>';
+    + '<span style="font-size:11px;color:#6B7280;font-weight:600;">Bought/booked, didn’t arrive</span></div>';
   if(!n || (!n.total && (!n.list || !n.list.length))){
     return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
       + '<span class="me-empty-icon">🎉</span><div class="me-empty-title">No no-shows reported</div>'
@@ -13405,13 +13405,13 @@ function meRenderNoShow(metrics){
   + '</div>';
   var list = '';
   if(n.list && n.list.length){
-    list = '<div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Recent no-shows</div>'
+    list = '<div style="font-size:11px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Recent no-shows</div>'
       + n.list.map(function(s){
         var when = s.date ? new Date(s.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
         return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #F1F1F4;">'
           + '<div style="min-width:0;"><div style="font-size:13px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.buyer||'Customer')+'</div>'
-          + '<div style="font-size:11px;color:#9A9AB0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.deal||'Deal')+'</div></div>'
-          + '<div style="font-size:12px;font-weight:700;color:#9A9AB0;white-space:nowrap;flex-shrink:0;">'+when+'</div>'
+          + '<div style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.deal||'Deal')+'</div></div>'
+          + '<div style="font-size:12px;font-weight:700;color:#6B7280;white-space:nowrap;flex-shrink:0;">'+when+'</div>'
         + '</div>';
       }).join('');
   }
@@ -13423,9 +13423,9 @@ function meRenderNoShow(metrics){
 // how many are returning (bought 2+ times), the repeat rate, and the most loyal.
 function meRenderRepeat(metrics){
   var r = metrics && metrics.repeat;
-  var head = '<div class="me-card" style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
+  var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
     + '<div class="me-card-header"><span class="me-card-title">🔁 Repeat Customers</span>'
-    + '<span style="font-size:11px;color:#9A9AB0;font-weight:600;">New vs returning</span></div>';
+    + '<span style="font-size:11px;color:#6B7280;font-weight:600;">New vs returning</span></div>';
   if(!r || !r.customers){
     return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
       + '<span class="me-empty-icon">🔁</span><div class="me-empty-title">No customers yet</div>'
@@ -26349,171 +26349,121 @@ function meRenderDashNew(){
   var sym = (typeof finSym==='function') ? finSym() : '€';
   var comm = (typeof finConfig!=='undefined') ? finConfig.commission : 15;
   var minLocal = (typeof finMinPayoutLocal==='function') ? finMinPayoutLocal() : 9.20;
-  var bal = parseFloat(meCurrentBalance);
-  if(!isFinite(bal)) bal = 0;   // guard against NaN/undefined
+  var bal = parseFloat(meCurrentBalance); if(!isFinite(bal)) bal = 0;
   var canPay = bal >= minLocal;
+  var I = meIcon;
+  var ink='#16181D', mut='#6B7280', line='#ECEDF0', red='#E8192C', redDk='#C20E1F',
+      redTint='rgba(232,25,44,.08)', ok='#12A150', okTint='rgba(18,161,80,.10)', amber='#D97706';
+  var card='background:#fff;border:1px solid '+line+';border-radius:16px;box-shadow:0 1px 3px rgba(16,24,40,.05);';
 
-  // Calculate metrics from real data
   var metrics = calculateMerchantMetrics();
-
-  // Format revenue display
   var revDisplay = sym + (metrics.revenue.value > 999 ? (metrics.revenue.value/1000).toFixed(1) + 'k' : metrics.revenue.value.toFixed(0));
   var avgRatingDisplay = parseFloat(metrics.avgRating.value) || 0;
   var totalDeals = (dealsData || []).length;
   var totalDealsActive = metrics.activeDeals.count;
   var totalDealsScheduled = metrics.activeDeals.scheduled;
+  var _ns = (typeof meNoShowStats!=='undefined' && meNoShowStats) ? meNoShowStats : {month:0,total:0};
 
-  // ── Chart data for performance overview (real last-7-days revenue) ──
+  // ── Chart (real last-7-days revenue), solid on-brand bars, today emphasised ──
   var _cd = (metrics.chartData && metrics.chartData.length) ? metrics.chartData : [];
   var barData  = _cd.length ? _cd.map(function(d){ return d.value; }) : [0,0,0,0,0,0,0];
   var dayLabels= _cd.length ? _cd.map(function(d){ return d.label; }) : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  var maxBar=Math.max.apply(null,barData) || 1;   // avoid divide-by-zero on a flat/empty week
-  var barH=90; var barW=36; var gap=60; var padL=8;
-  var svg='<svg viewBox="0 0 '+(barData.length*gap+padL)+' 120" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100px;display:block;">';
-  svg+='<defs>';
-  barData.forEach(function(_,i){svg+='<linearGradient id="mbg'+i+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8192C"/><stop offset="100%" stop-color="#FF8052"/></linearGradient>';});
-  svg+='</defs>';
-  barData.forEach(function(v,i){
-    var h=Math.max(4,Math.round(v/maxBar*barH));
-    var x=padL+i*gap; var y=barH-h+4;
-    var alpha=(i===6)?'1':'0.72';
-    svg+='<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+h+'" rx="6" fill="url(#mbg'+i+')" opacity="'+alpha+'"/>';
-    svg+='<text x="'+(x+barW/2)+'" y="114" text-anchor="middle" font-size="10" font-family="Inter,sans-serif" fill="#9A9AB0" font-weight="600">'+dayLabels[i]+'</text>';
-  });
-  svg+='</svg>';
+  var maxBar=Math.max.apply(null,barData) || 1;
+  var svg='<div style="display:flex;align-items:flex-end;gap:7px;height:104px;">'
+    + barData.map(function(v,i){
+        var h=Math.max(6,Math.round(v/maxBar*100));
+        return '<div title="'+sym+(v||0).toFixed(2)+'" style="flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:7px;">'
+          + '<div style="width:100%;max-width:26px;height:'+h+'%;background:'+(i===6?'linear-gradient(180deg,'+red+','+redDk+')':'#F3B4BC')+';border-radius:5px 5px 2px 2px;"></div>'
+          + '<div style="font-size:10.5px;color:'+mut+';font-weight:600;">'+dayLabels[i]+'</div></div>';
+      }).join('')
+    + '</div>';
 
-  var dealRows = dealsData.length
-    ? dealsData.slice(0,6).map(function(d){return [d.emoji,d.name,d.status,d.sold+'/'+d.total,d.id||d._dbId];})
-    : [['🍹','2-for-1 Mojitos','active','147/200','demo1'],['🍸','Cocktail Night','active','89/150','demo2'],['🍷','Buy-2-get-1 Drinks','scheduled','0/300','demo3'],['🥂','Premium Drinks','active','64/100','demo4']];
-
-  function badge(s){
-    var col=s==='active'?'#12A150':s==='scheduled'?'#d97706':'#9A9AB0';
-    var bg=s==='active'?'rgba(18,161,80,.1)':s==='scheduled'?'rgba(217,119,6,.1)':'rgba(154,154,176,.1)';
-    var lbl=s==='active'?'Active':s==='scheduled'?'Scheduled':'Paused';
-    return '<span style="display:inline-flex;align-items:center;gap:5px;background:'+bg+';color:'+col+';border-radius:20px;padding:4px 11px;font-size:12px;font-weight:700;font-family:Inter,sans-serif;">'
-      +'<span style="width:6px;height:6px;border-radius:50%;background:'+col+';flex-shrink:0;display:inline-block;"></span>'+lbl+'</span>';
-  }
-
-  // Reusable stat-card builder — fully inline-styled so it is immune to the
-  // #merch-root universal reset and the many conflicting .me-stat-* rules.
-  function statCard(icon, iconBg, topRight, value, label, sub){
-    return '<div style="background:#fff;border:1px solid #E8E8EC;border-radius:14px;padding:13px 18px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;min-height:0;">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">'
-        + '<div style="width:34px;height:34px;border-radius:10px;background:'+iconBg+';display:flex;align-items:center;justify-content:center;font-size:19px;line-height:1;">'+icon+'</div>'
-        + (topRight||'')
-      + '</div>'
-      + '<div style="font-size:25px;font-weight:900;color:#1A1A1A;letter-spacing:-1px;line-height:1.1;">'+value+'</div>'
-      + '<div style="font-size:13px;color:#6B7280;font-weight:600;margin-top:3px;">'+label+'</div>'
-      + (sub ? '<div style="font-size:11px;color:#9A9AB0;margin-top:3px;">'+sub+'</div>' : '')
+  function statCard(iconName, accent, topRight, value, label, sub){
+    return '<div style="'+card+'padding:14px 16px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+        + '<span style="width:34px;height:34px;border-radius:10px;background:'+accent+'14;color:'+accent+';display:flex;align-items:center;justify-content:center;">'+I(iconName,18)+'</span>'
+        + (topRight||'') + '</div>'
+      + '<div style="font-size:23px;font-weight:900;color:'+ink+';letter-spacing:-.7px;line-height:1.05;font-variant-numeric:tabular-nums;">'+value+'</div>'
+      + '<div style="font-size:12.5px;color:'+mut+';font-weight:600;margin-top:3px;">'+label+'</div>'
+      + (sub ? '<div style="font-size:11px;color:'+mut+';opacity:.85;margin-top:2px;">'+sub+'</div>' : '')
     + '</div>';
   }
-  var trendPill = function(t){ return '<span style="background:rgba(22,163,74,.1);color:#16a34a;font-size:11px;font-weight:700;padding:4px 9px;border-radius:14px;white-space:nowrap;">↑ '+t+'%</span>'; };
-  var notePill  = function(t){ return '<span style="font-size:11px;color:#9A9AB0;font-weight:600;white-space:nowrap;">'+t+'</span>'; };
+  var trendPill = function(t){ return '<span style="background:'+okTint+';color:'+ok+';font-size:11px;font-weight:800;padding:4px 9px;border-radius:14px;white-space:nowrap;">↑ '+t+'%</span>'; };
+  var notePill  = function(t){ return '<span style="font-size:11px;color:'+mut+';font-weight:600;white-space:nowrap;">'+t+'</span>'; };
 
   return (
     '<div class="me-dashv2">'
 
-      // ══ 1. QUICK ACTION CARDS ═══════════════════════════════════════════
-      + '<div class="me-dashv2-actions">'
-        +'<button onclick="meOpenCreate()" class="me-action-card create">'
-          +'<div class="me-action-icon">🎉</div>'
-          +'<div class="me-action-title">Create a Deal</div>'
-          +'<div class="me-action-subtitle">Promote your business and attract more customers.</div>'
-        +'</button>'
-        +'<button onclick="mePageNew(\'redeem\', null)" class="me-action-card redeem">'
-          +'<div class="me-action-icon">✅</div>'
-          +'<div class="me-action-title">Redeem Voucher</div>'
-          +'<div class="me-action-subtitle">Scan customer QR code to redeem a voucher instantly.</div>'
-        +'</button>'
-      +'</div>'
+    // ══ HERO: Redeem (counter-first) ══
+    + '<button onclick="mePageNew(\'redeem\', null)" style="width:100%;text-align:left;border:none;cursor:pointer;font-family:Inter,sans-serif;background:linear-gradient(135deg,'+red+','+redDk+');color:#fff;border-radius:18px;padding:18px;margin-bottom:12px;display:flex;align-items:center;gap:15px;box-shadow:0 8px 22px -8px rgba(232,25,44,.55);">'
+      + '<span style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+I('scan',26)+'</span>'
+      + '<span style="flex:1;min-width:0;"><span style="display:block;font-size:18px;font-weight:900;letter-spacing:-.3px;">Redeem a voucher</span>'
+      + '<span style="display:block;font-size:12.5px;font-weight:500;color:rgba(255,255,255,.82);margin-top:2px;">Scan a customer\'s QR or enter a code</span></span>'
+      + '<span style="opacity:.9;">'+I('arrow',22)+'</span>'
+    + '</button>'
 
-      // ══ 1b. EXPORT REPORT (PDF) ═════════════════════════════════════════
-      + '<button onclick="_openPrintReport(\'Appie Hour — Merchant Report\', meBuildReportHTML())" style="width:100%;background:#fff;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;font-size:13px;font-weight:800;color:#1A1A1A;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 2px rgba(0,0,0,.05);">📄 Save report as PDF</button>'
+    // ══ Secondary actions ══
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+      + '<button onclick="meOpenCreate()" style="'+card+'padding:13px 14px;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;gap:9px;color:'+ink+';">'
+        + '<span style="width:34px;height:34px;border-radius:10px;background:'+redTint+';color:'+red+';display:flex;align-items:center;justify-content:center;">'+I('plus',19)+'</span>'
+        + '<span style="font-size:13.5px;font-weight:800;text-align:left;line-height:1.2;">Create<br>a deal</span></button>'
+      + '<button onclick="mePageNew(\'deals\',null)" style="'+card+'padding:13px 14px;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;gap:9px;color:'+ink+';">'
+        + '<span style="width:34px;height:34px;border-radius:10px;background:'+redTint+';color:'+red+';display:flex;align-items:center;justify-content:center;">'+I('ticket',19)+'</span>'
+        + '<span style="font-size:13.5px;font-weight:800;text-align:left;line-height:1.2;">Manage<br>deals</span></button>'
+    + '</div>'
 
-      // ══ 2. PERFORMANCE METRICS (always 4-up on desktop, 2x2 below) ═══════
-      + '<div class="me-dashv2-stats">'
-        + statCard('📊','rgba(232,25,44,.1)', (metrics.revenue.trend>0 ? trendPill(metrics.revenue.trend) : ''),
-            revDisplay, 'Revenue', 'from '+totalDeals+' deal'+(totalDeals!==1?'s':''))
-        + statCard('⭐','rgba(255,179,0,.12)', notePill(metrics.avgRating.reviewCount+' review'+(metrics.avgRating.reviewCount!==1?'s':'')),
-            (avgRatingDisplay>0?avgRatingDisplay:'—'), 'Avg Rating',
-            (avgRatingDisplay>0?'Customer satisfaction':'No reviews yet'))
-        + statCard('🔥','rgba(18,161,80,.1)', notePill('Active'),
-            totalDealsActive+'<span style="font-size:16px;color:#9A9AB0;font-weight:600;">/'+totalDeals+'</span>',
-            'Active Deals', totalDealsScheduled+' scheduled')
-        + statCard('🚷','rgba(232,25,44,.1)', notePill('Reported'),
-            String(meNoShowStats.month||0),
-            'No-Shows', 'this month'+((meNoShowStats.total||0) > (meNoShowStats.month||0) ? (' · '+meNoShowStats.total+' all-time') : ''))
-      +'</div>'
+    // ══ Export report (PDF) ══
+    + '<button onclick="_openPrintReport(\'Appie Hour — Merchant Report\', meBuildReportHTML())" style="width:100%;'+card+'padding:12px;font-size:13px;font-weight:800;color:'+ink+';cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;"><span style="color:'+mut+';">'+I('doc',17)+'</span>Save report as PDF</button>'
 
-      // ══ 3. CHART + RECENT REDEMPTIONS (equal-height columns) ═════════════
-      + '<div class="me-dashv2-cols">'
+    // ══ Stats ══
+    + '<div class="me-dashv2-stats">'
+      + statCard('wallet', red, (metrics.revenue.trend>0 ? trendPill(metrics.revenue.trend) : ''), revDisplay, 'Revenue', 'from '+totalDeals+' deal'+(totalDeals!==1?'s':''))
+      + statCard('star', amber, notePill(metrics.avgRating.reviewCount+' review'+(metrics.avgRating.reviewCount!==1?'s':'')), (avgRatingDisplay>0?avgRatingDisplay:'—'), 'Avg rating', (avgRatingDisplay>0?'Customer satisfaction':'No reviews yet'))
+      + statCard('ticket', ok, notePill('Active'), totalDealsActive+'<span style="font-size:15px;color:'+mut+';font-weight:700;">/'+totalDeals+'</span>', 'Active deals', totalDealsScheduled+' scheduled')
+      + statCard('clock', mut, notePill('Reported'), String(_ns.month||0), 'No-shows', 'this month'+((_ns.total||0) > (_ns.month||0) ? (' · '+_ns.total+' all-time') : ''))
+    + '</div>'
 
-        // CHART
-        + '<div class="me-card" style="display:flex;flex-direction:column;">'
-          +'<div class="me-card-header">'
-            +'<span class="me-card-title">📊 Performance Overview</span>'
-            +'<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Last 7 days</span>'
-          +'</div>'
-          +'<div class="me-card-body" style="flex:1;display:flex;align-items:center;padding:20px 20px 8px;">'+svg+'</div>'
-          + (function(){ var st = metrics.salesTrend||{};
-              var trend = (st.pct!=null) ? '<span style="background:'+(st.pct>=0?'rgba(18,161,80,.1)':'rgba(232,25,44,.1)')+';color:'+(st.pct>=0?'#12A150':'#E8192C')+';font-size:11px;font-weight:800;padding:3px 8px;border-radius:12px;white-space:nowrap;">'+(st.pct>=0?'↑':'↓')+' '+Math.abs(st.pct)+'% vs last wk</span>' : '';
-              return '<div style="padding:0 20px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#6B7280;font-weight:700;font-family:Inter,sans-serif;"><span>'+sym+(st.thisRev||0).toFixed(0)+' this week</span>'+trend+'<span style="color:#9A9AB0;font-weight:600;margin-left:auto;">'+(st.sold||0)+' sold · '+(st.redeemed||0)+' redeemed</span></div>'; })()
-        +'</div>'
+    // ══ Chart + Recent redemptions ══
+    + '<div class="me-dashv2-cols">'
+      + '<div style="'+card+'overflow:hidden;display:flex;flex-direction:column;">'
+        + '<div style="padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:14px;font-weight:800;color:'+ink+';">Performance</span><span style="font-size:11px;color:'+mut+';font-weight:600;">Last 7 days</span></div>'
+        + '<div style="padding:0 16px 12px;">'+svg+'</div>'
+        + (function(){ var st = metrics.salesTrend||{};
+            var trend = (st.pct!=null) ? '<span style="background:'+(st.pct>=0?okTint:redTint)+';color:'+(st.pct>=0?ok:red)+';font-size:11px;font-weight:800;padding:3px 8px;border-radius:12px;white-space:nowrap;">'+(st.pct>=0?'↑':'↓')+' '+Math.abs(st.pct)+'%</span>' : '';
+            return '<div style="padding:10px 16px;border-top:1px solid '+line+';display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:'+mut+';font-weight:700;"><span style="color:'+ink+';">'+sym+(st.thisRev||0).toFixed(0)+' this week</span>'+trend+'<span style="color:'+mut+';font-weight:600;margin-left:auto;">'+(st.sold||0)+' sold · '+(st.redeemed||0)+' redeemed</span></div>'; })()
+      + '</div>'
+      + '<div style="'+card+'overflow:hidden;display:flex;flex-direction:column;">'
+        + '<div style="padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:14px;font-weight:800;color:'+ink+';">Recent redemptions</span>'
+          + '<button onclick="mePageNew(\'redeem\', null)" style="background:none;border:none;color:'+red+';font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Scanner →</button></div>'
+        + (metrics.recentRedemptions.length > 0
+            ? metrics.recentRedemptions.map(function(r,i){
+                return '<div style="display:flex;align-items:center;gap:12px;padding:11px 16px;'+(i>0?'border-top:1px solid '+line+';':'')+'">'
+                  + '<span style="width:36px;height:36px;border-radius:11px;background:'+okTint+';color:'+ok+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+I('check',18)+'</span>'
+                  + '<span style="flex:1;min-width:0;"><span style="display:block;font-size:13px;font-weight:800;color:'+ink+';">'+esc(r.user)+'</span>'
+                  + '<span style="display:block;font-size:11.5px;color:'+mut+';font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(r.deal)+' · '+r.code+'</span></span>'
+                  + '<span style="font-size:11px;color:'+mut+';font-weight:500;white-space:nowrap;flex-shrink:0;">'+r.time+'</span></div>';
+              }).join('')
+            : '<div style="padding:22px 16px;text-align:center;color:'+mut+';font-size:12.5px;font-weight:600;">No redemptions yet — they\'ll appear here.</div>')
+      + '</div>'
+    + '</div>'
 
-        // RECENT REDEMPTIONS
-        + '<div class="me-card" style="display:flex;flex-direction:column;">'
-          +'<div class="me-card-header">'
-            +'<span class="me-card-title">✅ Recent Redemptions</span>'
-            +'<button onclick="mePageNew(\'redeem\', null)" style="background:none;border:none;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Use full scanner →</button>'
-          +'</div>'
-          +'<div class="me-card-body" style="flex:1;">'
-            +(metrics.recentRedemptions.length > 0
-              ? '<div class="me-redemption-list">'
-                +metrics.recentRedemptions.map(function(r){
-                  return '<div class="me-redemption-item">'
-                    +'<div class="me-redemption-avatar">✅</div>'
-                    +'<div class="me-redemption-info">'
-                      +'<div class="me-redemption-user">'+esc(r.user)+'</div>'
-                      +'<div class="me-redemption-detail">'+esc(r.deal)+' · <code class="me-redemption-code">'+r.code+'</code></div>'
-                    +'</div>'
-                    +'<div class="me-redemption-time">'+r.time+'</div>'
-                    +'</div>';
-                }).join('')
-                +'</div>'
-              : '<div class="me-empty-state" style="padding:24px 16px;"><span class="me-empty-icon">📭</span><div class="me-empty-title">No redemptions yet</div><div class="me-empty-text">Vouchers will appear here when customers redeem them</div></div>')
-          +'</div>'
-        +'</div>'
+    // ══ Report sub-cards (unchanged real-data components) ══
+    + meRenderFunnel(metrics)
+    + meRenderPeakTimes(metrics)
+    + meRenderOutstanding(metrics)
+    + meRenderNoShow(metrics)
+    + meRenderRepeat(metrics)
 
-      +'</div>' // me-dashv2-cols
+    // ══ Payout bar (charcoal, on-brand — no teal) ══
+    + '<div style="background:linear-gradient(135deg,#20232A,#15171C);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:16px;color:#fff;">'
+      + '<span style="width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+I('wallet',22)+'</span>'
+      + '<div style="flex:1;min-width:0;"><div style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.7px;">Money you can cash out</div>'
+        + '<div style="font-size:28px;font-weight:900;letter-spacing:-1px;line-height:1;font-variant-numeric:tabular-nums;margin-top:3px;">'+sym+bal.toFixed(2)+'</div>'
+        + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;">after '+comm+'% commission</div></div>'
+      + '<button onclick="mePageNew(\'payouts\')" '+(canPay?'':'')+'style="background:'+(canPay?ok:'rgba(255,255,255,.12)')+';border:none;border-radius:12px;padding:12px 16px;font-size:13px;font-weight:800;color:#fff;cursor:'+(canPay?'pointer':'not-allowed')+';font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'+(canPay?'Cash out':'Min '+sym+minLocal.toFixed(2))+'</button>'
+    + '</div>'
 
-      // ══ 3b. DEAL FUNNEL (views → buy → redeem) ═════════════════════════
-      + meRenderFunnel(metrics)
-
-      // ══ 3c. PEAK REDEMPTION TIMES (full-width heatmap) ══════════════════
-      + meRenderPeakTimes(metrics)
-
-      // ══ 3d. OUTSTANDING & EXPIRING VOUCHERS ════════════════════════════
-      + meRenderOutstanding(metrics)
-
-      // ══ 3e. NO-SHOW REPORT ═════════════════════════════════════════════
-      + meRenderNoShow(metrics)
-
-      // ══ 3f. REPEAT CUSTOMERS (compact) ═════════════════════════════════
-      + meRenderRepeat(metrics)
-
-      // ══ 4. PAYOUT BAR (full width) ══════════════════════════════════════
-      + '<div style="background:linear-gradient(135deg,#0f2027,#1a3a4a,#2c5364);border-radius:14px;padding:22px 24px;display:flex;align-items:center;gap:16px;border:1px solid rgba(255,255,255,.1);color:white;">'
-        +'<div style="flex:1;min-width:0;">'
-          +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">Available for payout</div>'
-          +'<div style="font-size:30px;font-weight:900;font-family:Inter,sans-serif;letter-spacing:-1px;line-height:1;">'+sym+bal.toFixed(2)+'</div>'
-          +'<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:6px;">After '+comm+'% commission</div>'
-        +'</div>'
-        +'<button onclick="mePageNew(\'payouts\')" style="background:'+(canPay?'linear-gradient(135deg,#12A150,#34d058)':'rgba(255,255,255,.12)')+';border:none;border-radius:12px;padding:13px 18px;font-size:13px;font-weight:800;color:white;cursor:'+(canPay?'pointer':'not-allowed')+';font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'
-          +(canPay?'💸 Request Payout':'🔒 Min '+sym+minLocal.toFixed(2))
-        +'</button>'
-      +'</div>'
-
-    +'</div>' // me-dashv2
+    + '</div>'
   );
 }
 
@@ -26762,30 +26712,30 @@ function meRenderDealsEnhanced(){
       offText = (!isNaN(pn) && pn > 0) ? '€'+pn.toFixed(2) : 'DEAL';
     }
 
-    return '<div class="me-deal-card" data-deal-id="' + dealId + '" style="background:white;border:1.5px solid ' + (isSelected?'var(--red)':'#E8E8EC') + ';border-radius:12px;overflow:hidden;transition:border-color .2s;">'
+    return '<div class="me-deal-card" data-deal-id="' + dealId + '" style="background:white;border:1.5px solid ' + (isSelected?'var(--red)':'#ECEDF0') + ';border-radius:12px;overflow:hidden;transition:border-color .2s;">'
 
       // ── Compact header row (click to expand) ──
       +'<div onclick="meToggleDealExpand(event, \'' + dealId + '\')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;">'
         +'<div style="font-size:26px;flex-shrink:0;">'+(d.emoji||'🎉')+'</div>'
         +'<div style="flex:1;min-width:0;">'
           +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(d.name)+'</div>'
-          +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+d.type+' · '+d.time+'</div>'
+          +'<div style="font-size:11px;color:#6B7280;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+d.type+' · '+d.time+'</div>'
         +'</div>'
-        +(inactiveReason ? '<div style="background:#F0F0F4;color:#9A9AB0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'+inactiveReason+'</div>' : '<div style="background:rgba(232,25,44,.1);color:var(--red);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'+offText+'</div>')
+        +(inactiveReason ? '<div style="background:#ECEDF0;color:#6B7280;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'+inactiveReason+'</div>' : '<div style="background:rgba(232,25,44,.1);color:var(--red);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'+offText+'</div>')
         +'<div style="font-size:12px;font-weight:800;color:#12A150;flex-shrink:0;min-width:34px;text-align:right;">'+percent+'%</div>'
-        +'<div id="me-dealchev-' + dealId + '" style="font-size:12px;color:#9A9AB0;flex-shrink:0;transition:transform .2s;transform:rotate(' + (isExpanded?'180':'0') + 'deg);">▾</div>'
+        +'<div id="me-dealchev-' + dealId + '" style="font-size:12px;color:#6B7280;flex-shrink:0;transition:transform .2s;transform:rotate(' + (isExpanded?'180':'0') + 'deg);">▾</div>'
       +'</div>'
 
       // ── Expandable details ──
-      +'<div id="me-dealbody-' + dealId + '" style="display:' + (isExpanded?'block':'none') + ';padding:0 14px 14px;border-top:1px solid #F0F0F4;">'
+      +'<div id="me-dealbody-' + dealId + '" style="display:' + (isExpanded?'block':'none') + ';padding:0 14px 14px;border-top:1px solid #ECEDF0;">'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 10px;">'
-          +'<div><div style="font-size:10px;color:#9A9AB0;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Sold</div><div style="font-size:14px;font-weight:800;color:#1A1A1A;">'+sold+'<span style="color:#9A9AB0;font-weight:600;">/' + total + '</span></div></div>'
-          +'<div style="text-align:right;"><div style="font-size:10px;color:#9A9AB0;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Progress</div><div style="font-size:14px;font-weight:800;color:#12A150;">'+percent+'%</div></div>'
+          +'<div><div style="font-size:10px;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Sold</div><div style="font-size:14px;font-weight:800;color:#1A1A1A;">'+sold+'<span style="color:#6B7280;font-weight:600;">/' + total + '</span></div></div>'
+          +'<div style="text-align:right;"><div style="font-size:10px;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Progress</div><div style="font-size:14px;font-weight:800;color:#12A150;">'+percent+'%</div></div>'
         +'</div>'
-        +'<div style="background:#F5F5F7;border-radius:4px;height:6px;overflow:hidden;margin-bottom:12px;"><div style="width:'+percent+'%;height:100%;background:linear-gradient(90deg,var(--red),#FF6B35);border-radius:4px;transition:width .3s;"></div></div>'
+        +'<div style="background:#F6F7F9;border-radius:4px;height:6px;overflow:hidden;margin-bottom:12px;"><div style="width:'+percent+'%;height:100%;background:linear-gradient(90deg,#E8192C,#C20E1F);border-radius:4px;transition:width .3s;"></div></div>'
         +'<div style="display:flex;gap:8px;justify-content:flex-end;">'
-          +'<button onclick="event.stopPropagation();meOpenDealPreview(\'' + dealId + '\')" style="background:#F5F5F7;color:#555;border:1px solid #E8E8EC;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">👁 Preview</button>'
-          +'<button onclick="event.stopPropagation();meOpenEditDeal(\'' + dealId + '\')" style="background:#F5F5F7;color:#555;border:1px solid #E8E8EC;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">✎ Edit</button>'
+          +'<button onclick="event.stopPropagation();meOpenDealPreview(\'' + dealId + '\')" style="background:#F6F7F9;color:#555;border:1px solid #ECEDF0;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">👁 Preview</button>'
+          +'<button onclick="event.stopPropagation();meOpenEditDeal(\'' + dealId + '\')" style="background:#F6F7F9;color:#555;border:1px solid #ECEDF0;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">✎ Edit</button>'
           +'<button onclick="meToggleDealStatus(event, \'' + dealId + '\', \'' + (d.status === 'active'?'paused':'active') + '\')" style="background:' + (d.status === 'active'?'rgba(217,119,6,.1)':'rgba(18,161,80,.1)') + ';color:' + (d.status === 'active'?'#d97706':'#12A150') + ';border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">' + (d.status === 'active'?'⏸ Pause':'▶ Resume') + '</button>'
         +'</div>'
       +'</div>'
@@ -26796,7 +26746,7 @@ function meRenderDealsEnhanced(){
     '<div style="display:flex;flex-direction:column;gap:20px;">'
       // Filters & Bulk Actions
       +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">'
-        +'<div style="font-size:16px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;padding-left:8px;">🔥 My Deals <span style="color:#9A9AB0;font-size:13px;font-weight:600;">(' + arr.length + ')</span></div>'
+        +'<div style="font-size:16px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;padding-left:8px;">🔥 My Deals <span style="color:#6B7280;font-size:13px;font-weight:600;">(' + arr.length + ')</span></div>'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
           +'<button onclick="meOpenCreate()" style="background:var(--red);color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">+ New Deal</button>'
         +'</div>'
@@ -26806,7 +26756,7 @@ function meRenderDealsEnhanced(){
       +(activeDeal.length > 0 ? '<div style="display:flex;flex-direction:column;gap:12px;"><div style="font-size:14px;font-weight:700;color:#12A150;font-family:Inter,sans-serif;padding-left:8px;">● Active (' + activeDeal.length + ')</div>' + activeDeal.map(function(d){ return renderDealCard(d); }).join('') + '</div>' : '')
 
       // Inactive Deals Section — sold out, ended (past due), or paused
-      +(inactiveDeals.length > 0 ? '<div style="display:flex;flex-direction:column;gap:12px;"><div style="font-size:14px;font-weight:700;color:#9A9AB0;font-family:Inter,sans-serif;padding-left:8px;">⚫ Inactive (' + inactiveDeals.length + ')</div>' + inactiveDeals.map(function(d){ return renderDealCard(d); }).join('') + '</div>' : '')
+      +(inactiveDeals.length > 0 ? '<div style="display:flex;flex-direction:column;gap:12px;"><div style="font-size:14px;font-weight:700;color:#6B7280;font-family:Inter,sans-serif;padding-left:8px;">⚫ Inactive (' + inactiveDeals.length + ')</div>' + inactiveDeals.map(function(d){ return renderDealCard(d); }).join('') + '</div>' : '')
 
       // Empty state
       +(arr.length === 0 ? '<div class="me-empty-state"><span class="me-empty-icon">📭</span><div class="me-empty-title">No deals yet</div><div class="me-empty-text">Create your first deal to get started and attract customers</div><button onclick="meOpenCreate()" style="background:var(--red);color:white;border:none;border-radius:10px;padding:12px 20px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🎉 Create Deal</button></div>' : '')
@@ -29005,28 +28955,28 @@ function meRenderAnalyticsAdvanced(){
     // Time period selector
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       +'<button onclick="meSetAnalyticsPeriod(7)" style="background:var(--red);color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">📊 7 Days</button>'
-      +'<button onclick="meSetAnalyticsPeriod(30)" style="background:#F5F5F7;color:#555;border:1px solid #E8E8EC;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">📈 30 Days</button>'
-      +'<button onclick="meSetAnalyticsPeriod(90)" style="background:#F5F5F7;color:#555;border:1px solid #E8E8EC;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">📉 90 Days</button>'
+      +'<button onclick="meSetAnalyticsPeriod(30)" style="background:#F6F7F9;color:#555;border:1px solid #ECEDF0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">📈 30 Days</button>'
+      +'<button onclick="meSetAnalyticsPeriod(90)" style="background:#F6F7F9;color:#555;border:1px solid #ECEDF0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">📉 90 Days</button>'
     +'</div>'
 
     // Revenue chart
     +'<div class="me-card">'
       +'<div class="me-card-header">'
         +'<span class="me-card-title">📊 Revenue Trend</span>'
-        +'<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Last 7 days</span>'
+        +'<span style="font-size:11px;color:#6B7280;font-weight:600;">Last 7 days</span>'
       +'</div>'
       +'<div class="me-card-body">'
         +'<div style="display:flex;align-items:flex-end;gap:8px;height:100px;margin-bottom:12px;padding:0 8px;">'
           +_vals.map(function(v,i){
             var h = Math.max(4, Math.round(v/_maxV*100));
-            return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">'
-              +'<div title="'+sym+v.toFixed(2)+'" style="width:100%;background:linear-gradient(180deg,var(--red),#FF6B35);border-radius:6px 6px 0 0;height:'+h+'%;transition:all .2s;" onmouseenter="this.style.opacity=\'0.8\'" onmouseleave="this.style.opacity=\'1\'"></div>'
-              +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;">'+_labels[i]+'</div>'
+            return '<div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;">'
+              +'<div title="'+sym+v.toFixed(2)+'" style="width:100%;background:linear-gradient(180deg,var(--red),#C20E1F);border-radius:6px 6px 0 0;height:'+h+'%;transition:all .2s;" onmouseenter="this.style.opacity=\'0.8\'" onmouseleave="this.style.opacity=\'1\'"></div>'
+              +'<div style="font-size:11px;color:#6B7280;font-weight:600;">'+_labels[i]+'</div>'
               +'</div>';
           }).join('')
         +'</div>'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1.5px solid #E8E8EC;">'
-          +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;">Total (7 days): <span style="color:#1A1A1A;font-weight:800;">'+sym+_total7.toFixed(2)+'</span></div>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid #ECEDF0;">'
+          +'<div style="font-size:11px;color:#6B7280;font-weight:600;">Total (7 days): <span style="color:#1A1A1A;font-weight:800;">'+sym+_total7.toFixed(2)+'</span></div>'
         +'</div>'
       +'</div>'
     +'</div>'
@@ -29043,7 +28993,7 @@ function meRenderAnalyticsAdvanced(){
           +'</div>'
           +'<div class="me-stat-value">'+segments.new.count+'</div>'
           +'<div class="me-stat-label">New Customers</div>'
-          +'<div style="font-size:11px;color:#9A9AB0;margin-top:6px;">First purchase</div>'
+          +'<div style="font-size:11px;color:#6B7280;margin-top:6px;">First purchase</div>'
         +'</div>'
         +'<div class="me-stat-card">'
           +'<div class="me-stat-header">'
@@ -29051,7 +29001,7 @@ function meRenderAnalyticsAdvanced(){
           +'</div>'
           +'<div class="me-stat-value">'+segments.regular.count+'</div>'
           +'<div class="me-stat-label">Regular Customers</div>'
-          +'<div style="font-size:11px;color:#9A9AB0;margin-top:6px;">2-4 purchases</div>'
+          +'<div style="font-size:11px;color:#6B7280;margin-top:6px;">2-4 purchases</div>'
         +'</div>'
         +'<div class="me-stat-card">'
           +'<div class="me-stat-header">'
@@ -29059,7 +29009,7 @@ function meRenderAnalyticsAdvanced(){
           +'</div>'
           +'<div class="me-stat-value">'+segments.vip.count+'</div>'
           +'<div class="me-stat-label">VIP Customers</div>'
-          +'<div style="font-size:11px;color:#9A9AB0;margin-top:6px;">5+ purchases</div>'
+          +'<div style="font-size:11px;color:#6B7280;margin-top:6px;">5+ purchases</div>'
         +'</div>'
         +'<div class="me-stat-card">'
           +'<div class="me-stat-header">'
@@ -29067,7 +29017,7 @@ function meRenderAnalyticsAdvanced(){
           +'</div>'
           +'<div class="me-stat-value">'+segments.inactive.count+'</div>'
           +'<div class="me-stat-label">Inactive</div>'
-          +'<div style="font-size:11px;color:#9A9AB0;margin-top:6px;">30+ days</div>'
+          +'<div style="font-size:11px;color:#6B7280;margin-top:6px;">30+ days</div>'
         +'</div>'
       +'</div>'
     +'</div>'
@@ -29082,18 +29032,18 @@ function meRenderAnalyticsAdvanced(){
           {name:'New Customers', spent: segments.new.spent, color:'#3B82F6'},
           {name:'Regular Customers', spent: segments.regular.spent, color:'#12A150'},
           {name:'VIP Customers', spent: segments.vip.spent, color:'#FFB300'},
-          {name:'Inactive', spent: segments.inactive.spent, color:'#9A9AB0'}
+          {name:'Inactive', spent: segments.inactive.spent, color:'#6B7280'}
         ].map(function(seg){
           var total = segments.new.spent + segments.regular.spent + segments.vip.spent + segments.inactive.spent;
           var percent = total > 0 ? Math.round((seg.spent/total)*100) : 0;
-          return '<div style="padding:14px 18px;border-bottom:1px solid #F5F5F8;">'
+          return '<div style="padding:14px 18px;border-bottom:1px solid #F6F7F9;">'
             +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
               +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+esc(seg.name)+'</div>'
               +'<div style="font-size:13px;font-weight:800;color:'+seg.color+';font-family:Inter,sans-serif;">'+sym+seg.spent.toFixed(2)+'</div>'
             +'</div>'
             +'<div style="display:flex;align-items:center;gap:8px;">'
-              +'<div style="flex:1;height:8px;background:#F5F5F7;border-radius:4px;overflow:hidden;"><div style="width:'+percent+'%;height:100%;background:'+seg.color+';border-radius:4px;"></div></div>'
-              +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;min-width:35px;">'+percent+'%</div>'
+              +'<div style="flex:1;height:8px;background:#F6F7F9;border-radius:4px;overflow:hidden;"><div style="width:'+percent+'%;height:100%;background:'+seg.color+';border-radius:4px;"></div></div>'
+              +'<div style="font-size:11px;color:#6B7280;font-weight:600;min-width:35px;">'+percent+'%</div>'
             +'</div>'
             +'</div>';
         }).join('')
@@ -29104,11 +29054,11 @@ function meRenderAnalyticsAdvanced(){
     +'<div class="me-stat-grid">'
       +'<div class="me-stat-card">'
         +'<div class="me-stat-header">'
-          +'<div class="me-stat-icon" style="background:linear-gradient(135deg,#E8192C,#FF5533)12;">🎯</div>'
+          +'<div class="me-stat-icon" style="background:linear-gradient(135deg,#E8192C,#C20E1F)12;">🎯</div>'
         +'</div>'
         +'<div class="me-stat-value">'+(segments.vip.count > 0 ? Math.round((segments.vip.spent/(segments.new.spent+segments.regular.spent+segments.vip.spent))*100) : 0)+'%</div>'
         +'<div class="me-stat-label">VIP Revenue</div>'
-        +'<div style="font-size:11px;color:#9A9AB0;margin-top:6px;">From top customers</div>'
+        +'<div style="font-size:11px;color:#6B7280;margin-top:6px;">From top customers</div>'
       +'</div>'
       +'<div class="me-stat-card">'
         +'<div class="me-stat-header">'
@@ -29116,7 +29066,7 @@ function meRenderAnalyticsAdvanced(){
         +'</div>'
         +'<div class="me-stat-value">'+(segments.regular.count + segments.vip.count)+'</div>'
         +'<div class="me-stat-label">Repeat Customers</div>'
-        +'<div style="font-size:11px;color:#9A9AB0;margin-top:6px;">'+Math.round((((segments.regular.count + segments.vip.count)/(segments.new.count+segments.regular.count+segments.vip.count+segments.inactive.count))*100)||0)+'% retention</div>'
+        +'<div style="font-size:11px;color:#6B7280;margin-top:6px;">'+Math.round((((segments.regular.count + segments.vip.count)/(segments.new.count+segments.regular.count+segments.vip.count+segments.inactive.count))*100)||0)+'% retention</div>'
       +'</div>'
       +'<div class="me-stat-card">'
         +'<div class="me-stat-header">'
@@ -29124,7 +29074,7 @@ function meRenderAnalyticsAdvanced(){
         +'</div>'
         +'<div class="me-stat-value">'+sym+(segments.vip.count > 0 ? (segments.vip.spent/segments.vip.count).toFixed(0) : '0')+'</div>'
         +'<div class="me-stat-label">VIP Avg Value</div>'
-        +'<div style="font-size:11px;color:#9A9AB0;margin-top:6px;">Per customer</div>'
+        +'<div style="font-size:11px;color:#6B7280;margin-top:6px;">Per customer</div>'
       +'</div>'
       +'<div class="me-stat-card">'
         +'<div class="me-stat-header">'
@@ -29132,7 +29082,7 @@ function meRenderAnalyticsAdvanced(){
         +'</div>'
         +'<div class="me-stat-value">'+(segments.new.spent + segments.regular.spent + segments.vip.spent + segments.inactive.spent).toFixed(0)+'</div>'
         +'<div class="me-stat-label">Total Revenue</div>'
-        +'<div style="font-size:11px;color:#9A9AB0;margin-top:6px;">All time</div>'
+        +'<div style="font-size:11px;color:#6B7280;margin-top:6px;">All time</div>'
       +'</div>'
     +'</div>'
 
