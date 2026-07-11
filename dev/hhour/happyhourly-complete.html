@@ -5596,7 +5596,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260711200556';
+var BUILD_VERSION = '20260711202044';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -26833,71 +26833,89 @@ function meToggleDealStatus(event, dealId, newStatus){
 function meOpenDealPreview(dealId){
   var d = meFindDeal(dealId);
   if(!d){ showToast('Deal not found'); return; }
+  var ink='#16181D', mut='#6B7280', line='#ECEDF0', red='#E8192C';
 
-  // Sanitise discount badge
   var offText = (d.off && String(d.off).indexOf('NaN') === -1) ? d.off : '';
-  if(!offText){
-    var pn = parseFloat(String(d.price).replace(/[^0-9.]/g,''));
-    offText = (!isNaN(pn) && pn > 0) ? '€'+pn.toFixed(2) : 'DEAL';
-  }
-
-  var total = parseInt(d.total) || 0;
-  var sold  = parseInt(d.sold) || 0;
-  var percent = total > 0 ? Math.round((sold/total)*100) : 0;
-  var img = d.img || '';
+  if(!offText){ var pn = parseFloat(String(d.price).replace(/[^0-9.]/g,'')); offText = (!isNaN(pn) && pn > 0) ? '€'+pn.toFixed(2) : 'DEAL'; }
+  var total = parseInt(d.total) || 0, sold = parseInt(d.sold) || 0, percent = total > 0 ? Math.round((sold/total)*100) : 0;
   var priceStr = d.price ? (String(d.price).match(/[€$£]/) ? d.price : '€'+d.price) : '';
-  var wasStr   = d.wasPrice || d.was_price || '';
-  if(wasStr && !String(wasStr).match(/[€$£]/)) wasStr = '€'+wasStr;
+  var wasStr = d.wasPrice || d.was_price || ''; if(wasStr && !String(wasStr).match(/[€$£]/)) wasStr = '€'+wasStr;
   var statusCol = d.status==='active' ? '#12A150' : d.status==='scheduled' ? '#d97706' : '#9A9AB0';
   var statusLbl = d.status==='active' ? 'Active' : d.status==='scheduled' ? 'Scheduled' : 'Paused';
 
-  var hero = img
-    ? '<div style="height:200px;background:#000;position:relative;"><img src="'+(_imgThumb(img,600)||img)+'" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;"><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 50%,rgba(0,0,0,.55));"></div>'
+  // Every photo the customer can swipe through
+  var photos = (d.photos && d.photos.length) ? d.photos.slice() : (typeof meParsePhotos==='function' ? meParsePhotos(d.img || d.image_url) : []);
+  photos = (photos||[]).filter(Boolean).slice(0,3);
+  var mainImg = photos[0] || d.img || '';
+
+  var hero = mainImg
+    ? '<div style="height:200px;background:#000;position:relative;"><img src="'+((typeof _imgThumb==='function'?_imgThumb(mainImg,600):'')||mainImg)+'" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;"><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 50%,rgba(0,0,0,.55));"></div>'
     : '<div style="height:200px;background:linear-gradient(135deg,#1a0408,#4a1020);position:relative;display:flex;align-items:center;justify-content:center;"><div style="font-size:80px;">'+(d.emoji||'🎉')+'</div>';
-  hero += '<div style="position:absolute;top:14px;left:14px;background:#E8192C;color:white;font-size:13px;font-weight:800;padding:6px 12px;border-radius:20px;font-family:Inter,sans-serif;">'+offText+'</div>'
-    + '<div style="position:absolute;top:14px;right:14px;background:rgba(0,0,0,.55);color:white;font-size:10px;font-weight:800;padding:5px 11px;border-radius:20px;letter-spacing:.6px;font-family:Inter,sans-serif;">👁 PREVIEW</div>'
+  hero += '<div style="position:absolute;top:14px;left:14px;background:'+red+';color:white;font-size:13px;font-weight:800;padding:6px 12px;border-radius:20px;">'+esc(offText)+'</div>'
+    + '<div style="position:absolute;top:14px;right:14px;background:rgba(0,0,0,.55);color:white;font-size:10px;font-weight:800;padding:5px 11px;border-radius:20px;letter-spacing:.6px;">👁 CUSTOMER VIEW</div>'
     + '</div>';
+  // thumbnail strip when there is more than one photo
+  var thumbs = photos.length > 1 ? '<div style="display:flex;gap:8px;padding:12px 20px 0;">'
+    + photos.map(function(p,i){ return '<div style="width:56px;height:56px;border-radius:10px;overflow:hidden;border:2px solid '+(i===0?red:line)+';flex-shrink:0;"><img src="'+((typeof _imgThumb==='function'?_imgThumb(p,160):'')||p)+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>'; }).join('')
+    + '</div>' : '';
+
+  // All day+time windows the customer sees (multi-schedule)
+  var blocks = []; try { blocks = _dealSchedules(d); } catch(e){}
+  var schedRows = (blocks && blocks.length)
+    ? blocks.map(function(b){ var hrs = (typeof _fmtHoursRange==='function') ? _fmtHoursRange(b.from,b.to) : (d.hours||''); return '<div style="font-size:13px;font-weight:700;color:'+ink+';line-height:1.85;">🕐 '+esc(b.days||'Daily')+' · '+esc(hrs)+'</div>'; }).join('')
+    : '<div style="font-size:13px;font-weight:700;color:'+ink+';">'+esc(d.days||'—')+' · '+esc(d.hours||d.time||'—')+'</div>';
+
+  // Validity date range
+  function fmtD(x){ try { return new Date(String(x).slice(0,10)+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); } catch(e){ return x; } }
+  var sd = d.startDate || d.start_date || '', ed = d.endDate || d.end_date || '';
+  var validStr = (sd || ed) ? ((sd?fmtD(sd):'—') + ' – ' + (ed?fmtD(ed):'No end date')) : '';
+
+  var addr = d.address || '';
+  var web = d.website || d.social || '';
+  var cat = d.cat || d.category || '';
+  var terms = d.terms || d.termsConditions || '';
+
+  // Detail rows — only render fields that exist
+  function row(label, valueHtml){ return '<div style="display:flex;flex-direction:column;gap:3px;padding:11px 0;border-top:1px solid '+line+';">'
+    + '<div style="font-size:10.5px;font-weight:800;color:'+mut+';text-transform:uppercase;letter-spacing:.5px;">'+label+'</div>'
+    + '<div style="font-size:13px;font-weight:600;color:'+ink+';line-height:1.55;">'+valueHtml+'</div></div>'; }
+
+  var details = '<div style="background:#F6F7F9;border:1px solid '+line+';border-radius:14px;padding:2px 14px;margin-bottom:16px;">'
+    + '<div style="display:flex;flex-direction:column;gap:3px;padding:11px 0;"><div style="font-size:10.5px;font-weight:800;color:'+mut+';text-transform:uppercase;letter-spacing:.5px;">When it runs</div><div>'+schedRows+'</div></div>'
+    + (validStr ? row('Valid dates', esc(validStr)) : '')
+    + (addr ? row('Location', esc(addr)) : '')
+    + (cat ? row('Category', esc(String(cat).charAt(0).toUpperCase()+String(cat).slice(1))) : '')
+    + (web ? row('Website', esc(web)) : '')
+  + '</div>';
 
   var html = '<div onclick="if(event.target===this)meCloseDealPreview()" style="position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;font-family:Inter,sans-serif;">'
-    + '<div style="background:white;border-radius:20px;width:100%;max-width:420px;max-height:calc(100% - 40px);overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.3);">'
-      + hero
+    + '<div style="background:white;border-radius:20px;width:100%;max-width:430px;max-height:calc(100% - 40px);overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.3);">'
+      + hero + thumbs
       + '<div style="padding:18px 20px 22px;">'
         + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
-          + '<div style="font-size:20px;font-weight:900;color:#1A1A1A;flex:1;">'+esc(d.name||'Untitled Deal')+'</div>'
+          + '<div style="font-size:20px;font-weight:900;color:'+ink+';flex:1;">'+esc(d.name||'Untitled Deal')+'</div>'
           + (d.verified ? '<span style="font-size:11px;font-weight:800;color:#12A150;background:rgba(18,161,80,.1);padding:3px 9px;border-radius:20px;">✓ Verified</span>' : '')
         + '</div>'
-        + '<div style="font-size:13px;color:#9A9AB0;font-weight:600;margin-bottom:14px;">'+(d.type||'Deal')+' · <span style="color:'+statusCol+';">●</span> '+statusLbl+'</div>'
-
-        + (priceStr ? '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;"><div style="font-size:28px;font-weight:900;color:#E8192C;">'+priceStr+'</div>'+(wasStr?'<div style="font-size:16px;color:#9A9AB0;text-decoration:line-through;font-weight:600;">'+wasStr+'</div>':'')+'</div>' : '')
-
-        + '<div style="display:flex;gap:10px;margin-bottom:14px;">'
-          + '<div style="flex:1;background:#F5F5F7;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#9A9AB0;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">⏰ Hours</div><div style="font-size:13px;font-weight:700;color:#1A1A1A;margin-top:3px;">'+(d.hours||d.time||'—')+'</div></div>'
-          + '<div style="flex:1;background:#F5F5F7;border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:#9A9AB0;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">📅 Days</div><div style="font-size:13px;font-weight:700;color:#1A1A1A;margin-top:3px;">'+(d.days||'—')+'</div></div>'
-        + '</div>'
-
-        + (d.desc ? '<div style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">'+esc(d.desc)+'</div>' : '')
-
+        + '<div style="font-size:13px;color:'+mut+';font-weight:600;margin-bottom:14px;">'+esc(d.venue||d.name||d.type||'Deal')+' · <span style="color:'+statusCol+';">●</span> '+statusLbl+'</div>'
+        + (priceStr ? '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:16px;"><div style="font-size:28px;font-weight:900;color:'+red+';">'+esc(priceStr)+'</div>'+(wasStr?'<div style="font-size:16px;color:'+mut+';text-decoration:line-through;font-weight:600;">'+esc(wasStr)+'</div>':'')+(offText&&offText!=='DEAL'?'<div style="margin-left:auto;font-size:12px;font-weight:800;color:'+red+';background:rgba(232,25,44,.08);padding:4px 10px;border-radius:20px;">'+esc(offText)+'</div>':'')+'</div>' : '')
+        + details
+        + (d.desc ? '<div style="font-size:11px;font-weight:800;color:'+mut+';text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Description</div><div style="font-size:14px;color:#374151;line-height:1.7;margin-bottom:16px;">'+esc(d.desc)+'</div>' : '')
+        + (terms ? '<div style="font-size:11px;font-weight:800;color:'+mut+';text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Terms &amp; conditions</div><div style="font-size:12.5px;color:'+mut+';line-height:1.65;background:#F6F7F9;border:1px solid '+line+';border-radius:12px;padding:12px 14px;margin-bottom:16px;white-space:pre-line;">'+esc(terms)+'</div>' : '')
         + '<div style="margin-bottom:18px;">'
-          + '<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#9A9AB0;margin-bottom:5px;"><span>'+sold+' sold</span><span>'+total+' total · '+percent+'%</span></div>'
-          + '<div style="background:#F5F5F7;border-radius:4px;height:7px;overflow:hidden;"><div style="width:'+percent+'%;height:100%;background:linear-gradient(90deg,#E8192C,#FF6B35);border-radius:4px;"></div></div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:'+mut+';margin-bottom:5px;"><span>'+sold+' sold</span><span>'+total+' total · '+percent+'%</span></div>'
+          + '<div style="background:#F1F1F4;border-radius:4px;height:7px;overflow:hidden;"><div style="width:'+percent+'%;height:100%;background:linear-gradient(90deg,'+red+',#C20E1F);border-radius:4px;"></div></div>'
         + '</div>'
-
-        + '<div style="background:#FFF8E6;border:1px solid #FFE2A8;border-radius:10px;padding:10px 12px;font-size:11px;color:#92700A;font-weight:600;margin-bottom:14px;">👁 This is how your deal appears to customers in the app.</div>'
-
+        + '<div style="background:#FFF8E6;border:1px solid #FFE2A8;border-radius:10px;padding:10px 12px;font-size:11px;color:#92700A;font-weight:600;margin-bottom:14px;">👁 Exactly what customers see when they open your deal.</div>'
         + '<div style="display:flex;gap:10px;">'
-          + '<button onclick="meCloseDealPreview()" style="flex:1;background:#F5F5F7;color:#555;border:1px solid #E8E8EC;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Close</button>'
-          + '<button onclick="meCloseDealPreview();meOpenEditDeal(\''+dealId+'\')" style="flex:1;background:#E8192C;color:white;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">✎ Edit Deal</button>'
+          + '<button onclick="meCloseDealPreview()" style="flex:1;background:#F6F7F9;color:#4B5563;border:1px solid '+line+';border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Close</button>'
+          + '<button onclick="meCloseDealPreview();meOpenEditDeal(\''+dealId+'\')" style="flex:1;background:'+red+';color:white;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Edit deal</button>'
         + '</div>'
       + '</div>'
     + '</div>'
   + '</div>';
 
   var holder = document.getElementById('me-deal-preview-holder');
-  if(!holder){
-    holder = document.createElement('div');
-    holder.id = 'me-deal-preview-holder';
-    document.body.appendChild(holder);
-  }
+  if(!holder){ holder = document.createElement('div'); holder.id = 'me-deal-preview-holder'; document.body.appendChild(holder); }
   holder.innerHTML = html;
 }
 
@@ -34368,11 +34386,14 @@ function _setupDealMap() {
   <div id="me-main-wrapper">
     <!-- Topbar -->
     <div id="me-topbar">
-      <div style="display:flex;align-items:center;gap:8px;min-width:0;">
-        <svg width="19" height="24" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0;"><path d="M29 2C14.6 2 3 13.4 3 27.4 3 45.6 29 72 29 72s26-26.4 26-44.6C55 13.4 43.4 2 29 2Z" fill="#E8192C"/><path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#fff"/></svg>
-        <div style="min-width:0;line-height:1.05;">
-          <div style="font-size:15px;font-weight:900;color:#fff;letter-spacing:-.3px;font-family:Inter,sans-serif;">Appie Hour</div>
-          <div style="font-size:9px;font-weight:800;color:#FF6B78;text-transform:uppercase;letter-spacing:1.4px;margin-top:1px;font-family:Inter,sans-serif;">for Business</div>
+      <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+        <span style="display:flex;flex-shrink:0;filter:drop-shadow(0 2px 7px rgba(232,25,44,.5));"><svg width="20" height="25" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;"><path d="M29 2C14.6 2 3 13.4 3 27.4 3 45.6 29 72 29 72s26-26.4 26-44.6C55 13.4 43.4 2 29 2Z" fill="#E8192C"/><path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#fff"/></svg></span>
+        <div style="min-width:0;line-height:1;">
+          <div style="font-size:15.5px;font-weight:900;color:#fff;letter-spacing:-.3px;font-family:Inter,sans-serif;">Appie Hour</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:2.5px;">
+            <span style="height:1px;width:11px;background:#FF6B78;opacity:.75;border-radius:1px;"></span>
+            <span style="font-size:8.5px;font-weight:800;color:#FF6B78;text-transform:uppercase;letter-spacing:2px;font-family:Inter,sans-serif;">for Business</span>
+          </div>
         </div>
         <span class="me-topbar-title" id="me-page-title" style="display:none;"></span>
       </div>
@@ -35002,10 +35023,15 @@ function _setupDealMap() {
   <div class="ml-blob" style="bottom:-70px;right:-50px;width:320px;height:320px;background:radial-gradient(circle,rgba(16,185,129,.32),transparent 70%);animation-delay:-7s;"></div>
   <div class="ml-blob" style="top:44%;left:-80px;width:220px;height:220px;background:radial-gradient(circle,rgba(110,231,183,.4),transparent 70%);animation-delay:-3s;"></div>
   <div class="ls-card" style="width:100%;max-width:440px;margin:0 auto;">
-    <!-- Logo -->
-    <div style="text-align:center;margin-bottom:8px;">
-      <img src="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-logo.png?v=3" alt="Appie Hour" style="width:118px;height:auto;display:block;margin:0 auto;">
-      <div style="font-size:12px;font-weight:700;color:#9A9AB0;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;">Merchant</div>
+    <!-- Appie Hour · for Business brand lockup -->
+    <div style="text-align:center;margin-bottom:20px;">
+      <img src="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-logo.png?v=3" alt="Appie Hour" style="width:162px;height:auto;display:block;margin:0 auto;filter:drop-shadow(0 10px 22px rgba(232,25,44,.20));">
+      <div style="display:flex;align-items:center;justify-content:center;gap:11px;margin-top:12px;">
+        <span style="height:2px;width:28px;background:#E8192C;border-radius:2px;opacity:.5;"></span>
+        <span style="font-size:13px;font-weight:800;color:#E8192C;letter-spacing:3.5px;text-transform:uppercase;">for Business</span>
+        <span style="height:2px;width:28px;background:#E8192C;border-radius:2px;opacity:.5;"></span>
+      </div>
+      <div style="font-size:13.5px;color:#5A6B62;font-weight:500;margin-top:9px;line-height:1.5;">Manage your venue, deals &amp; payouts</div>
     </div>
 
     <!-- Language pill -->
