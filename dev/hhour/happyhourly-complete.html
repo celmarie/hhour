@@ -1003,7 +1003,7 @@ body.sheet-open .bnav{display:none !important;}
 .me-sheet-pip{width:40px;height:4px;background:#E0E0E0;border-radius:2px;margin:0 auto 18px;}
 
 /* Cards */
-.me-card{background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.me-card{background:#fff;border-radius:16px;border:1px solid #ECEDF0;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 3px rgba(16,24,40,.05);}
 .me-card-hdr{padding:16px 28px;border-bottom:1px solid #F0F0F4;display:flex;align-items:center;justify-content:space-between;}
 .me-card-title{font-size:14px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;}
 .me-card-link{font-size:13px;font-weight:700;color:#E8192C;background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;}
@@ -1486,10 +1486,10 @@ body.translated-ltr,body.translated-rtl{top:0 !important;margin-top:0 !important
 /* Card container - Admin panel style with spacious layout */
 .me-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid var(--me-border);
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(16,24,40,.05);
   margin-bottom: var(--me-spacing-2xl);
   transition: box-shadow 0.2s;
 }
@@ -1499,7 +1499,7 @@ body.translated-ltr,body.translated-rtl{top:0 !important;margin-top:0 !important
 }
 
 .me-card-header {
-  padding: 20px 24px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--me-border);
   display: flex;
   align-items: center;
@@ -1508,14 +1508,14 @@ body.translated-ltr,body.translated-rtl{top:0 !important;margin-top:0 !important
 }
 
 .me-card-title {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
   color: var(--me-text);
   font-family: Inter, sans-serif;
 }
 
 .me-card-body {
-  padding: 24px;
+  padding: 16px;
 }
 
 /* Two-column dashboard layout */
@@ -5596,7 +5596,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260710152416';
+var BUILD_VERSION = '20260711174710';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -26517,201 +26517,139 @@ function meRenderDashNew(){
   );
 }
 
+// Merchant portal line-icon set — consistent 24px stroke icons (currentColor),
+// replacing emoji-as-icon for a cleaner, on-brand product feel.
+function meIcon(name, size){
+  size = size || 20;
+  var P = {
+    scan:  '<path d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M20 8V6a2 2 0 0 0-2-2h-2M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M4 12h16"/>',
+    qr:    '<path d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5z"/><path d="M15 15h2v2M19 15v4M15 19h2"/>',
+    ticket:'<path d="M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4z"/><path d="M12 7v10" stroke-dasharray="1.5 3"/>',
+    wallet:'<path d="M3 8a2 2 0 0 1 2-2h12.5a1.5 1.5 0 0 1 1.5 1.5V8M3 8v9a2 2 0 0 0 2 2h13a1 1 0 0 0 1-1v-3M3 8h16a1 1 0 0 1 1 1v3M16.5 12h.01"/>',
+    chart: '<path d="M5 20V13M12 20V5M19 20v-9"/>',
+    star:  '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z"/>',
+    eye:   '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.5"/>',
+    check: '<path d="M20 6.5L9.5 17 4 11.5"/>',
+    plus:  '<path d="M12 5v14M5 12h14"/>',
+    bolt:  '<path d="M13 2.5L5 13h6l-1 8.5L19 11h-6l1-8.5z"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.8"/>',
+    arrow: '<path d="M5 12h13M13 6.5l6 5.5-6 5.5"/>',
+    edit:  '<path d="M4 20h4L18.5 9.5a2 2 0 0 0-3-3L5 17v3z"/><path d="M13.5 8l3 3"/>',
+    flame: '<path d="M12 3s5 3.5 5 8a5 5 0 0 1-10 0c0-1.5.8-2.8.8-2.8S8 10 9.5 10.5C9 7 12 3 12 3z"/>',
+    users: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.2a3.2 3.2 0 0 1 0 6M17.5 20a5.5 5.5 0 0 0-3-4.9"/>',
+    euro:  '<path d="M16.5 6.5A6 6 0 1 0 16.5 17.5M5 10.5h7M5 13.5h6"/>',
+    trend: '<path d="M4 15l5-5 3 3 6-7M15 6h4v4"/>',
+    bank:  '<path d="M3.5 9.5L12 4l8.5 5.5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3.5 20.5h17"/>',
+    doc:   '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 16.5h6"/>'
+  };
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;">'+(P[name]||'')+'</svg>';
+}
+
 function meRenderDash(){
   var sym = (typeof finSym==='function') ? finSym() : '€';
   var comm = (typeof finConfig!=='undefined') ? finConfig.commission : 15;
   var minLocal = (typeof finMinPayoutLocal==='function') ? finMinPayoutLocal() : 9.20;
   var bal = (typeof meCurrentBalance!=='undefined') ? meCurrentBalance : 0;
   var canPay = bal >= minLocal;
+  var I = meIcon;
+  var ink='#16181D', mut='#6B7280', line='#ECEDF0', red='#E8192C', redDk='#C20E1F',
+      redTint='rgba(232,25,44,.08)', ok='#12A150', okTint='rgba(18,161,80,.10)', amber='#D97706';
+  var card='background:#fff;border:1px solid '+line+';border-radius:16px;box-shadow:0 1px 3px rgba(16,24,40,.05);';
+  var hd='padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;';
+  var hdT='font-size:14px;font-weight:800;color:'+ink+';letter-spacing:-.2px;';
+  var link='background:none;border:none;font-size:12.5px;font-weight:700;color:'+red+';cursor:pointer;font-family:Inter,sans-serif;display:inline-flex;align-items:center;gap:3px;';
 
-  // ── Bar chart ──
-  var barData=[42,68,55,71,94,110,78];
-  var dayLabels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  var maxBar=Math.max.apply(null,barData);
-  var barH=90; var barW=36; var gap=60; var padL=8;
-  var svg='<svg viewBox="0 0 '+(barData.length*gap+padL)+' 120" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100px;display:block;">';
-  svg+='<defs>';
-  barData.forEach(function(_,i){svg+='<linearGradient id="mbg'+i+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8192C"/><stop offset="100%" stop-color="#FF8052"/></linearGradient>';});
-  svg+='</defs>';
-  barData.forEach(function(v,i){
-    var h=Math.max(4,Math.round(v/maxBar*barH));
-    var x=padL+i*gap; var y=barH-h+4;
-    var alpha=(i===5)?'1':'0.72';
-    svg+='<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+h+'" rx="6" fill="url(#mbg'+i+')" opacity="'+alpha+'"/>';
-    svg+='<text x="'+(x+barW/2)+'" y="114" text-anchor="middle" font-size="10" font-family="Inter,sans-serif" fill="#9A9AB0" font-weight="600">'+dayLabels[i]+'</text>';
-  });
-  svg+='</svg>';
+  // ── REAL metrics ──
+  var M = (typeof calculateMerchantMetrics==='function') ? calculateMerchantMetrics() : {};
+  var st = M.salesTrend || {}, av = M.avgRating || {};
+  function money(v){ v=parseFloat(v)||0; return sym + (v>=1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(v<100&&v%1!==0?2:0)); }
+  // redeemed today (from real purchases)
+  var _t0 = new Date(); _t0.setHours(0,0,0,0); _t0 = _t0.getTime();
+  var redeemedToday = 0;
+  (typeof vouchersData!=='undefined'?vouchersData:[]).forEach(function(v){ (v.purchases||[]).forEach(function(p){
+    if(p.status==='used'){ var t=new Date(p.redeemedAt||p.date||0).getTime(); if(!isNaN(t)&&t>=_t0) redeemedToday++; }
+  }); });
 
-  function badge(s){
-    var col=s==='active'?'#12A150':s==='scheduled'?'#d97706':'#9A9AB0';
-    var bg=s==='active'?'rgba(18,161,80,.1)':s==='scheduled'?'rgba(217,119,6,.1)':'rgba(154,154,176,.1)';
-    var lbl=s==='active'?'Active':s==='scheduled'?'Scheduled':'Paused';
-    return '<span style="display:inline-flex;align-items:center;gap:5px;background:'+bg+';color:'+col+';border-radius:20px;padding:4px 11px;font-size:12px;font-weight:700;font-family:Inter,sans-serif;">'
-      +'<span style="width:6px;height:6px;border-radius:50%;background:'+col+';flex-shrink:0;display:inline-block;"></span>'+lbl+'</span>';
+  function pill(s){
+    var m = s==='active' ? [ok,okTint,'Active'] : s==='scheduled' ? [amber,'rgba(217,119,6,.10)','Scheduled'] : [mut,'rgba(107,114,128,.10)','Paused'];
+    return '<span style="display:inline-flex;align-items:center;gap:5px;background:'+m[1]+';color:'+m[0]+';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700;white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:'+m[0]+';"></span>'+m[2]+'</span>';
   }
 
-  var dealRows = dealsData.length
-    ? dealsData.slice(0,6).map(function(d){return [d.emoji,d.name,d.status,d.sold+'/'+d.total,d.id||d._dbId];})
-    : [['🍹','2-for-1 Mojitos','active','147/200','demo1'],['🍸','Cocktail Night','active','89/150','demo2'],['🍷','Buy-2-get-1 Drinks','scheduled','0/300','demo3'],['🥂','Premium Drinks','active','64/100','demo4']];
+  var deals = (dealsData||[]).slice(0,4);
+  var redemptions = (M.recentRedemptions||[]).slice(0,3);
 
-  var actRows=[
-    {icon:'🎟️',bg:'rgba(232,25,44,.08)',actor:'Jamie M.',action:'bought 2× 2-for-1 Mojitos voucher',time:'2 min ago'},
-    {icon:'✅',bg:'rgba(18,161,80,.08)',actor:'Code HH-W3N7',action:'redeemed by Sara R.',time:'8 min ago'},
-    {icon:'⭐',bg:'rgba(255,179,0,.1)',actor:'Laia F.',action:'left a 5★ review',time:'22 min ago'},
-    {icon:'🎟️',bg:'rgba(232,25,44,.08)',actor:'Marco K.',action:'bought Cocktail Night voucher',time:'1h ago'},
+  var stats = [
+    {ic:'check', val:String(redeemedToday), lbl:'Redeemed today', accent:ok},
+    {ic:'wallet',val:money(st.thisRev||0), lbl:'Revenue · 7d', accent:red, trend:(st.pct!=null?((st.pct>=0?'+':'')+st.pct+'%'):null)},
+    {ic:'star',  val:(av.value||'—'), lbl:'Rating'+(av.reviewCount?' · '+av.reviewCount:''), accent:amber}
   ];
 
-  var card ='background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05);';
-  var hdr  ='padding:14px 18px;border-bottom:1.5px solid #F0F0F4;display:flex;align-items:center;justify-content:space-between;';
-  var title='font-size:14px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;';
-  var lbl  ='font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;font-family:Inter,sans-serif;';
-
-  return (
-
-    // ══ 1. QUICK ACTION BUTTONS ══════════════════════════════════════════════
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">'
-
-      // CREATE DEAL
-      +'<button onclick="meOpenCreate()" style="background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:16px;padding:18px 16px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;display:flex;flex-direction:column;gap:6px;box-shadow:0 4px 16px rgba(232,25,44,.3);">'
-        +'<div style="font-size:26px;line-height:1;">🎉</div>'
-        +'<div style="font-size:15px;font-weight:900;line-height:1.2;">Create a Deal</div>'
-        +'<div style="font-size:11px;opacity:.8;font-weight:500;">Goes live instantly</div>'
-      +'</button>'
-
-      // REDEEM VOUCHER
-      +'<button onclick="mePage(\'redeem\',null)" style="background:linear-gradient(135deg,#0f2027,#2c5364);color:white;border:none;border-radius:16px;padding:18px 16px;cursor:pointer;font-family:Inter,sans-serif;text-align:left;display:flex;flex-direction:column;gap:6px;box-shadow:0 4px 16px rgba(0,0,0,.18);">'
-        +'<div style="font-size:26px;line-height:1;">✅</div>'
-        +'<div style="font-size:15px;font-weight:900;line-height:1.2;">Redeem Voucher</div>'
-        +'<div style="font-size:11px;opacity:.7;font-weight:500;">Scan customer QR</div>'
-      +'</button>'
-
-    +'</div>'
-
-    // ══ 2. STAT CARDS ════════════════════════════════════════════════════════
-    +'<div class="me-stat-grid">'
-    +[['📊',sym+'2,340','Revenue','↑ 18%','linear-gradient(135deg,#E8192C,#FF5533)'],
-      ['👁️','4,812','Deal views','↑ 41%','linear-gradient(135deg,#3B82F6,#60A5FA)'],
-      ['⭐','4.8','Avg rating','127 reviews','linear-gradient(135deg,#FFB300,#FFC93C)']].map(function(s,idx){
-      return '<div style="background:white;border-radius:14px;border:1.5px solid #E8E8EC;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);transition:transform .2s,box-shadow .2s;padding:16px;">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
-          +'<div style="width:40px;height:40px;border-radius:12px;background:'+s[4]+'12;display:flex;align-items:center;justify-content:center;font-size:20px;">'+s[0]+'</div>'
-          +'<div style="background:rgba(22,163,74,.1);color:#16a34a;font-size:11px;font-weight:700;padding:3px 8px;border-radius:16px;white-space:nowrap;">'+s[3]+'</div>'
-        +'</div>'
-        +'<div style="font-size:26px;font-weight:900;color:#1A1A1A;letter-spacing:-1px;font-family:Inter,sans-serif;margin-bottom:6px;">'+s[1]+'</div>'
-        +'<div style="font-size:12px;color:#9A9AB0;font-weight:600;font-family:Inter,sans-serif;">'+s[2]+'</div>'
-      +'</div>';
+  return ''
+  + '<button onclick="mePage(\'redeem\',null)" style="width:100%;text-align:left;border:none;cursor:pointer;font-family:Inter,sans-serif;'
+    + 'background:linear-gradient(135deg,'+red+','+redDk+');color:#fff;border-radius:18px;padding:18px 18px;margin-bottom:12px;'
+    + 'display:flex;align-items:center;gap:15px;box-shadow:0 8px 22px -8px rgba(232,25,44,.55);">'
+    + '<span style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+I('scan',26)+'</span>'
+    + '<span style="flex:1;min-width:0;">'
+      + '<span style="display:block;font-size:18px;font-weight:900;letter-spacing:-.3px;">Redeem a voucher</span>'
+      + '<span style="display:block;font-size:12.5px;font-weight:500;color:rgba(255,255,255,.82);margin-top:2px;">Scan a customer\'s QR or enter a code</span>'
+    + '</span><span style="opacity:.9;">'+I('arrow',22)+'</span>'
+  + '</button>'
+  + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">'
+    + '<button onclick="meOpenCreate()" style="'+card+'padding:13px 14px;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;gap:9px;color:'+ink+';">'
+      + '<span style="width:34px;height:34px;border-radius:10px;background:'+redTint+';color:'+red+';display:flex;align-items:center;justify-content:center;">'+I('plus',19)+'</span>'
+      + '<span style="font-size:13.5px;font-weight:800;text-align:left;line-height:1.2;">Create<br>a deal</span></button>'
+    + '<button onclick="mePage(\'deals\',null)" style="'+card+'padding:13px 14px;cursor:pointer;font-family:Inter,sans-serif;display:flex;align-items:center;gap:9px;color:'+ink+';">'
+      + '<span style="width:34px;height:34px;border-radius:10px;background:'+redTint+';color:'+red+';display:flex;align-items:center;justify-content:center;">'+I('ticket',19)+'</span>'
+      + '<span style="font-size:13.5px;font-weight:800;text-align:left;line-height:1.2;">Manage<br>deals</span></button>'
+  + '</div>'
+  + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">'
+    + stats.map(function(s){
+      return '<div style="'+card+'padding:13px 12px;">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;"><span style="color:'+s.accent+';">'+I(s.ic,18)+'</span>'
+          + (s.trend?'<span style="font-size:10.5px;font-weight:800;color:'+(String(s.trend).charAt(0)==='-'?red:ok)+';">'+s.trend+'</span>':'')+'</div>'
+        + '<div style="font-size:20px;font-weight:900;color:'+ink+';letter-spacing:-.6px;font-variant-numeric:tabular-nums;">'+s.val+'</div>'
+        + '<div style="font-size:11px;color:'+mut+';font-weight:600;margin-top:2px;">'+s.lbl+'</div></div>';
     }).join('')
-    +'</div>'
-
-    // ══ 3. REDEEM SECTION (inline quick-redeem) ═══════════════════════════
-    +'<div style="'+card+'margin-bottom:16px;">'
-      +'<div style="'+hdr+'">'
-        +'<span style="'+title+'">✅ Redeem Voucher</span>'
-        +'<button onclick="mePage(\'redeem\',null)" style="background:none;border:none;font-size:12px;font-weight:700;color:#E8192C;cursor:pointer;font-family:Inter,sans-serif;">Full scanner →</button>'
-      +'</div>'
-      +'<div style="padding:16px;">'
-        +'<div style="font-size:12px;color:#9A9AB0;margin-bottom:12px;font-family:Inter,sans-serif;">Enter a voucher code or use the full scanner to validate a customer QR code</div>'
-        // Code input row
-        +'<div style="display:flex;gap:8px;margin-bottom:12px;">'
-          +'<input id="dash-redeem-input" type="text" placeholder="e.g. HH-M4X9" maxlength="10" style="flex:1;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:12px 14px;font-family:Inter,monospace;font-size:15px;font-weight:700;color:#1A1A1A;outline:none;text-transform:uppercase;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'">'
-          +'<button onclick="meDashRedeemCode()" style="background:linear-gradient(135deg,#12A150,#34d058);color:white;border:none;border-radius:12px;padding:12px 18px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Redeem</button>'
-        +'</div>'
-        // Recent redemptions
-        +'<div style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Recent redemptions today</div>'
-        +[{code:'HH-W3N7',deal:'2-for-1 Mojitos',user:'Sara R.',time:'8 min ago'},
-          {code:'HH-C3L8',deal:'Cocktail Night',user:'Tom K.',time:'34 min ago'},
-          {code:'HH-M4X9',deal:'Premium Drinks',user:'Laia F.',time:'1h ago'}].map(function(r){
-          return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #F5F5F8;">'
-            +'<div style="width:36px;height:36px;border-radius:10px;background:rgba(18,161,80,.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">✅</div>'
-            +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:700;color:#1A1A1A;font-family:Inter,sans-serif;">'+esc(r.user)+'</div>'
-              +'<div style="font-size:11px;color:#9A9AB0;font-weight:500;font-family:Inter,sans-serif;">'+esc(r.deal)+' · <code style="background:#F5F5F7;padding:1px 5px;border-radius:4px;font-size:11px;">'+r.code+'</code></div>'
-            +'</div>'
-            +'<div style="font-size:11px;color:#9A9AB0;font-weight:500;white-space:nowrap;font-family:Inter,sans-serif;">'+r.time+'</div>'
-          +'</div>';
-        }).join('')
-      +'</div>'
-    +'</div>'
-
-    // ══ 4. TWO-COLUMN: DEALS TABLE + CHART/ACTIVITY ══════════════════════
-    +'<div class="me-dash-cols">'
-
-      // LEFT — deals table
-      +'<div style="'+card+'min-width:0;" class="me-dash-left">'
-        +'<div style="'+hdr+'">'
-          +'<span style="'+title+'">🔥 Active Deals</span>'
-          +'<div style="display:flex;gap:8px;">'
-            +'<button onclick="meOpenCreate()" style="background:#E8192C;color:white;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">+ New</button>'
-            +'<button onclick="mePage(\'deals\',null)" style="background:none;border:none;font-size:13px;font-weight:700;color:#E8192C;cursor:pointer;font-family:Inter,sans-serif;">All →</button>'
-          +'</div>'
-        +'</div>'
-        +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:340px;">'
-          +'<thead><tr style="background:#FAFAFA;">'
-          +['Deal','Status','Sold',''].map(function(h,hi){
-              return '<th style="padding:10px '+(hi===0?'16px':'10px')+';text-align:'+(hi===3?'right':hi===2?'center':'left')+';font-size:10px;font-weight:800;color:#B0B0C0;letter-spacing:.8px;text-transform:uppercase;font-family:Inter,sans-serif;border-bottom:1.5px solid #F0F0F4;">'+h+'</th>';
-            }).join('')
-          +'</tr></thead><tbody>'
-          +dealRows.map(function(d){
-            return '<tr onmouseover="this.style.background=\'#FAFBFF\'" onmouseout="this.style.background=\'white\'">'
-              +'<td style="padding:11px 16px;border-bottom:1px solid #F8F8FA;">'
-                +'<div style="display:flex;align-items:center;gap:10px;">'
-                  +'<div style="width:34px;height:34px;border-radius:9px;background:rgba(232,25,44,.08);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">'+d[0]+'</div>'
-                  +'<span style="font-size:13px;font-weight:700;color:#1A1A1A;font-family:Inter,sans-serif;">'+d[1]+'</span>'
-                +'</div>'
-              +'</td>'
-              +'<td style="padding:10px;border-bottom:1px solid #F8F8FA;">'+badge(d[2])+'</td>'
-              +'<td style="padding:10px;border-bottom:1px solid #F8F8FA;text-align:center;font-size:13px;font-weight:700;color:#555;font-family:Inter,sans-serif;">'+d[3]+'</td>'
-              +'<td style="padding:10px;border-bottom:1px solid #F8F8FA;text-align:right;">'
-                +'<button onclick="meOpenEditDeal(\''+d[4]+'\')" style="background:rgba(232,25,44,.08);color:#E8192C;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Edit</button>'
-              +'</td>'
-            +'</tr>';
+  + '</div>'
+  + '<div style="'+card+'margin-bottom:14px;overflow:hidden;">'
+    + '<div style="'+hd+'"><span style="'+hdT+'">Today\'s redemptions</span>'
+      + '<button onclick="mePage(\'redeem\',null)" style="'+link+'">View all '+I('arrow',13)+'</button></div>'
+    + (redemptions.length
+        ? redemptions.map(function(r,i){
+            return '<div style="display:flex;align-items:center;gap:12px;padding:11px 16px;'+(i>0?'border-top:1px solid '+line+';':'')+'">'
+              + '<span style="width:36px;height:36px;border-radius:11px;background:'+okTint+';color:'+ok+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+I('check',18)+'</span>'
+              + '<span style="flex:1;min-width:0;"><span style="display:block;font-size:13px;font-weight:800;color:'+ink+';">'+esc(r.user||'Customer')+'</span>'
+              + '<span style="display:block;font-size:11.5px;color:'+mut+';font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(r.deal||'Deal')+(r.code?' · '+esc(r.code):'')+'</span></span>'
+              + '<span style="font-size:11px;color:'+mut+';font-weight:500;white-space:nowrap;flex-shrink:0;">'+esc(r.time||'')+'</span></div>';
           }).join('')
-          +'</tbody></table></div>'
-      +'</div>'
-
-      // RIGHT — chart + activity + payout
-      +'<div class="me-dash-right" style="display:flex;flex-direction:column;gap:14px;">'
-
-        // Chart
-        +'<div style="'+card+'">'
-          +'<div style="'+hdr+'">'
-            +'<span style="'+title+'">📊 Vouchers sold</span>'
-            +'<span style="font-size:11px;color:#9A9AB0;font-weight:600;font-family:Inter,sans-serif;">Last 7 days</span>'
-          +'</div>'
-          +'<div style="padding:16px 18px 10px;">'+svg+'</div>'
-        +'</div>'
-
-        // Activity
-        +'<div style="'+card+'">'
-          +'<div style="'+hdr+'">'
-            +'<span style="'+title+'">⚡ Recent activity</span>'
-          +'</div>'
-          +actRows.map(function(a){
-            return '<div style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid #F8F8FA;">'
-              +'<div style="width:34px;height:34px;border-radius:10px;background:'+a.bg+';display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">'+a.icon+'</div>'
-              +'<div style="flex:1;min-width:0;">'
-                +'<div style="font-size:12px;color:#1A1A1A;font-family:Inter,sans-serif;line-height:1.45;"><strong style="font-weight:800;">'+a.actor+'</strong> <span style="font-weight:500;color:#444;">'+a.action+'</span></div>'
-                +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;font-family:Inter,sans-serif;">'+a.time+'</div>'
-              +'</div>'
-            +'</div>';
+        : '<div style="padding:22px 16px;text-align:center;color:'+mut+';font-size:12.5px;font-weight:600;">No redemptions yet — they\'ll appear here as customers arrive.</div>')
+  + '</div>'
+  + '<div style="'+card+'margin-bottom:14px;overflow:hidden;">'
+    + '<div style="'+hd+'"><span style="'+hdT+'">Your deals</span>'
+      + '<button onclick="meOpenCreate()" style="background:'+red+';color:#fff;border:none;border-radius:9px;padding:6px 11px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;display:inline-flex;align-items:center;gap:4px;">'+I('plus',14)+'New</button></div>'
+    + (deals.length
+        ? deals.map(function(d,i){
+            var pct = d.total>0 ? Math.min(100,Math.round(d.sold/d.total*100)) : 0;
+            return '<div style="padding:12px 16px;'+(i>0?'border-top:1px solid '+line+';':'')+'">'
+              + '<div style="display:flex;align-items:center;gap:11px;">'
+                + '<span style="width:38px;height:38px;border-radius:11px;background:'+redTint+';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">'+(d.emoji||'🍹')+'</span>'
+                + '<span style="flex:1;min-width:0;"><span style="display:block;font-size:13.5px;font-weight:800;color:'+ink+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.name)+'</span>'
+                + '<span style="display:flex;align-items:center;gap:8px;margin-top:3px;">'+pill(d.status||'active')
+                  + '<span style="font-size:11.5px;color:'+mut+';font-weight:600;font-variant-numeric:tabular-nums;">'+d.sold+'/'+d.total+' sold</span></span></span>'
+                + '<button onclick="meOpenEditDeal(\''+(d.id||d._dbId)+'\')" style="background:'+redTint+';color:'+red+';border:none;border-radius:9px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;" title="Edit">'+I('edit',17)+'</button>'
+              + '</div>'
+              + '<div style="height:5px;background:#F1F1F4;border-radius:3px;overflow:hidden;margin-top:10px;"><div style="height:100%;width:'+pct+'%;background:'+((d.status||'active')==='active'?red:'#C9CACF')+';border-radius:3px;"></div></div>'
+            + '</div>';
           }).join('')
-        +'</div>'
-
-        // Payout card
-        +'<div style="background:linear-gradient(135deg,#0f2027,#1a3a4a,#2c5364);border-radius:16px;padding:18px 20px;display:flex;align-items:center;gap:14px;">'
-          +'<div style="flex:1;min-width:0;">'
-            +'<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;font-family:Inter,sans-serif;">Available for payout</div>'
-            +'<div style="font-size:26px;font-weight:900;color:white;font-family:Inter,sans-serif;letter-spacing:-1px;">'+sym+bal.toFixed(2)+'</div>'
-            +'<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;font-family:Inter,sans-serif;">After '+comm+'% commission · Min: '+sym+minLocal.toFixed(2)+'</div>'
-          +'</div>'
-          +'<button onclick="meDashRequestPayout()" style="background:'+(canPay?'linear-gradient(135deg,#12A150,#34d058)':'rgba(255,255,255,.12)')+';border:none;border-radius:12px;padding:11px 14px;font-size:12px;font-weight:800;color:white;cursor:'+(canPay?'pointer':'not-allowed')+';font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;line-height:1.5;text-align:center;">'
-            +(canPay?'💸 Request<br>Payout':'🔒 Below<br>minimum')
-          +'</button>'
-        +'</div>'
-
-      +'</div>' // right
-    +'</div>' // me-dash-cols
-  );
+        : '<div style="padding:26px 18px;text-align:center;"><div style="font-size:13.5px;font-weight:800;color:'+ink+';margin-bottom:4px;">No deals yet</div><div style="font-size:12.5px;color:'+mut+';margin-bottom:14px;">Create your first deal — it goes live instantly.</div><button onclick="meOpenCreate()" style="background:'+red+';color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Create a deal</button></div>')
+  + '</div>'
+  + '<div style="background:linear-gradient(135deg,#20232A,#15171C);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;">'
+    + '<span style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.10);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+I('wallet',22)+'</span>'
+    + '<div style="flex:1;min-width:0;"><div style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.6px;">Money you can cash out</div>'
+      + '<div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:-.8px;font-variant-numeric:tabular-nums;margin-top:1px;">'+sym+bal.toFixed(2)+'</div>'
+      + '<div style="font-size:10.5px;color:rgba(255,255,255,.45);margin-top:1px;">after '+comm+'% commission · min '+sym+minLocal.toFixed(2)+'</div></div>'
+    + '<button onclick="meDashRequestPayout()" '+(canPay?'':'disabled ')+'style="background:'+(canPay?ok:'rgba(255,255,255,.12)')+';border:none;border-radius:11px;padding:11px 14px;font-size:12.5px;font-weight:800;color:#fff;cursor:'+(canPay?'pointer':'not-allowed')+';font-family:Inter,sans-serif;white-space:nowrap;flex-shrink:0;">'+(canPay?'Cash out':'Not yet')+'</button>'
+  + '</div>';
 }
 
 function meOpenEditDeal(dealId){
@@ -27019,39 +26957,45 @@ function meCloseDealPreview(){
 }
 
 function meRenderDeals(){
-  var arr=dealsData||[];
-  var rows = arr.length
-    ? '<div style="display:grid;gap:12px;">'
-      + arr.map(function(d){
-        var percent = Math.round((parseInt(d.sold)/parseInt(d.total))*100);
-        return '<div onclick="meOpenEditDeal(\''+(d.id||d._dbId)+'\')" style="background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;" onmouseenter="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.08)\';this.style.borderColor=\'#E8192C\'" onmouseleave="this.style.boxShadow=\'none\';this.style.borderColor=\'#E8E8EC\'">'
-          +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
-            +'<div style="font-size:28px;">'+d.emoji+'</div>'
-            +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:14px;font-weight:800;color:#1A1A1A;">'+esc(d.name)+'</div>'
-              +'<div style="font-size:11px;color:#9A9AB0;margin-top:2px;">'+d.type+' · '+d.time+'</div>'
-            +'</div>'
-            +'<div style="background:rgba(232,25,44,.1);color:var(--red);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:Inter,sans-serif;white-space:nowrap;">'+d.off+'</div>'
-          +'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
-            +'<div><div style="font-size:10px;color:#9A9AB0;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Sold</div><div style="font-size:14px;font-weight:800;color:#1A1A1A;">'+d.sold+'<span style="color:#9A9AB0;font-weight:600;">/' + d.total + '</span></div></div>'
-            +'<div style="text-align:right;"><div style="font-size:10px;color:#9A9AB0;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Progress</div><div style="font-size:14px;font-weight:800;color:#12A150;">'+percent+'%</div></div>'
-          +'</div>'
-          +'<div style="background:#F5F5F7;border-radius:4px;height:6px;overflow:hidden;"><div style="width:'+percent+'%;height:100%;background:linear-gradient(90deg,var(--red),#FF6B35);border-radius:4px;transition:width .3s;"></div></div>'
-        +'</div>';
-      }).join('')
-      +'</div>'
-    : '<div class="me-empty-state"><span class="me-empty-icon">📭</span><div class="me-empty-title">No deals yet</div><div class="me-empty-text">Create your first deal to get started and attract customers</div><button onclick="meOpenCreate()" style="background:var(--red);color:white;border:none;border-radius:10px;padding:12px 20px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">🎉 Create Deal</button></div>';
-
-  return (
-    '<div style="display:flex;flex-direction:column;gap:20px;">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;">'
-        +'<div style="font-size:16px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;padding-left:8px;">🔥 My Deals <span style="color:#9A9AB0;font-size:13px;font-weight:600;">(' + arr.length + ')</span></div>'
-        +'<button onclick="meOpenCreate()" style="background:var(--red);color:white;border:none;border-radius:10px;padding:10px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">+ New Deal</button>'
-      +'</div>'
-      + rows
-    +'</div>'
-  );
+  var arr = dealsData || [];
+  var ink='#16181D', mut='#6B7280', line='#ECEDF0', red='#E8192C', redDk='#C20E1F', redTint='rgba(232,25,44,.08)', ok='#12A150', okTint='rgba(18,161,80,.10)', amber='#D97706';
+  var I = meIcon;
+  var card='background:#fff;border:1px solid '+line+';border-radius:16px;box-shadow:0 1px 3px rgba(16,24,40,.05);';
+  function pill(s){
+    var m = s==='scheduled' ? [amber,'rgba(217,119,6,.10)','Scheduled'] : s==='paused' ? [mut,'rgba(107,114,128,.10)','Paused'] : [ok,okTint,'Active'];
+    return '<span style="display:inline-flex;align-items:center;gap:5px;background:'+m[1]+';color:'+m[0]+';border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700;white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:'+m[0]+';"></span>'+m[2]+'</span>';
+  }
+  var head = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:0 2px;">'
+    + '<div style="font-size:20px;font-weight:900;color:'+ink+';letter-spacing:-.4px;">Your deals <span style="color:'+mut+';font-size:15px;font-weight:700;">'+arr.length+'</span></div>'
+    + '<button onclick="meOpenCreate()" style="background:'+red+';color:#fff;border:none;border-radius:11px;padding:10px 15px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;display:inline-flex;align-items:center;gap:5px;">'+I('plus',15)+'New deal</button>'
+  + '</div>';
+  if(!arr.length){
+    return '<div>'+head+'<div style="'+card+'padding:44px 24px;text-align:center;">'
+      + '<div style="width:56px;height:56px;border-radius:16px;background:'+redTint+';color:'+red+';display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">'+I('ticket',28)+'</div>'
+      + '<div style="font-size:16px;font-weight:800;color:'+ink+';margin-bottom:5px;">No deals yet</div>'
+      + '<div style="font-size:13px;color:'+mut+';line-height:1.6;max-width:34ch;margin:0 auto 18px;">Create your first happy-hour deal — it goes live to nearby customers instantly.</div>'
+      + '<button onclick="meOpenCreate()" style="background:'+red+';color:#fff;border:none;border-radius:11px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Create a deal</button>'
+    + '</div></div>';
+  }
+  var rows = arr.map(function(d){
+    var st = d.status || 'active';
+    var pct = (parseInt(d.total)>0) ? Math.min(100, Math.round(parseInt(d.sold)/parseInt(d.total)*100)) : 0;
+    return '<div onclick="meOpenEditDeal(\''+(d.id||d._dbId)+'\')" style="'+card+'padding:14px;cursor:pointer;">'
+      + '<div style="display:flex;align-items:center;gap:12px;">'
+        + '<span style="width:44px;height:44px;border-radius:12px;background:'+redTint+';display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">'+(d.emoji||'🍹')+'</span>'
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:14.5px;font-weight:800;color:'+ink+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.name)+'</div>'
+          + '<div style="font-size:11.5px;color:'+mut+';font-weight:500;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.type||'Deal')+(d.time?' · '+esc(d.time):'')+'</div>'
+        + '</div>'
+        + (d.off && String(d.off).indexOf('NaN')===-1 ? '<span style="background:'+redTint+';color:'+red+';padding:5px 11px;border-radius:20px;font-size:11.5px;font-weight:800;white-space:nowrap;flex-shrink:0;">'+esc(d.off)+'</span>' : '')
+      + '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;margin-bottom:7px;">'+pill(st)
+        + '<span style="font-size:12px;color:'+mut+';font-weight:600;font-variant-numeric:tabular-nums;">'+d.sold+' / '+d.total+' sold · <span style="color:'+ink+';font-weight:800;">'+pct+'%</span></span>'
+      + '</div>'
+      + '<div style="height:6px;background:#F1F1F4;border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+(st==='active'?red:'#C9CACF')+';border-radius:3px;"></div></div>'
+    + '</div>';
+  }).join('');
+  return '<div>'+head+'<div style="display:flex;flex-direction:column;gap:12px;">'+rows+'</div></div>';
 }
 
 // ── MERCHANT: ARRIVAL BOOKINGS PAGE ───────────────────────────────────────────
@@ -27234,50 +27178,49 @@ async function meUndoNoShow(bookingId){
 }
 
 function meRenderVouchers(){
-  // Active deals first, newest first within each group.
-  var arr=(vouchersData||[]).slice().sort(function(a,b){
+  var arr = (vouchersData||[]).slice().sort(function(a,b){
     var aa=(a.status==='active'||a.active!==false)?1:0, bb=(b.status==='active'||b.active!==false)?1:0;
     if(aa!==bb) return bb-aa;
     return (Number(b._dbId||b.id)||0)-(Number(a._dbId||a.id)||0);
   });
-  var rows = arr.length
-    ? '<div style="display:grid;gap:12px;">'
-      + arr.map(function(v){
-        var total = v.total || v.sold || 0;
-        var percent = total > 0 ? Math.min(100, Math.round((v.sold/total)*100)) : 0;
-        var soldOut = total > 0 && v.sold >= total;
-        var count = (v.purchases && v.purchases.length) || v.sold || 0;
-        return '<div onclick="meOpenVoucherPurchases(\''+String(v.id)+'\')" style="background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:14px;transition:all .2s;cursor:pointer;" onmouseenter="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.08)\'" onmouseleave="this.style.boxShadow=\'none\'">'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-            +'<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;">'
-              +'<div style="font-size:24px;flex-shrink:0;">'+(v.emoji||'🎟️')+'</div>'
-              +'<div style="min-width:0;">'
-                +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+esc(v.name)+'</div>'
-                +'<div style="font-size:11px;color:#9A9AB0;margin-top:3px;">'+v.sold+' of '+total+' sold</div>'
-              +'</div>'
-            +'</div>'
-            +'<div style="text-align:right;">'
-              +'<div style="font-size:13px;font-weight:800;color:#12A150;font-family:Inter,sans-serif;">'+v.rev+'</div>'
-              +'<div style="font-size:10px;color:#9A9AB0;margin-top:2px;">'+v.redeemed+' redeemed</div>'
-            +'</div>'
-          +'</div>'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
-            +'<span style="font-size:10px;font-weight:'+(soldOut?'800':'600')+';color:'+(soldOut?'#dc2626':'#9A9AB0')+';">'+(soldOut?'SOLD OUT':percent+'% sold')+'</span>'
-            +'<span style="font-size:10px;color:#9A9AB0;font-weight:600;">'+v.price+' each</span>'
-          +'</div>'
-          +'<div style="background:#F5F5F7;border-radius:4px;height:6px;overflow:hidden;margin-bottom:10px;"><div style="width:'+percent+'%;height:100%;background:linear-gradient(90deg,var(--red),#FF6B35);border-radius:4px;transition:width .3s;"></div></div>'
-          +'<div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;font-size:11px;font-weight:700;color:var(--red);">👁 View '+count+' purchase'+(count!==1?'s':'')+' →</div>'
-        +'</div>';
-      }).join('')
-      +'</div>'
-    : '<div class="me-empty-state"><span class="me-empty-icon">🎫</span><div class="me-empty-title">No vouchers yet</div><div class="me-empty-text">Create a deal to start selling vouchers</div></div>';
-
-  return (
-    '<div style="display:flex;flex-direction:column;gap:20px;">'
-      +'<div style="font-size:16px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;padding-left:8px;">🎟️ Vouchers <span style="color:#9A9AB0;font-size:13px;font-weight:600;">(' + arr.length + ')</span></div>'
-      + rows
-    +'</div>'
-  );
+  var ink='#16181D', mut='#6B7280', line='#ECEDF0', red='#E8192C', redDk='#C20E1F', redTint='rgba(232,25,44,.08)', ok='#12A150', okTint='rgba(18,161,80,.10)', amber='#D97706';
+  var I = meIcon;
+  var card='background:#fff;border:1px solid '+line+';border-radius:16px;box-shadow:0 1px 3px rgba(16,24,40,.05);';
+  var head = '<div style="margin-bottom:16px;padding:0 2px;"><div style="font-size:20px;font-weight:900;color:'+ink+';letter-spacing:-.4px;">Vouchers <span style="color:'+mut+';font-size:15px;font-weight:700;">'+arr.length+'</span></div>'
+    + '<div style="font-size:13px;color:'+mut+';font-weight:500;margin-top:2px;">What customers have bought — tap one to see every purchase.</div></div>';
+  if(!arr.length){
+    return '<div>'+head+'<div style="'+card+'padding:44px 24px;text-align:center;">'
+      + '<div style="width:56px;height:56px;border-radius:16px;background:'+redTint+';color:'+red+';display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">'+I('ticket',28)+'</div>'
+      + '<div style="font-size:16px;font-weight:800;color:'+ink+';margin-bottom:5px;">No vouchers sold yet</div>'
+      + '<div style="font-size:13px;color:'+mut+';line-height:1.6;max-width:32ch;margin:0 auto;">Create a deal and your sold vouchers will show up here.</div>'
+    + '</div></div>';
+  }
+  var rows = arr.map(function(v){
+    var total = v.total || v.sold || 0;
+    var pct = total>0 ? Math.min(100, Math.round((v.sold/total)*100)) : 0;
+    var soldOut = total>0 && v.sold>=total;
+    var count = (v.purchases && v.purchases.length) || v.sold || 0;
+    return '<div onclick="meOpenVoucherPurchases(\''+String(v.id)+'\')" style="'+card+'padding:14px;cursor:pointer;">'
+      + '<div style="display:flex;align-items:center;gap:12px;">'
+        + '<span style="width:44px;height:44px;border-radius:12px;background:'+redTint+';display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">'+(v.emoji||'🎟️')+'</span>'
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:14px;font-weight:800;color:'+ink+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(v.name)+'</div>'
+          + '<div style="font-size:11.5px;color:'+mut+';font-weight:500;margin-top:2px;">'+v.price+' each · '+v.redeemed+' redeemed</div>'
+        + '</div>'
+        + '<div style="text-align:right;flex-shrink:0;">'
+          + '<div style="font-size:15px;font-weight:900;color:'+ok+';font-variant-numeric:tabular-nums;">'+v.rev+'</div>'
+          + '<div style="font-size:10.5px;color:'+mut+';font-weight:600;">revenue</div>'
+        + '</div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;margin-bottom:7px;">'
+        + '<span style="font-size:11.5px;font-weight:'+(soldOut?'800':'600')+';color:'+(soldOut?red:mut)+';">'+(soldOut?'Sold out':pct+'% sold')+'</span>'
+        + '<span style="font-size:12px;color:'+mut+';font-weight:600;font-variant-numeric:tabular-nums;">'+v.sold+' / '+total+'</span>'
+      + '</div>'
+      + '<div style="height:6px;background:#F1F1F4;border-radius:3px;overflow:hidden;margin-bottom:11px;"><div style="height:100%;width:'+pct+'%;background:'+red+';border-radius:3px;"></div></div>'
+      + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;font-size:12px;font-weight:800;color:'+red+';">'+I('eye',15)+'View '+count+' purchase'+(count!==1?'s':'')+' '+I('arrow',14)+'</div>'
+    + '</div>';
+  }).join('');
+  return '<div>'+head+'<div style="display:flex;flex-direction:column;gap:12px;">'+rows+'</div></div>';
 }
 
 // Show every individual purchase of a voucher/deal to the merchant
@@ -27404,102 +27347,90 @@ async function meUndoNoShowPurchase(purchaseId, dealId){
 }
 
 function meRenderRedeem(){
-  return (
-    '<div style="display:flex;flex-direction:column;gap:20px;">'
+  var ink='#16181D', mut='#6B7280', line='#ECEDF0', red='#E8192C', redDk='#C20E1F',
+      ok='#12A150', okTint='rgba(18,161,80,.10)';
+  var I = meIcon;
+  var card='background:#fff;border:1px solid '+line+';border-radius:16px;box-shadow:0 1px 3px rgba(16,24,40,.05);overflow:hidden;';
 
-    // ── Scanner card ──────────────────────────────────────────────────────
-    +'<div class="me-card">'
-      +'<div class="me-card-header">'
-        +'<span class="me-card-title">QR Code Scanner</span>'
-        +'<span id="me-scan-status" style="font-size:11px;font-weight:700;color:#9A9AB0;background:#f5f5f7;padding:4px 10px;border-radius:20px;font-family:Inter,sans-serif;">Camera off</span>'
-      +'</div>'
-      +'<div class="me-card-body" style="padding:0;">'
+  var redemptions = [
+    {deal:'2-for-1 Mojitos', user:'Sara R.', code:'HH-W3N7', time:'8 min ago', seats:1},
+    {deal:'Cocktail Night',  user:'Tom K.',  code:'HH-C3L8', time:'34 min ago', seats:2},
+    {deal:'Premium Drinks',  user:'Laia F.', code:'HH-M4X9', time:'1h 12m ago', seats:1},
+    {deal:'House Wine Evening', user:'Marco K.', code:'HH-B9K2', time:'2h ago', seats:2}
+  ];
 
-        // Camera viewport
-        +'<div style="position:relative;width:100%;background:#0a0a0a;aspect-ratio:1/1;max-height:300px;overflow:hidden;" id="me-cam-wrap">'
+  return '<div style="display:flex;flex-direction:column;gap:14px;">'
 
-          // Video element
-          +'<video id="me-cam-video" style="width:100%;height:100%;object-fit:cover;display:block;" playsinline muted></video>'
+  // ── Intro ──
+  + '<div style="padding:2px 2px 0;">'
+    + '<div style="font-size:22px;font-weight:900;color:'+ink+';letter-spacing:-.5px;">Redeem a voucher</div>'
+    + '<div style="font-size:13px;color:'+mut+';font-weight:500;margin-top:2px;">Scan the customer\'s QR, or type their code below.</div>'
+  + '</div>'
 
-          // Overlay when camera is off
-          +'<div id="me-cam-placeholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a0a0a,#1a1a2e);">'
-            +'<div style="font-size:56px;margin-bottom:14px;">📷</div>'
-            +'<div style="font-size:15px;font-weight:800;color:white;margin-bottom:6px;font-family:Inter,sans-serif;">Camera not active</div>'
-            +'<div style="font-size:12px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;">Tap Start Scanner below</div>'
-          +'</div>'
+  // ── Scanner ──
+  + '<div style="'+card+'">'
+    + '<div style="position:relative;width:100%;background:#0B0C0F;aspect-ratio:1/1;max-height:300px;overflow:hidden;" id="me-cam-wrap">'
+      + '<video id="me-cam-video" style="width:100%;height:100%;object-fit:cover;display:block;" playsinline muted></video>'
+      + '<div id="me-cam-placeholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% 40%,#1B1D24,#0B0C0F);color:#fff;">'
+        + '<span style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;margin-bottom:14px;">'+I('qr',30)+'</span>'
+        + '<div style="font-size:15px;font-weight:800;">Camera off</div>'
+        + '<div style="font-size:12.5px;color:rgba(255,255,255,.55);margin-top:4px;">Tap “Start scanner” below</div>'
+      + '</div>'
+      + '<div id="me-scan-overlay" style="display:none;position:absolute;inset:0;pointer-events:none;">'
+        + '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);width:200px;height:200px;">'
+          + '<div style="position:absolute;top:0;left:0;width:36px;height:36px;border-top:3px solid '+red+';border-left:3px solid '+red+';border-radius:6px 0 0 0;"></div>'
+          + '<div style="position:absolute;top:0;right:0;width:36px;height:36px;border-top:3px solid '+red+';border-right:3px solid '+red+';border-radius:0 6px 0 0;"></div>'
+          + '<div style="position:absolute;bottom:0;left:0;width:36px;height:36px;border-bottom:3px solid '+red+';border-left:3px solid '+red+';border-radius:0 0 0 6px;"></div>'
+          + '<div style="position:absolute;bottom:0;right:0;width:36px;height:36px;border-bottom:3px solid '+red+';border-right:3px solid '+red+';border-radius:0 0 6px 0;"></div>'
+          + '<div id="me-scan-line" style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,'+red+',transparent);animation:meScanAnim 2s ease-in-out infinite;"></div>'
+        + '</div>'
+        + '<div style="position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.85);">Point at the customer\'s QR code</div>'
+      + '</div>'
+      + '<div id="me-scan-success-flash" style="display:none;position:absolute;inset:0;background:rgba(18,161,80,.25);pointer-events:none;"></div>'
+      + '<div style="position:absolute;top:12px;right:12px;"><span id="me-scan-status" style="font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);padding:5px 11px;border-radius:20px;">Camera off</span></div>'
+    + '</div>'
+    + '<div style="padding:12px 14px;display:flex;gap:10px;border-top:1px solid '+line+';">'
+      + '<button id="me-cam-start-btn" onclick="meStartCamera()" style="flex:1;background:linear-gradient(135deg,'+red+','+redDk+');color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;">'+I('scan',19)+'Start scanner</button>'
+      + '<button id="me-cam-stop-btn" onclick="meStopCamera()" style="display:none;flex:1;background:'+ink+';color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Stop</button>'
+      + '<button onclick="meToggleTorch()" id="me-torch-btn" style="display:none;background:#F5F5F7;border:1px solid '+line+';border-radius:12px;padding:0 16px;font-size:17px;cursor:pointer;">🔦</button>'
+    + '</div>'
+  + '</div>'
 
-          // Scanning overlay (shown when active)
-          +'<div id="me-scan-overlay" style="display:none;position:absolute;inset:0;pointer-events:none;">'
-            // Corner frame
-            +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);width:200px;height:200px;">'
-              +'<div style="position:absolute;top:0;left:0;width:36px;height:36px;border-top:3px solid #E8192C;border-left:3px solid #E8192C;border-radius:4px 0 0 0;"></div>'
-              +'<div style="position:absolute;top:0;right:0;width:36px;height:36px;border-top:3px solid #E8192C;border-right:3px solid #E8192C;border-radius:0 4px 0 0;"></div>'
-              +'<div style="position:absolute;bottom:0;left:0;width:36px;height:36px;border-bottom:3px solid #E8192C;border-left:3px solid #E8192C;border-radius:0 0 0 4px;"></div>'
-              +'<div style="position:absolute;bottom:0;right:0;width:36px;height:36px;border-bottom:3px solid #E8192C;border-right:3px solid #E8192C;border-radius:0 0 4px 0;"></div>'
-              // Scan line
-              +'<div id="me-scan-line" style="position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#E8192C,transparent);border-radius:1px;animation:meScanAnim 2s ease-in-out infinite;"></div>'
-            +'</div>'
-            +'<div style="position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.8);font-family:Inter,sans-serif;">Point at customer QR code</div>'
-          +'</div>'
+  // ── Manual code ──
+  + '<div style="'+card+'padding:16px;">'
+    + '<div style="font-size:12px;font-weight:800;color:'+mut+';text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Or enter the code</div>'
+    + '<div style="display:flex;gap:10px;">'
+      + '<input id="me-redeem-inp" type="text" placeholder="HH-M4X9" maxlength="10" style="flex:1;min-width:0;background:#F6F7F9;border:2px solid '+line+';border-radius:13px;padding:15px 16px;font-family:\'Courier New\',monospace;font-size:18px;font-weight:800;color:'+ink+';outline:none;text-transform:uppercase;letter-spacing:2px;box-sizing:border-box;" oninput="this.value=this.value.toUpperCase()" onfocus="this.style.borderColor=\''+red+'\'" onblur="this.style.borderColor=\''+line+'\'" onkeydown="if(event.key===\'Enter\')meCheckRedeem()">'
+      + '<button onclick="meCheckRedeem()" style="background:linear-gradient(135deg,'+red+','+redDk+');color:#fff;border:none;border-radius:13px;padding:0 22px;font-size:15px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Check</button>'
+    + '</div>'
+    + '<div id="me-redeem-result" style="margin-top:0;"></div>'
+  + '</div>'
 
-          // Success flash
-          +'<div id="me-scan-success-flash" style="display:none;position:absolute;inset:0;background:rgba(18,161,80,.25);pointer-events:none;border-radius:0;"></div>'
-        +'</div>'
+  // ── Today's redemptions ──
+  + '<div style="'+card+'">'
+    + '<div style="padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;">'
+      + '<span style="font-size:14px;font-weight:800;color:'+ink+';letter-spacing:-.2px;">Today\'s redemptions</span>'
+      + '<span style="font-size:11.5px;font-weight:800;color:'+ok+';background:'+okTint+';padding:4px 10px;border-radius:20px;" id="me-redeem-count">8 redeemed</span>'
+    + '</div>'
+    + '<div id="me-redeem-log">'
+    + redemptions.map(function(r,i){
+      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;'+(i>0?'border-top:1px solid '+line+';':'')+'">'
+        + '<span style="width:38px;height:38px;border-radius:11px;background:'+okTint+';color:'+ok+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+I('check',18)+'</span>'
+        + '<span style="flex:1;min-width:0;">'
+          + '<span style="display:block;font-size:13px;font-weight:800;color:'+ink+';">'+esc(r.user)+'</span>'
+          + '<span style="display:block;font-size:11.5px;color:'+mut+';font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(r.deal)+' · '+r.code+'</span>'
+        + '</span>'
+        + '<span style="text-align:right;flex-shrink:0;">'
+          + '<span style="display:block;font-size:11px;color:'+mut+';white-space:nowrap;">'+r.time+'</span>'
+          + '<span style="display:block;font-size:10.5px;font-weight:700;color:'+mut+';margin-top:1px;">×'+r.seats+' seat'+(r.seats>1?'s':'')+'</span>'
+        + '</span>'
+      + '</div>';
+    }).join('')
+    + '</div>'
+  + '</div>'
 
-        // Camera controls
-        +'<div style="padding:14px 16px;display:flex;gap:10px;border-top:1.5px solid #E8E8EC;background:#fafafa;">'
-          +'<button id="me-cam-start-btn" onclick="meStartCamera()" style="flex:1;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">▶ Start Scanner</button>'
-          +'<button id="me-cam-stop-btn" onclick="meStopCamera()" style="display:none;flex:1;background:#1A1A1A;color:white;border:none;border-radius:12px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">⏹ Stop</button>'
-          +'<button onclick="meToggleTorch()" id="me-torch-btn" style="display:none;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px 16px;font-size:16px;cursor:pointer;">🔦</button>'
-        +'</div>'
-      +'</div>'
-    +'</div>'
-
-    // ── Manual code entry ─────────────────────────────────────────────────
-    +'<div class="me-card">'
-      +'<div class="me-card-header">'
-        +'<span class="me-card-title">⌨️ Enter Code Manually</span>'
-      +'</div>'
-      +'<div class="me-card-body">'
-        +'<div style="display:flex;gap:8px;margin-bottom:12px;">'
-          +'<input id="me-redeem-inp" type="text" placeholder="e.g. HH-M4X9" maxlength="10" style="flex:1;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:12px 14px;font-family:Courier New,monospace;font-size:15px;font-weight:700;color:#1A1A1A;outline:none;text-transform:uppercase;letter-spacing:1.5px;box-sizing:border-box;" oninput="this.value=this.value.toUpperCase()" onfocus="this.style.borderColor=\'#E8192C\'" onblur="this.style.borderColor=\'#E8E8EC\'" onkeydown="if(event.key===\'Enter\')meCheckRedeem()">'
-          +'<button onclick="meCheckRedeem()" style="background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:12px;padding:12px 18px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Check</button>'
-        +'</div>'
-        +'<div id="me-redeem-result" style="margin-top:0;"></div>'
-      +'</div>'
-    +'</div>'
-
-    // ── Today's redemptions ───────────────────────────────────────────────
-    +'<div class="me-card">'
-      +'<div class="me-card-header">'
-        +'<span class="me-card-title">✅ Today\'s Redemptions</span>'
-        +'<span style="font-size:11px;font-weight:700;color:#12A150;font-family:Inter,sans-serif;" id="me-redeem-count">8 redeemed</span>'
-      +'</div>'
-      +'<div id="me-redeem-log">'
-      +[{code:'HH-W3N7',deal:'2-for-1 Mojitos',user:'Sara R.',time:'8 min ago',seats:1},
-        {code:'HH-C3L8',deal:'Cocktail Night',user:'Tom K.',time:'34 min ago',seats:2},
-        {code:'HH-M4X9',deal:'Premium Drinks',user:'Laia F.',time:'1h 12m ago',seats:1},
-        {code:'HH-B9K2',deal:'House Wine Evening',user:'Marco K.',time:'2h ago',seats:2}].map(function(r){
-        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #F5F5F8;">'
-          +'<div style="width:40px;height:40px;border-radius:12px;background:rgba(18,161,80,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">✅</div>'
-          +'<div style="flex:1;min-width:0;">'
-            +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;">'+esc(r.user)+'</div>'
-            +'<div style="font-size:11px;color:#9A9AB0;font-family:Inter,sans-serif;margin-top:2px;">'+esc(r.deal)+' · <code style="background:#F5F5F7;padding:2px 6px;border-radius:4px;font-size:10px;color:#555;font-weight:600;">'+r.code+'</code></div>'
-          +'</div>'
-          +'<div style="text-align:right;flex-shrink:0;">'
-            +'<div style="font-size:11px;color:#9A9AB0;font-family:Inter,sans-serif;">'+r.time+'</div>'
-            +'<div style="font-size:10px;font-weight:700;color:#9A9AB0;font-family:Inter,sans-serif;margin-top:2px;">×'+r.seats+' seat'+(r.seats>1?'s':'')+'</div>'
-          +'</div>'
-        +'</div>';
-      }).join('')
-      +'</div>'
-    +'</div>'
-
-    +'</div>'
-
-    // ── Animation style ───────────────────────────────────────────────────
-    +'<style>@keyframes meScanAnim{0%{top:0%;opacity:1}49%{top:calc(100% - 2px);opacity:1}50%{top:calc(100% - 2px);opacity:0}51%{top:0%;opacity:0}52%{top:0%;opacity:1}100%{top:calc(100% - 2px);opacity:1}}</style>'
-  );
+  + '<style>@keyframes meScanAnim{0%{top:0;opacity:1}49%{top:calc(100% - 2px);opacity:1}50%{top:calc(100% - 2px);opacity:0}51%{top:0;opacity:0}52%{top:0;opacity:1}100%{top:calc(100% - 2px);opacity:1}}</style>'
+  + '</div>';
 }
 
 // ── Camera state ──────────────────────────────────────────────────────────────
@@ -28673,7 +28604,7 @@ function meRenderPayoutsPage(){
   // ── Payout history ────────────────────────────────────────────────────────
   var history = '<div class="me-card">'
     + '<div class="me-card-header">'
-      + '<span class="me-card-title">💸 Payout History</span>'
+      + '<span class="me-card-title" style="display:inline-flex;align-items:center;gap:8px;">'+meIcon('wallet',17)+'Payout History</span>'
       + '<span style="font-size:11px;font-weight:700;color:#12A150;font-family:Inter,sans-serif;">'+mePayoutHistory.length+' payouts</span>'
     + '</div>'
     + (mePayoutHistory.length > 0
@@ -28699,7 +28630,7 @@ function meRenderPayoutsPage(){
   // ── Bank details ──────────────────────────────────────────────────────────
   var bank = '<div class="me-card">'
     + '<div class="me-card-header">'
-      + '<span class="me-card-title">🏦 Bank Details</span>'
+      + '<span class="me-card-title" style="display:inline-flex;align-items:center;gap:8px;">'+meIcon('bank',17)+'Bank Details</span>'
       + '<span style="font-size:10px;font-weight:700;background:#F0FDF4;color:#12A150;border:1px solid #86EFAC;border-radius:20px;padding:4px 10px;font-family:Inter,sans-serif;">🔒 Secure</span>'
     + '</div>'
     + '<div id="me-bank-display" style="padding:18px;">'
@@ -28710,7 +28641,7 @@ function meRenderPayoutsPage(){
   // ── T&C ───────────────────────────────────────────────────────────────────
   var terms = '<div class="me-card">'
     + '<div class="me-card-header">'
-      + '<span class="me-card-title">📄 Payout Terms</span>'
+      + '<span class="me-card-title" style="display:inline-flex;align-items:center;gap:8px;">'+meIcon('doc',17)+'Payout Terms</span>'
     + '</div>'
     + '<div class="me-card-body">'
       + '<div style="background:#F8F8FA;border-radius:10px;padding:14px;font-size:12px;color:#555;line-height:1.7;font-family:Inter,sans-serif;white-space:pre-line;max-height:200px;overflow-y:auto;">'
@@ -28743,7 +28674,7 @@ function meRenderPayoutsPage(){
     + '<span style="font-size:'+(o.big?'14px':'13px')+';font-weight:'+(o.big?'800':'600')+';color:'+(o.big?'#1A1A1A':'#6B7280')+';font-family:Inter,sans-serif;">'+label+'</span>'
     + '<span style="font-size:'+(o.big?'16px':'14px')+';font-weight:'+(o.big?'900':'700')+';color:'+(o.color||'#1A1A1A')+';font-variant-numeric:tabular-nums;font-family:Inter,sans-serif;">'+val+'</span></div>'; };
   var statement = '<div class="me-card">'
-    + '<div class="me-card-header"><span class="me-card-title">💶 Earnings Statement</span><span style="font-size:11px;color:#9A9AB0;font-weight:600;font-family:Inter,sans-serif;">All-time</span></div>'
+    + '<div class="me-card-header"><span class="me-card-title" style="display:inline-flex;align-items:center;gap:8px;">'+meIcon('euro',17)+'Earnings Statement</span><span style="font-size:11px;color:#9A9AB0;font-weight:600;font-family:Inter,sans-serif;">All-time</span></div>'
     + '<div class="me-card-body" style="padding:14px 18px 18px;">'
       + _stmtRow('Gross sales'+(_voucherCount?' · '+_voucherCount+' voucher'+(_voucherCount===1?'':'s'):''), sym+_grossSales.toFixed(2))
       + _stmtRow('Platform commission ('+(finConfig.commission||0)+'%)', '−'+sym+_fee.toFixed(2), {color:'#E8192C'})
@@ -29216,129 +29147,60 @@ function meSetAnalyticsPeriod(days){
 }
 
 function meRenderAnalytics(){
-  // Calculate real analytics from voucher purchases and deals
   var purchaseList = mePurchList || [];
   var sym = finSym();
-
-  // Calculate revenue by day (last 7 days)
+  var ink='#16181D', mut='#6B7280', line='#ECEDF0', red='#E8192C', redDk='#C20E1F', redTint='rgba(232,25,44,.08)', ok='#12A150', okTint='rgba(18,161,80,.10)', amber='#D97706';
+  var I = meIcon;
+  var card='background:#fff;border:1px solid '+line+';border-radius:16px;box-shadow:0 1px 3px rgba(16,24,40,.05);';
   var now = new Date();
-  var dayRevenue = [0,0,0,0,0,0,0];
-  var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  purchaseList.forEach(function(p){
-    var d = new Date(p.created_at);
-    var diffDays = Math.floor((now - d) / (1000*60*60*24));
-    if(diffDays >= 0 && diffDays < 7){
-      var idx = 6 - diffDays;
-      var price = parseFloat(p.deal_price) || 0;
-      dayRevenue[idx] += price;
-    }
-  });
-
-  // Calculate total revenue
-  var totalRevenue = purchaseList.reduce(function(sum, p){
-    return sum + (parseFloat(p.deal_price) || 0);
-  }, 0);
-
-  // Top deals by sales count
-  var dealSales = {};
-  purchaseList.forEach(function(p){
-    if(!dealSales[p.deal_id]) dealSales[p.deal_id] = { count: 0, name: p.deal_name || '', price: p.deal_price || 0 };
-    dealSales[p.deal_id].count++;
-  });
-  var topDeals = Object.keys(dealSales).map(function(id){
-    return {id: id, ...dealSales[id]};
-  }).sort(function(a,b){ return b.count - a.count; }).slice(0,3);
-
-  // Unique customers
-  var uniqueCustomers = {};
-  purchaseList.forEach(function(p){ uniqueCustomers[p.customer_id] = true; });
-  var customerCount = Object.keys(uniqueCustomers).length;
-
-  // Build chart bars
-  var maxDay = Math.max.apply(null, dayRevenue) || 100;
-  var chartBars = dayRevenue.map(function(v, i){
-    var h = Math.round((v / (maxDay || 100)) * 100);
-    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">'
-      +'<div style="width:100%;background:linear-gradient(180deg,var(--red),#FF6B35);border-radius:6px 6px 0 0;height:'+Math.max(4,h)+'%;transition:all .2s;" title="'+sym+v.toFixed(2)+'"></div>'
-      +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;">'+dayNames[(new Date(now - (6-i)*24*60*60*1000)).getDay()]+'</div>'
-      +'</div>';
+  var dayRevenue=[0,0,0,0,0,0,0], dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  purchaseList.forEach(function(p){ var d=new Date(p.created_at); var diff=Math.floor((now-d)/86400000); if(diff>=0&&diff<7){ dayRevenue[6-diff]+=(parseFloat(p.deal_price)||0); } });
+  var totalRevenue = purchaseList.reduce(function(s,p){ return s+(parseFloat(p.deal_price)||0); },0);
+  var dealSales={}; purchaseList.forEach(function(p){ if(!dealSales[p.deal_id])dealSales[p.deal_id]={count:0,name:p.deal_name||''}; dealSales[p.deal_id].count++; });
+  var topDeals=Object.keys(dealSales).map(function(id){ return {id:id,count:dealSales[id].count,name:dealSales[id].name}; }).sort(function(a,b){return b.count-a.count;});
+  var uniq={}; purchaseList.forEach(function(p){ uniq[p.customer_id]=true; }); var customerCount=Object.keys(uniq).length;
+  var maxDay=Math.max.apply(null,dayRevenue)||1;
+  var bars=dayRevenue.map(function(v,i){
+    var h=Math.max(6,Math.round(v/maxDay*100));
+    var lbl=dayNames[(new Date(now-(6-i)*86400000)).getDay()];
+    return '<div style="flex:1;height:100%;display:flex;flex-direction:column;align-items:center;gap:7px;justify-content:flex-end;">'
+      + '<div title="'+sym+v.toFixed(2)+'" style="width:100%;max-width:26px;height:'+h+'%;background:'+(i===6?'linear-gradient(180deg,'+red+','+redDk+')':'#F3B4BC')+';border-radius:5px 5px 2px 2px;"></div>'
+      + '<div style="font-size:10.5px;color:'+mut+';font-weight:600;">'+lbl+'</div></div>';
   }).join('');
+  function tile(icon,accent,val,lbl){
+    return '<div style="'+card+'padding:13px 14px;">'
+      + '<div style="width:34px;height:34px;border-radius:10px;background:'+accent+'14;color:'+accent+';display:flex;align-items:center;justify-content:center;margin-bottom:10px;">'+I(icon,18)+'</div>'
+      + '<div style="font-size:18px;font-weight:900;color:'+ink+';letter-spacing:-.4px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+val+'</div>'
+      + '<div style="font-size:11px;color:'+mut+';font-weight:600;margin-top:2px;">'+lbl+'</div></div>';
+  }
+  var perf = (dealsData||[]).length ? (dealsData||[]).map(function(d,i){
+    var sold=purchaseList.filter(function(p){return p.deal_id===d.id;}).length;
+    var rev=sold*(parseFloat(d.price)||0);
+    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;'+(i>0?'border-top:1px solid '+line+';':'')+'">'
+      + '<span style="width:36px;height:36px;border-radius:11px;background:'+redTint+';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">'+(d.emoji||'🍹')+'</span>'
+      + '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:'+ink+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(d.name)+'</div>'
+      + '<div style="font-size:11.5px;color:'+mut+';font-weight:500;font-variant-numeric:tabular-nums;">'+sold+' sold · '+sym+rev.toFixed(2)+'</div></div>'
+      + (d.off && String(d.off).indexOf('NaN')===-1?'<span style="font-size:12px;font-weight:800;color:'+red+';white-space:nowrap;">'+esc(d.off)+'</span>':'')
+    + '</div>';
+  }).join('') : '<div style="padding:16px;color:'+mut+';font-size:13px;">No deals yet.</div>';
 
-  return (
-    '<div style="display:flex;flex-direction:column;gap:20px;">'
-    // Revenue chart
-    +'<div class="me-card">'
-      +'<div class="me-card-header">'
-        +'<span class="me-card-title">📊 Revenue This Week</span>'
-        +'<span style="font-size:11px;color:#9A9AB0;font-weight:600;">Last 7 days</span>'
-      +'</div>'
-      +'<div class="me-card-body">'
-        +'<div style="display:flex;align-items:flex-end;gap:8px;height:100px;margin-bottom:12px;padding:0 8px;">'
-          +chartBars
-        +'</div>'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1.5px solid #E8E8EC;">'
-          +'<div style="font-size:11px;color:#9A9AB0;font-weight:600;">Total: <span style="color:#1A1A1A;font-weight:800;">'+sym+totalRevenue.toFixed(2)+'</span></div>'
-        +'</div>'
-      +'</div>'
-    +'</div>'
-
-    // Key metrics grid
-    +'<div class="me-stat-grid">'
-      +'<div class="me-stat-card">'
-        +'<div class="me-stat-header">'
-          +'<div class="me-stat-icon" style="background:linear-gradient(135deg,#E8192C,#FF5533);">🔥</div>'
-        +'</div>'
-        +'<div class="me-stat-value">'+(topDeals[0] ? topDeals[0].name.substring(0,15) : 'No sales')+'</div>'
-        +'<div class="me-stat-label">Top Deal ('+( topDeals[0] ? topDeals[0].count : 0)+' sales)</div>'
-      +'</div>'
-      +'<div class="me-stat-card">'
-        +'<div class="me-stat-header">'
-          +'<div class="me-stat-icon" style="background:rgba(59,130,246,.1);">👥</div>'
-        +'</div>'
-        +'<div class="me-stat-value">'+customerCount+'</div>'
-        +'<div class="me-stat-label">Customers</div>'
-      +'</div>'
-      +'<div class="me-stat-card">'
-        +'<div class="me-stat-header">'
-          +'<div class="me-stat-icon" style="background:rgba(18,161,80,.1);">🎟️</div>'
-        +'</div>'
-        +'<div class="me-stat-value">'+purchaseList.length+'</div>'
-        +'<div class="me-stat-label">Total Sales</div>'
-      +'</div>'
-      +'<div class="me-stat-card">'
-        +'<div class="me-stat-header">'
-          +'<div class="me-stat-icon" style="background:linear-gradient(135deg,#FFB300,#FFC93C);">💰</div>'
-        +'</div>'
-        +'<div class="me-stat-value">'+sym+(purchaseList.length > 0 ? (totalRevenue / purchaseList.length).toFixed(2) : '0.00')+'</div>'
-        +'<div class="me-stat-label">Avg Sale Value</div>'
-      +'</div>'
-    +'</div>'
-
-    // Performance breakdown - Real deals data
-    +'<div class="me-card">'
-      +'<div class="me-card-header">'
-        +'<span class="me-card-title">📈 Deal Performance</span>'
-      +'</div>'
-      +'<div class="me-card-body" style="padding:0;">'
-        +((dealsData || []).length > 0 ? (dealsData || []).map(function(d){
-          var dealPurchases = purchaseList.filter(function(p){ return p.deal_id === d.id; });
-          var sold = dealPurchases.length;
-          var revenue = sold * (parseFloat(d.price) || 0);
-          return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #F5F5F8;">'
-            +'<div style="flex:1;min-width:0;">'
-              +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;margin-bottom:4px;">'+d.emoji+' '+esc(d.name).substring(0,25)+'</div>'
-              +'<div style="font-size:11px;color:#9A9AB0;">'+sold+' sold · '+sym+revenue.toFixed(2)+' revenue</div>'
-            +'</div>'
-            +'<div style="text-align:right;flex-shrink:0;">'
-              +'<div style="font-size:13px;font-weight:700;color:var(--red);">'+d.off+'</div>'
-            +'</div>'
-            +'</div>';
-        }).join('') : '<div style="padding:12px 18px;color:#9A9AB0;">No deals yet</div>')
-      +'</div>'
-    +'</div>'
-
-    +'</div>'
-  );
+  return '<div style="display:flex;flex-direction:column;gap:14px;">'
+    + '<div style="padding:0 2px;"><div style="font-size:20px;font-weight:900;color:'+ink+';letter-spacing:-.4px;">Analytics</div><div style="font-size:13px;color:'+mut+';font-weight:500;margin-top:2px;">How your deals are performing.</div></div>'
+    + '<div style="'+card+'overflow:hidden;">'
+      + '<div style="padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:14px;font-weight:800;color:'+ink+';">Revenue this week</span><span style="font-size:15px;font-weight:900;color:'+ink+';font-variant-numeric:tabular-nums;">'+sym+totalRevenue.toFixed(2)+'</span></div>'
+      + '<div style="display:flex;align-items:flex-end;gap:7px;height:110px;padding:0 16px 16px;">'+bars+'</div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+      + tile('flame',red,(topDeals[0]?esc(String(topDeals[0].name).slice(0,14)||'—'):'—'),'Top deal'+(topDeals[0]?' · '+topDeals[0].count+' sold':''))
+      + tile('users','#3B82F6',String(customerCount),'Customers')
+      + tile('ticket',ok,String(purchaseList.length),'Total sales')
+      + tile('euro',amber,sym+(purchaseList.length>0?(totalRevenue/purchaseList.length).toFixed(2):'0.00'),'Avg sale')
+    + '</div>'
+    + '<div style="'+card+'overflow:hidden;">'
+      + '<div style="padding:14px 16px 12px;"><span style="font-size:14px;font-weight:800;color:'+ink+';">Deal performance</span></div>'
+      + perf
+    + '</div>'
+  + '</div>';
 }
 function meDashRedeemCode(){
   var input = document.getElementById('dash-redeem-input');
@@ -34519,7 +34381,7 @@ function _setupDealMap() {
     <!-- Logo section -->
     <div style="padding: 20px; border-bottom: 1px solid var(--me-border); text-align: center;">
       <div style="font-size: 20px; font-weight: 900; color: var(--red); font-family: Inter, sans-serif;">Appie Hour.</div>
-      <div style="font-size: 10px; color: var(--me-text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px;">Merchant</div>
+      <div style="font-size: 10px; color: var(--me-text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px;">for Business</div>
     </div>
 
     <!-- Venue card -->
@@ -34556,8 +34418,15 @@ function _setupDealMap() {
   <div id="me-main-wrapper">
     <!-- Topbar -->
     <div id="me-topbar">
-      <div class="me-topbar-title" id="me-page-title">Dashboard</div>
-      <button onclick="closeMerchant()" style="background: var(--me-border); border: none; border-radius: 10px; width: 40px; height: 40px; color: var(--me-text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-weight: 600;">←</button>
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+        <svg width="19" height="24" viewBox="0 0 58 74" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0;"><path d="M29 2C14.6 2 3 13.4 3 27.4 3 45.6 29 72 29 72s26-26.4 26-44.6C55 13.4 43.4 2 29 2Z" fill="#E8192C"/><path d="M29 13l3.9 8.7 9.1 1-6.9 6.1 2 9L29 32.2 20.8 37.8l2-9-6.9-6.1 9.1-1L29 13Z" fill="#fff"/></svg>
+        <div style="min-width:0;line-height:1.05;">
+          <div style="font-size:15px;font-weight:900;color:#fff;letter-spacing:-.3px;font-family:Inter,sans-serif;">Appie Hour</div>
+          <div style="font-size:9px;font-weight:800;color:#FF6B78;text-transform:uppercase;letter-spacing:1.4px;margin-top:1px;font-family:Inter,sans-serif;">for Business</div>
+        </div>
+        <span class="me-topbar-title" id="me-page-title" style="display:none;"></span>
+      </div>
+      <button onclick="closeMerchant()" aria-label="Exit" style="background:rgba(255,255,255,.12); border:none; border-radius:10px; width:40px; height:40px; color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; font-weight:600; flex-shrink:0;">←</button>
     </div>
 
     <!-- Main content area -->
@@ -34583,7 +34452,7 @@ function _setupDealMap() {
 
   <!-- Header (safe-area padding: the translucent status bar draws OVER the page,
        so without it the Publish/back buttons sit under the clock) -->
-  <div style="background:linear-gradient(135deg,#E8192C,#FF5533);padding:env(safe-area-inset-top, 0px) 0 0;flex-shrink:0;">
+  <div style="background:linear-gradient(135deg,#E8192C,#C20E1F);padding:env(safe-area-inset-top, 0px) 0 0;flex-shrink:0;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;">
       <button onclick="meCloseCreate()" style="background:none;border:none;border-radius:10px;width:36px;height:36px;color:white;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">‹</button>
       <div style="text-align:center;">
@@ -34605,31 +34474,31 @@ function _setupDealMap() {
   <div style="max-width:680px;margin:0 auto;padding:20px 20px 40px;">
 
     <!-- ── SECTION 1: PHOTO ── -->
-    <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
-      <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;display:flex;align-items:center;justify-content:space-between;">
+    <div style="background:white;border-radius:16px;border:1px solid #ECEDF0;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 3px rgba(16,24,40,.05);">
+      <div style="padding:14px 18px;border-bottom:1px solid #ECEDF0;display:flex;align-items:center;justify-content:space-between;">
         <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Deal Photos</div>
-        <span id="me-photo-count" style="font-size:11px;font-weight:700;color:#9A9AB0;">0/3 photos</span>
+        <span id="me-photo-count" style="font-size:11px;font-weight:700;color:#6B7280;">0/3 photos</span>
       </div>
       <div style="padding:16px;">
         <div id="me-photo-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;"></div>
-        <div style="font-size:11px;color:#9A9AB0;text-align:center;font-weight:500;">1 required · up to 3 photos · JPG, PNG or HEIC</div>
+        <div style="font-size:11px;color:#6B7280;text-align:center;font-weight:500;">1 required · up to 3 photos · JPG, PNG or HEIC</div>
       </div>
     </div>
 
     <!-- ── SECTION 2: DEAL INFO ── -->
-    <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
-      <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
+    <div style="background:white;border-radius:16px;border:1px solid #ECEDF0;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 3px rgba(16,24,40,.05);">
+      <div style="padding:14px 18px;border-bottom:1px solid #ECEDF0;">
         <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Deal Info</div>
       </div>
       <div style="padding:16px;display:grid;gap:14px;">
         <div>
-          <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Deal Title <span style="color:#E8192C;">*</span></label>
-          <input id="me-deal-title" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" placeholder="e.g. 2-for-1 Mojitos" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+          <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Deal Title <span style="color:#E8192C;">*</span></label>
+          <input id="me-deal-title" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;transition:border-color .2s;" placeholder="e.g. 2-for-1 Mojitos" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#ECEDF0'">
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:12px;">
           <div>
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Category</label>
-            <select id="me-deal-cat" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+            <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Category</label>
+            <select id="me-deal-cat" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#ECEDF0'">
               <option value="bars">Bars</option>
               <option value="cocktails">Cocktail Bar</option>
               <option value="wine">Wine Bar</option>
@@ -34647,9 +34516,9 @@ function _setupDealMap() {
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:12px;">
           <div>
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Deal Price <span style="color:#E8192C;">*</span></label>
-            <div style="display:flex;gap:0;border:2px solid #E8E8EC;border-radius:12px;overflow:hidden;background:#F5F5F7;" id="me-price-wrap" onfocusin="this.style.borderColor='#E8192C'" onfocusout="this.style.borderColor='#E8E8EC'">
-              <select id="me-deal-currency" onchange="_meCurrencyUserSet=true;meUpdateCurrencyPreview()" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 8px 0 10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:#E8192C;outline:none;cursor:pointer;flex-shrink:0;height:50px;">
+            <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Deal Price <span style="color:#E8192C;">*</span></label>
+            <div style="display:flex;gap:0;border:2px solid #ECEDF0;border-radius:12px;overflow:hidden;background:#F6F7F9;" id="me-price-wrap" onfocusin="this.style.borderColor='#E8192C'" onfocusout="this.style.borderColor='#ECEDF0'">
+              <select id="me-deal-currency" onchange="_meCurrencyUserSet=true;meUpdateCurrencyPreview()" style="background:white;border:none;border-right:2px solid #ECEDF0;padding:0 8px 0 10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:800;color:#E8192C;outline:none;cursor:pointer;flex-shrink:0;height:50px;">
                 <option value="EUR">€ EUR - Europe</option>
                 <option value="USD">$ USD - USA</option>
                 <option value="GBP">£ GBP - UK</option>
@@ -34687,14 +34556,14 @@ function _setupDealMap() {
                 </optgroup>
                 <option value="FREE">FREE</option>
               </select>
-              <input id="me-deal-price" type="number" min="0" step="0.01" placeholder="4.99" oninput="meUpdateCurrencyPreview()" style="flex:1;min-width:0;background:#F5F5F7;border:none;padding:13px 12px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;">
+              <input id="me-deal-price" type="number" min="0" step="0.01" placeholder="4.99" oninput="meUpdateCurrencyPreview()" style="flex:1;min-width:0;background:#F6F7F9;border:none;padding:13px 12px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;">
             </div>
           </div>
           <div>
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Original Price</label>
-            <div style="display:flex;gap:0;border:2px solid #E8E8EC;border-radius:12px;overflow:hidden;background:#F5F5F7;" onfocusin="this.style.borderColor='#E8192C'" onfocusout="this.style.borderColor='#E8E8EC'">
-              <div id="me-was-sym" style="background:white;border:none;border-right:2px solid #E8E8EC;padding:0 10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:800;color:#9A9AB0;display:flex;align-items:center;flex-shrink:0;min-width:38px;justify-content:center;">€</div>
-              <input id="me-deal-was" type="number" min="0" step="0.01" placeholder="9.99" oninput="meUpdateCurrencyPreview()" style="flex:1;min-width:0;background:#F5F5F7;border:none;padding:13px 12px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;">
+            <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Original Price</label>
+            <div style="display:flex;gap:0;border:2px solid #ECEDF0;border-radius:12px;overflow:hidden;background:#F6F7F9;" onfocusin="this.style.borderColor='#E8192C'" onfocusout="this.style.borderColor='#ECEDF0'">
+              <div id="me-was-sym" style="background:white;border:none;border-right:2px solid #ECEDF0;padding:0 10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:800;color:#6B7280;display:flex;align-items:center;flex-shrink:0;min-width:38px;justify-content:center;">€</div>
+              <input id="me-deal-was" type="number" min="0" step="0.01" placeholder="9.99" oninput="meUpdateCurrencyPreview()" style="flex:1;min-width:0;background:#F6F7F9;border:none;padding:13px 12px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;">
             </div>
           </div>
         </div>
@@ -34704,69 +34573,69 @@ function _setupDealMap() {
           <div style="font-size:15px;font-weight:900;color:#12A150;font-family:'Inter',sans-serif;" id="me-price-preview-text">€4.99</div>
         </div>
         <div>
-          <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Description <span style="color:#E8192C;">*</span></label>
-          <textarea id="me-deal-desc" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:#1A1A1A;outline:none;height:90px;resize:none;box-sizing:border-box;line-height:1.5;" placeholder="Describe what customers get — be specific! e.g. 'Order any 2 cocktails and get a 3rd free. Valid at the venue only.'" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'"></textarea>
+          <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Description <span style="color:#E8192C;">*</span></label>
+          <textarea id="me-deal-desc" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:#1A1A1A;outline:none;height:90px;resize:none;box-sizing:border-box;line-height:1.5;" placeholder="Describe what customers get — be specific! e.g. 'Order any 2 cocktails and get a 3rd free. Valid at the venue only.'" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#ECEDF0'"></textarea>
         </div>
         <div id="me-total-wrap">
-          <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Total Vouchers Available</label>
-          <input id="me-deal-total" type="number" min="1" value="100" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'">
+          <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Total Vouchers Available</label>
+          <input id="me-deal-total" type="number" min="1" value="100" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#ECEDF0'">
         </div>
       </div>
     </div>
 
     <!-- ── SECTION 3: SCHEDULE ── -->
-    <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
-      <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
+    <div style="background:white;border-radius:16px;border:1px solid #ECEDF0;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 3px rgba(16,24,40,.05);">
+      <div style="padding:14px 18px;border-bottom:1px solid #ECEDF0;">
         <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Schedule & Validity</div>
-        <div style="font-size:12px;color:#9A9AB0;margin-top:3px;">When does this deal run?</div>
+        <div style="font-size:12px;color:#6B7280;margin-top:3px;">When does this deal run?</div>
       </div>
       <div style="padding:16px;display:grid;gap:14px;">
 
         <!-- Date range -->
         <div style="display:grid;grid-template-columns:1fr;gap:12px;">
           <div>
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Start Date <span style="color:#E8192C;">*</span></label>
-            <input type="date" id="me-deal-start-date" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'" onchange="meUpdateSchedulePreview()">
+            <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Start Date <span style="color:#E8192C;">*</span></label>
+            <input type="date" id="me-deal-start-date" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#ECEDF0'" onchange="meUpdateSchedulePreview()">
           </div>
           <div>
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">End Date <span style="color:#E8192C;">*</span></label>
-            <input type="date" id="me-deal-end-date" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'" onchange="meUpdateSchedulePreview()">
+            <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">End Date <span style="color:#E8192C;">*</span></label>
+            <input type="date" id="me-deal-end-date" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#ECEDF0'" onchange="meUpdateSchedulePreview()">
           </div>
         </div>
 
         <!-- Time range -->
         <div style="display:grid;grid-template-columns:1fr;gap:12px;">
           <div>
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Happy Hour Start <span style="color:#E8192C;">*</span></label>
-            <input type="time" id="me-deal-time-start" value="17:00" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'" onchange="meUpdateSchedulePreview()">
+            <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Happy Hour Start <span style="color:#E8192C;">*</span></label>
+            <input type="time" id="me-deal-time-start" value="17:00" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#ECEDF0'" onchange="meUpdateSchedulePreview()">
           </div>
           <div>
-            <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Happy Hour End <span style="color:#E8192C;">*</span></label>
-            <input type="time" id="me-deal-time-end" value="21:00" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'" onchange="meUpdateSchedulePreview()">
+            <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;">Happy Hour End <span style="color:#E8192C;">*</span></label>
+            <input type="time" id="me-deal-time-end" value="21:00" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#ECEDF0'" onchange="meUpdateSchedulePreview()">
           </div>
         </div>
 
         <!-- Days of week -->
         <div>
-          <label style="font-size:10px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:8px;">Valid Days <span style="color:#E8192C;">*</span></label>
+          <label style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:8px;">Valid Days <span style="color:#E8192C;">*</span></label>
           <div style="display:flex;gap:6px;flex-wrap:wrap;" id="me-day-chips">
             <div class="me-day-chip active" onclick="meToggleDay(this)" data-day="Mon" style="padding:8px 12px;background:#E8192C;color:white;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #E8192C;transition:all .15s;user-select:none;">Mon</div>
             <div class="me-day-chip active" onclick="meToggleDay(this)" data-day="Tue" style="padding:8px 12px;background:#E8192C;color:white;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #E8192C;transition:all .15s;user-select:none;">Tue</div>
             <div class="me-day-chip active" onclick="meToggleDay(this)" data-day="Wed" style="padding:8px 12px;background:#E8192C;color:white;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #E8192C;transition:all .15s;user-select:none;">Wed</div>
             <div class="me-day-chip active" onclick="meToggleDay(this)" data-day="Thu" style="padding:8px 12px;background:#E8192C;color:white;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #E8192C;transition:all .15s;user-select:none;">Thu</div>
             <div class="me-day-chip active" onclick="meToggleDay(this)" data-day="Fri" style="padding:8px 12px;background:#E8192C;color:white;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #E8192C;transition:all .15s;user-select:none;">Fri</div>
-            <div class="me-day-chip" onclick="meToggleDay(this)" data-day="Sat" style="padding:8px 12px;background:white;color:#9A9AB0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #E8E8EC;transition:all .15s;user-select:none;">Sat</div>
-            <div class="me-day-chip" onclick="meToggleDay(this)" data-day="Sun" style="padding:8px 12px;background:white;color:#9A9AB0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #E8E8EC;transition:all .15s;user-select:none;">Sun</div>
+            <div class="me-day-chip" onclick="meToggleDay(this)" data-day="Sat" style="padding:8px 12px;background:white;color:#6B7280;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #ECEDF0;transition:all .15s;user-select:none;">Sat</div>
+            <div class="me-day-chip" onclick="meToggleDay(this)" data-day="Sun" style="padding:8px 12px;background:white;color:#6B7280;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #ECEDF0;transition:all .15s;user-select:none;">Sun</div>
           </div>
         </div>
 
         <!-- Extra time blocks (multiple day+time schedules) -->
         <div id="me-extra-sched-blocks" style="display:grid;gap:10px;"></div>
-        <button type="button" onclick="meAddSchedBlock()" style="justify-self:start;background:#F0F2F5;border:1.5px dashed #C7C7CC;border-radius:10px;padding:9px 14px;font-size:12.5px;font-weight:800;color:#1A1A1A;cursor:pointer;font-family:Inter,sans-serif;">+ Add another time block</button>
+        <button type="button" onclick="meAddSchedBlock()" style="justify-self:start;background:rgba(232,25,44,.06);border:1.5px dashed rgba(232,25,44,.35);border-radius:10px;padding:10px 14px;font-size:12.5px;font-weight:800;color:#E8192C;cursor:pointer;font-family:Inter,sans-serif;">+ Add another time block</button>
 
         <!-- Schedule preview -->
         <div id="me-schedule-preview" style="background:#F0F2F5;border-radius:12px;padding:12px 14px;display:none;">
-          <div style="font-size:11px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Schedule preview</div>
+          <div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Schedule preview</div>
           <div id="me-schedule-preview-text" style="font-size:13px;font-weight:700;color:#1A1A1A;line-height:1.6;"></div>
         </div>
 
@@ -34774,26 +34643,26 @@ function _setupDealMap() {
     </div>
 
     <!-- ── SECTION 3.5: ARRIVAL BOOKING ── -->
-    <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
-      <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
+    <div style="background:white;border-radius:16px;border:1px solid #ECEDF0;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 3px rgba(16,24,40,.05);">
+      <div style="padding:14px 18px;border-bottom:1px solid #ECEDF0;">
         <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Arrival Booking</div>
-        <div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Limit how many vouchers can be redeemed at the same time — customers pick an arrival time when buying</div>
+        <div style="font-size:12px;color:#6B7280;margin-top:3px;">Limit how many vouchers can be redeemed at the same time — customers pick an arrival time when buying</div>
       </div>
       <div style="padding:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;">
           <div>
             <div style="font-size:13px;font-weight:800;color:#1A1A1A;">Require arrival booking</div>
-            <div style="font-size:11.5px;color:#9A9AB0;margin-top:2px;">Customers must pick a date &amp; arrival time at checkout</div>
+            <div style="font-size:11.5px;color:#6B7280;margin-top:2px;">Customers must pick a date &amp; arrival time at checkout</div>
           </div>
           <div id="me-bk-required" onclick="meBkToggle('required')" style="width:46px;height:27px;border-radius:20px;background:#E0E0E6;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;">
             <div style="position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:white;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .2s;"></div>
           </div>
         </div>
-        <div id="me-bk-body" style="display:none;border-top:1px solid #F0F0F4;margin-top:12px;padding-top:14px;">
+        <div id="me-bk-body" style="display:none;border-top:1px solid #ECEDF0;margin-top:12px;padding-top:14px;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
             <div>
               <div style="font-size:13px;font-weight:800;color:#1A1A1A;">Customers can change / cancel booking</div>
-              <div style="font-size:11.5px;color:#9A9AB0;margin-top:2px;">If off, the chosen time is final</div>
+              <div style="font-size:11.5px;color:#6B7280;margin-top:2px;">If off, the chosen time is final</div>
             </div>
             <div id="me-bk-changeable" onclick="meBkToggle('changeable')" class="me-bk-on" style="width:46px;height:27px;border-radius:20px;background:#12A150;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;">
               <div style="position:absolute;top:3px;left:22px;width:21px;height:21px;border-radius:50%;background:white;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .2s;"></div>
@@ -34802,7 +34671,7 @@ function _setupDealMap() {
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
             <div>
               <div style="font-size:13px;font-weight:800;color:#1A1A1A;">Allow walk-ins without a booking</div>
-              <div style="font-size:11.5px;color:#9A9AB0;margin-top:2px;">If off, vouchers with no booked arrival are rejected at scan</div>
+              <div style="font-size:11.5px;color:#6B7280;margin-top:2px;">If off, vouchers with no booked arrival are rejected at scan</div>
             </div>
             <div id="me-bk-walkin" onclick="meBkToggle('walkin')" style="width:46px;height:27px;border-radius:20px;background:#E0E0E6;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;">
               <div style="position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:white;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .2s;"></div>
@@ -34812,10 +34681,10 @@ function _setupDealMap() {
             <div id="me-bk-times-list" style="display:flex;flex-direction:column;gap:8px;"></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <div style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;">Vouchers per date</div>
-            <button type="button" onclick="meBkFillAll()" style="background:#F5F5F7;border:1.5px solid #E8E8EC;color:#555;border-radius:8px;padding:4px 10px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Apply first row to all</button>
+            <div style="font-size:11px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;">Vouchers per date</div>
+            <button type="button" onclick="meBkFillAll()" style="background:#F6F7F9;border:1px solid #ECEDF0;color:#555;border-radius:8px;padding:4px 10px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Apply first row to all</button>
           </div>
-          <div style="font-size:11px;color:#9A9AB0;margin-bottom:10px;">Dates come from your Start–End dates &amp; valid days. Time is optional — leave it empty and guests can arrive any time in the happy-hour window. Leave vouchers empty (or 0) to close a date.</div>
+          <div style="font-size:11px;color:#6B7280;margin-bottom:10px;">Dates come from your Start–End dates &amp; valid days. Time is optional — leave it empty and guests can arrive any time in the happy-hour window. Leave vouchers empty (or 0) to close a date.</div>
           <div id="me-bk-dates-list" style="display:flex;flex-direction:column;gap:8px;"></div>
           <div id="me-bk-cap-summary" style="display:none;margin-top:14px;border-radius:12px;padding:12px 14px;font-size:12px;font-weight:600;line-height:1.65;font-family:Inter,sans-serif;"></div>
         </div>
@@ -34823,14 +34692,14 @@ function _setupDealMap() {
     </div>
 
     <!-- ── SECTION 3.6: REDEMPTION WINDOW ── -->
-    <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
-      <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
+    <div style="background:white;border-radius:16px;border:1px solid #ECEDF0;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 3px rgba(16,24,40,.05);">
+      <div style="padding:14px 18px;border-bottom:1px solid #ECEDF0;">
         <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Redemption Window</div>
-        <div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Vouchers can only be scanned during your happy-hour times — scans before or after are rejected</div>
+        <div style="font-size:12px;color:#6B7280;margin-top:3px;">Vouchers can only be scanned during your happy-hour times — scans before or after are rejected</div>
       </div>
       <div style="padding:16px;">
-        <label style="font-size:11px;font-weight:800;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px;">Grace period (before &amp; after happy hour)</label>
-        <select id="me-grace-min" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;cursor:pointer;">
+        <label style="font-size:11px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px;">Grace period (before &amp; after happy hour)</label>
+        <select id="me-grace-min" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;cursor:pointer;">
           <option value="0">No grace period — strict happy-hour times</option>
           <option value="10">10 minutes</option>
           <option value="15">15 minutes</option>
@@ -34838,18 +34707,18 @@ function _setupDealMap() {
           <option value="45">45 minutes</option>
           <option value="60">1 hour</option>
         </select>
-        <div style="font-size:11.5px;color:#9A9AB0;margin-top:8px;line-height:1.5;">e.g. with a 15-min grace on a 5PM–9PM deal, scans are accepted 4:45PM–9:15PM.</div>
+        <div style="font-size:11.5px;color:#6B7280;margin-top:8px;line-height:1.5;">e.g. with a 15-min grace on a 5PM–9PM deal, scans are accepted 4:45PM–9:15PM.</div>
       </div>
     </div>
 
     <!-- ── SECTION 4: TERMS ── -->
-    <div style="background:white;border-radius:16px;border:1.5px solid #E8E8EC;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.05);">
-      <div style="padding:14px 18px;border-bottom:1.5px solid #F0F0F4;">
+    <div style="background:white;border-radius:16px;border:1px solid #ECEDF0;overflow:hidden;margin-bottom:24px;box-shadow:0 1px 3px rgba(16,24,40,.05);">
+      <div style="padding:14px 18px;border-bottom:1px solid #ECEDF0;">
         <div style="font-size:14px;font-weight:800;color:#1A1A1A;">Terms & Conditions</div>
-        <div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Optional but recommended</div>
+        <div style="font-size:12px;color:#6B7280;margin-top:3px;">Optional but recommended</div>
       </div>
       <div style="padding:16px;">
-        <textarea id="me-deal-terms" style="width:100%;background:#F5F5F7;border:2px solid #E8E8EC;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:#1A1A1A;outline:none;height:80px;resize:none;box-sizing:border-box;line-height:1.5;" placeholder="e.g. One voucher per table. Cannot be combined with other offers. Subject to availability." onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#E8E8EC'"></textarea>
+        <textarea id="me-deal-terms" style="width:100%;background:#F6F7F9;border:2px solid #ECEDF0;border-radius:12px;padding:13px 14px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:#1A1A1A;outline:none;height:80px;resize:none;box-sizing:border-box;line-height:1.5;" placeholder="e.g. One voucher per table. Cannot be combined with other offers. Subject to availability." onfocus="this.style.borderColor='#E8192C'" onblur="this.style.borderColor='#ECEDF0'"></textarea>
         <div style="margin-top:12px;display:flex;align-items:flex-start;gap:10px;padding:12px;background:#F0FFF4;border-radius:10px;border:1px solid rgba(18,161,80,.2);">
           <div style="font-size:12px;color:#166534;font-weight:500;line-height:1.5;">Your deal goes <strong>live instantly</strong> on the app as soon as you publish. Customers in your area will see it right away.</div>
         </div>
@@ -34857,8 +34726,8 @@ function _setupDealMap() {
     </div>
 
     <!-- Publish button -->
-    <button onclick="mePublishDeal()" style="width:100%;background:linear-gradient(135deg,#E8192C,#FF5533);color:white;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 16px rgba(232,25,44,.35);margin-bottom:10px;">Publish Deal Now</button>
-    <button onclick="meCloseCreate()" style="width:100%;background:white;color:#555;border:1.5px solid #E8E8EC;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">Cancel</button>
+    <button onclick="mePublishDeal()" style="width:100%;background:linear-gradient(135deg,#E8192C,#C20E1F);color:white;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 16px rgba(232,25,44,.35);margin-bottom:10px;">Publish Deal Now</button>
+    <button onclick="meCloseCreate()" style="width:100%;background:white;color:#555;border:1px solid #ECEDF0;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">Cancel</button>
 
   </div>
   </div><!-- /scroll -->
