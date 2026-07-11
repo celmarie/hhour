@@ -5596,7 +5596,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260711195640';
+var BUILD_VERSION = '20260711200556';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -13230,7 +13230,7 @@ function meRenderPeakTimes(metrics){
   function hRange(h){ var ap1=h<12?'am':'pm'; var v1=h%12||12; var n=(h+1)%24; var ap2=n<12?'am':'pm'; var v2=n%12||12; return v1+(ap1!==ap2?ap1:'')+'–'+v2+ap2; }
 
   var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
-    + '<div class="me-card-header"><span class="me-card-title">🕐 Peak Redemption Times</span>'
+    + '<div class="me-card-header"><span class="me-card-title" style="display:inline-flex;align-items:center;gap:8px;">'+meIcon('clock',17)+'Peak Redemption Times</span>'
     + '<span style="font-size:11px;color:#6B7280;font-weight:600;">When customers redeem</span></div>';
 
   if(!pt || !pt.total){
@@ -13293,7 +13293,7 @@ function meRenderPeakTimes(metrics){
 function meRenderFunnel(metrics){
   var f = metrics && metrics.funnel;
   var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
-    + '<div class="me-card-header"><span class="me-card-title">🔻 Deal Funnel</span>'
+    + '<div class="me-card-header"><span class="me-card-title" style="display:inline-flex;align-items:center;gap:8px;">'+meIcon('trend',17)+'Deal Funnel</span>'
     + '<span style="font-size:11px;color:#6B7280;font-weight:600;">Views → Buy → Redeem</span></div>';
   if(!f || (!f.views && !f.purchases && !f.redeemed)){
     return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
@@ -13334,7 +13334,7 @@ function meRenderOutstanding(metrics){
   var o = metrics && metrics.outstanding;
   var sym = (typeof finSym==='function') ? finSym() : '€';
   var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
-    + '<div class="me-card-header"><span class="me-card-title">🎟 Outstanding Vouchers</span>'
+    + '<div class="me-card-header"><span class="me-card-title" style="display:inline-flex;align-items:center;gap:8px;">'+meIcon('ticket',17)+'Outstanding Vouchers</span>'
     + '<span style="font-size:11px;color:#6B7280;font-weight:600;">Paid, not yet redeemed</span></div>';
   if(!o || (!o.count && !o.expiredCount)){
     return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
@@ -13385,7 +13385,7 @@ function meRenderOutstanding(metrics){
 function meRenderNoShow(metrics){
   var n = metrics && metrics.noShow;
   var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
-    + '<div class="me-card-header"><span class="me-card-title">🚷 No-Show Report</span>'
+    + '<div class="me-card-header"><span class="me-card-title" style="display:inline-flex;align-items:center;gap:8px;">'+meIcon('users',17)+'No-Show Report</span>'
     + '<span style="font-size:11px;color:#6B7280;font-weight:600;">Bought/booked, didn’t arrive</span></div>';
   if(!n || (!n.total && (!n.list || !n.list.length))){
     return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
@@ -13424,7 +13424,7 @@ function meRenderNoShow(metrics){
 function meRenderRepeat(metrics){
   var r = metrics && metrics.repeat;
   var head = '<div class="me-card" style="background:#fff;border:1px solid #ECEDF0;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;flex-direction:column;">'
-    + '<div class="me-card-header"><span class="me-card-title">🔁 Repeat Customers</span>'
+    + '<div class="me-card-header"><span class="me-card-title" style="display:inline-flex;align-items:center;gap:8px;">'+meIcon('star',17)+'Repeat Customers</span>'
     + '<span style="font-size:11px;color:#6B7280;font-weight:600;">New vs returning</span></div>';
   if(!r || !r.customers){
     return head + '<div class="me-card-body"><div class="me-empty-state" style="padding:24px 16px;">'
