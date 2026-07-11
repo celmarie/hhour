@@ -5596,7 +5596,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260711195012';
+var BUILD_VERSION = '20260711195640';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -26954,10 +26954,10 @@ function meRenderBookings(){
   setTimeout(meLoadBookings, 30);
   return '<div style="margin-bottom:16px;padding-left:8px;">'
       +'<div style="font-size:18px;font-weight:900;color:#1A1A1A;font-family:Inter,sans-serif;">Arrival Bookings</div>'
-      +'<div style="font-size:12px;color:#9A9AB0;margin-top:3px;">Upcoming &amp; recent arrivals — flag a no-show if a guest didn\'t turn up</div>'
+      +'<div style="font-size:12px;color:#6B7280;margin-top:3px;">Upcoming &amp; recent arrivals — flag a no-show if a guest didn\'t turn up</div>'
     +'</div>'
     +'<div id="me-bookings-list">'
-      +'<div style="padding:40px 16px;text-align:center;color:#9A9AB0;font-size:13px;font-weight:600;font-family:Inter,sans-serif;">Loading bookings…</div>'
+      +'<div style="padding:40px 16px;text-align:center;color:#6B7280;font-size:13px;font-weight:600;font-family:Inter,sans-serif;">Loading bookings…</div>'
     +'</div>';
 }
 
@@ -26967,7 +26967,7 @@ async function meLoadBookings(){
   var dealIds = (dealsData||[]).map(function(d){ return d._dbId || d.id; })
     .filter(function(id){ return id && Number(id) < 10000000000; });
   if(!dealIds.length){
-    box.innerHTML = '<div style="padding:36px 16px;text-align:center;font-family:Inter,sans-serif;"><div style="font-size:30px;margin-bottom:8px;">📅</div><div style="font-size:13px;font-weight:700;color:#9A9AB0;">No deals yet — create a deal with arrival booking enabled</div></div>';
+    box.innerHTML = '<div style="padding:36px 16px;text-align:center;font-family:Inter,sans-serif;"><div style="font-size:30px;margin-bottom:8px;">📅</div><div style="font-size:13px;font-weight:700;color:#6B7280;">No deals yet — create a deal with arrival booking enabled</div></div>';
     return;
   }
   var today = new Date().toISOString().slice(0,10);
@@ -27011,7 +27011,7 @@ async function meLoadBookings(){
     });
   } catch(e){ console.warn('[meLoadBookings] unbooked fetch failed:', e); }
   if(!rows.length && !unbooked.length){
-    box.innerHTML = '<div style="padding:36px 16px;text-align:center;font-family:Inter,sans-serif;"><div style="font-size:30px;margin-bottom:8px;">🗓️</div><div style="font-size:13px;font-weight:700;color:#9A9AB0;">No upcoming bookings yet</div><div style="font-size:11.5px;color:#C5C5D0;margin-top:4px;">Bookings appear here when customers buy a deal with arrival booking</div></div>';
+    box.innerHTML = '<div style="padding:36px 16px;text-align:center;font-family:Inter,sans-serif;"><div style="font-size:30px;margin-bottom:8px;">🗓️</div><div style="font-size:13px;font-weight:700;color:#6B7280;">No upcoming bookings yet</div><div style="font-size:11.5px;color:#9CA3AF;margin-top:4px;">Bookings appear here when customers buy a deal with arrival booking</div></div>';
     return;
   }
   var capOf = {};
@@ -27034,18 +27034,18 @@ async function meLoadBookings(){
   var _nowHM = new Date().toTimeString().slice(0,5);
   var _next = _tRows.map(function(b){ return b.arrival_time; }).filter(function(t){ return t >= _nowHM; }).sort()[0] || null;
   var _summary = '<div style="display:flex;gap:10px;margin-bottom:14px;font-family:Inter,sans-serif;">'
-    +'<div style="flex:1;background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:20px;font-weight:900;color:#1A1A1A;">'+_tRows.length+'</div><div style="font-size:10.5px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;">Today’s bookings</div></div>'
-    +'<div style="flex:1;background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:20px;font-weight:900;color:#12A150;">'+_tGuests+'</div><div style="font-size:10.5px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;">Vouchers today</div></div>'
-    +'<div style="flex:1;background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:20px;font-weight:900;color:#E8192C;">'+(_next||'—')+'</div><div style="font-size:10.5px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;">Next arrival</div></div>'
+    +'<div style="flex:1;background:white;border:1px solid #ECEDF0;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:20px;font-weight:900;color:#1A1A1A;">'+_tRows.length+'</div><div style="font-size:10.5px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;">Today’s bookings</div></div>'
+    +'<div style="flex:1;background:white;border:1px solid #ECEDF0;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:20px;font-weight:900;color:#12A150;">'+_tGuests+'</div><div style="font-size:10.5px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;">Vouchers today</div></div>'
+    +'<div style="flex:1;background:white;border:1px solid #ECEDF0;border-radius:12px;padding:12px;text-align:center;"><div style="font-size:20px;font-weight:900;color:#E8192C;">'+(_next||'—')+'</div><div style="font-size:10.5px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;">Next arrival</div></div>'
   +'</div>';
-  var _ubHtml = unbooked.length ? '<div style="background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:13px 14px;margin-bottom:14px;font-family:Inter,sans-serif;">'
+  var _ubHtml = unbooked.length ? '<div style="background:white;border:1px solid #ECEDF0;border-radius:12px;padding:13px 14px;margin-bottom:14px;font-family:Inter,sans-serif;">'
     +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;margin-bottom:2px;">Expected arrivals — no time booked</div>'
-    +'<div style="font-size:11px;color:#9A9AB0;margin-bottom:6px;">Valid vouchers without a chosen date/time — these guests can arrive any time the deal runs.</div>'
+    +'<div style="font-size:11px;color:#6B7280;margin-bottom:6px;">Valid vouchers without a chosen date/time — these guests can arrive any time the deal runs.</div>'
     + unbooked.map(function(p){
         var nm=(p.profiles&&p.profiles.name)||'Customer';
         var dl=(p.deals&&p.deals.title)||'Deal'; var em=(p.deals&&p.deals.emoji)||'🎟️';
-        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #F5F5F8;">'
-          +'<div style="flex:1;min-width:0;font-size:12px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(nm)+' <span style="color:#9A9AB0;font-weight:600;">×'+(p.qty||1)+' · '+em+' '+esc(dl)+'</span></div>'
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #F6F7F9;">'
+          +'<div style="flex:1;min-width:0;font-size:12px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(nm)+' <span style="color:#6B7280;font-weight:600;">×'+(p.qty||1)+' · '+em+' '+esc(dl)+'</span></div>'
           +'<span style="background:#FFF7ED;color:#B45309;font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:10px;white-space:nowrap;">Any time</span>'
         +'</div>';
       }).join('')
@@ -27060,12 +27060,12 @@ async function meLoadBookings(){
           var s = byDate[date][k];
           var cap = (window._meDateCaps && window._meDateCaps[s.dealId+'_'+date+'_'+s.time]) || capOf[s.dealId+'_'+s.time] || 0;
           var pct = cap > 0 ? Math.min(100, Math.round(s.guests/cap*100)) : 0;
-          return '<div style="background:white;border:1.5px solid #E8E8EC;border-radius:12px;padding:13px 14px;margin-bottom:8px;font-family:Inter,sans-serif;">'
+          return '<div style="background:white;border:1px solid #ECEDF0;border-radius:12px;padding:13px 14px;margin-bottom:8px;font-family:Inter,sans-serif;">'
             +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">'
-              +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;">🕐 '+s.time+' <span style="color:#9A9AB0;font-weight:600;">· '+s.emoji+' '+esc(s.deal)+'</span></div>'
+              +'<div style="font-size:13px;font-weight:800;color:#1A1A1A;">🕐 '+s.time+' <span style="color:#6B7280;font-weight:600;">· '+s.emoji+' '+esc(s.deal)+'</span></div>'
               +'<div style="font-size:12px;font-weight:800;color:'+(pct>=100?'#dc2626':'#12A150')+';">'+s.guests+(cap?'/'+cap:'')+' vouchers</div>'
             +'</div>'
-            +(cap?'<div style="background:#F5F5F7;border-radius:4px;height:5px;overflow:hidden;margin-bottom:10px;"><div style="width:'+pct+'%;height:100%;background:'+(pct>=100?'#dc2626':'linear-gradient(90deg,#12A150,#22c55e)')+';"></div></div>':'')
+            +(cap?'<div style="background:#F6F7F9;border-radius:4px;height:5px;overflow:hidden;margin-bottom:10px;"><div style="width:'+pct+'%;height:100%;background:'+(pct>=100?'#dc2626':'linear-gradient(90deg,#12A150,#22c55e)')+';"></div></div>':'')
             + s.items.map(function(b){
                 var nm = (b.profiles && b.profiles.name) || 'Customer';
                 var code = (b.voucher_purchases && b.voucher_purchases.code) || '';
@@ -27078,16 +27078,16 @@ async function meLoadBookings(){
                   ? '<span style="background:rgba(18,161,80,.1);color:#12A150;font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:10px;">✓ Arrived</span>'
                   : isNoShow
                     ? '<span style="background:rgba(232,25,44,.1);color:#E8192C;font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:10px;">✕ No-show</span>'
-                    : '<span style="background:#F5F5F7;color:#9A9AB0;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:10px;">Booked</span>';
+                    : '<span style="background:#F6F7F9;color:#6B7280;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:10px;">Booked</span>';
                 var nmArg = String(nm).replace(/['"\\]/g,'');
                 var action = canFlag
                   ? '<button onclick="meReportNoShow('+Number(b.id)+',\''+nmArg+'\')" style="background:rgba(232,25,44,.06);color:#E8192C;border:1px solid rgba(232,25,44,.25);border-radius:8px;padding:3px 10px;font-size:10px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">No Show</button>'
                   : (isNoShow
-                    ? '<button onclick="meUndoNoShow('+Number(b.id)+')" style="background:none;border:none;color:#9A9AB0;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:3px 4px;">Undo</button>'
+                    ? '<button onclick="meUndoNoShow('+Number(b.id)+')" style="background:none;border:none;color:#6B7280;font-size:10px;font-weight:700;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif;padding:3px 4px;">Undo</button>'
                     : '');
-                return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #F5F5F8;">'
-                  +'<div style="flex:1;min-width:0;font-size:12px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(nm)+' <span style="color:#9A9AB0;font-weight:600;">×'+(b.guests||1)+'</span></div>'
-                  +(code?'<span style="font-size:11px;font-weight:700;color:#9A9AB0;font-family:monospace;">'+code+'</span>':'')
+                return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid #F6F7F9;">'
+                  +'<div style="flex:1;min-width:0;font-size:12px;font-weight:700;color:#1A1A1A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(nm)+' <span style="color:#6B7280;font-weight:600;">×'+(b.guests||1)+'</span></div>'
+                  +(code?'<span style="font-size:11px;font-weight:700;color:#6B7280;font-family:monospace;">'+code+'</span>':'')
                   +pill
                   +action
                 +'</div>';
@@ -28074,9 +28074,9 @@ async function meDoReportCustomer(purchaseId, customerName, dealId){
 function meRenderSettings(){
   var email = esc((currentUser && currentUser.email) || (currentProfile && currentProfile.email) || '');
   var venue = esc(meVenueName || '');
-  var fld  = 'background:#F8F8FA;border-radius:10px;padding:10px 12px;border:1.5px solid #E8E8EC;';
-  var lbl  = 'font-size:10px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;font-family:Inter,sans-serif;';
-  var inp  = 'width:100%;background:#F5F5F7;border:1.5px solid #E8E8EC;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;';
+  var fld  = 'background:#F6F7F9;border-radius:10px;padding:10px 12px;border:1px solid #ECEDF0;';
+  var lbl  = 'font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;font-family:Inter,sans-serif;';
+  var inp  = 'width:100%;background:#F6F7F9;border:1px solid #ECEDF0;border-radius:10px;padding:11px 13px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#1A1A1A;outline:none;box-sizing:border-box;';
 
   // Account info
   var account = '<div class="me-card">'
@@ -28100,7 +28100,7 @@ function meRenderSettings(){
       + '<div id="me-set-pw-err" style="color:#dc2626;font-size:12px;font-weight:700;margin-bottom:10px;display:none;"></div>'
       + '<div id="captcha-box-mepw" style="display:none;justify-content:center;margin-bottom:12px;"></div>'
       + '<button id="me-set-pw-btn" onclick="meUpdateMerchantPassword()" style="width:100%;background:#1A1A1A;color:white;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">Update Password</button>'
-      + '<div style="font-size:11px;color:#9A9AB0;text-align:center;margin-top:8px;font-family:Inter,sans-serif;">Takes effect immediately — you\'ll use the new password next time you sign in.</div>'
+      + '<div style="font-size:11px;color:#6B7280;text-align:center;margin-top:8px;font-family:Inter,sans-serif;">Takes effect immediately — you\'ll use the new password next time you sign in.</div>'
     + '</div>'
   + '</div>';
 
@@ -28110,7 +28110,7 @@ function meRenderSettings(){
       + '<span class="me-card-title">🏦 Bank Account</span>'
       + '<span style="font-size:10px;font-weight:700;background:#F0FDF4;color:#12A150;border:1px solid #86EFAC;border-radius:20px;padding:4px 10px;font-family:Inter,sans-serif;">🔒 Secure</span>'
     + '</div>'
-    + '<div id="me-bank-display" style="padding:18px;"><div style="font-size:13px;color:#9A9AB0;font-weight:600;text-align:center;padding:20px 0;">Loading bank details…</div></div>'
+    + '<div id="me-bank-display" style="padding:18px;"><div style="font-size:13px;color:#6B7280;font-weight:600;text-align:center;padding:20px 0;">Loading bank details…</div></div>'
   + '</div>';
 
   // Company profile — merchants edit their public contact details. Name + address
@@ -28122,13 +28122,13 @@ function meRenderSettings(){
         + '<div style="'+fld+'"><div style="'+lbl+'">Company name 🔒</div><div id="me-cp-name" style="font-size:13px;font-weight:800;color:#1A1A1A;">'+(venue||'—')+'</div></div>'
         + '<div style="'+fld+'"><div style="'+lbl+'">Address 🔒</div><div id="me-cp-address" style="font-size:13px;font-weight:700;color:#1A1A1A;">Loading…</div></div>'
       + '</div>'
-      + '<div style="font-size:11px;color:#9A9AB0;font-weight:600;margin-bottom:14px;font-family:Inter,sans-serif;">Company name and address are verified details — contact Appie Hour support to change them.</div>'
+      + '<div style="font-size:11px;color:#6B7280;font-weight:600;margin-bottom:14px;font-family:Inter,sans-serif;">Company name and address are verified details — contact Appie Hour support to change them.</div>'
       + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">'
         + '<div><label style="'+lbl+'display:block;">📞 Phone number</label><input id="me-cp-phone" type="tel" placeholder="e.g. +34 600 123 456" style="'+inp+'"></div>'
         + '<div><label style="'+lbl+'display:block;">✉️ Public contact email</label><input id="me-cp-email" type="email" placeholder="e.g. hello@yourvenue.com" style="'+inp+'"></div>'
         + '<div><label style="'+lbl+'display:block;">🔗 Social media link</label><input id="me-cp-social" type="url" placeholder="e.g. instagram.com/yourvenue" style="'+inp+'"></div>'
       + '</div>'
-      + '<div id="me-cp-status" style="font-size:11px;color:#9A9AB0;text-align:center;margin-bottom:10px;font-family:Inter,sans-serif;min-height:14px;"></div>'
+      + '<div id="me-cp-status" style="font-size:11px;color:#6B7280;text-align:center;margin-bottom:10px;font-family:Inter,sans-serif;min-height:14px;"></div>'
       + '<button id="me-cp-save" onclick="meSaveCompanyProfile()" style="width:100%;background:#12A150;color:white;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">💾 Save Company Profile</button>'
     + '</div>'
   + '</div>';
@@ -28137,13 +28137,13 @@ function meRenderSettings(){
   var accpay = '<div class="me-card">'
     + '<div class="me-card-header"><span class="me-card-title">💳 Onsite Payment</span></div>'
     + '<div style="padding:18px;">'
-      + '<div style="font-size:12px;color:#9A9AB0;font-weight:600;margin-bottom:12px;font-family:Inter,sans-serif;line-height:1.5;">What can customers pay with when they settle a voucher in person? Shown to anyone who picks “Pay at venue” at checkout.</div>'
+      + '<div style="font-size:12px;color:#6B7280;font-weight:600;margin-bottom:12px;font-family:Inter,sans-serif;line-height:1.5;">What can customers pay with when they settle a voucher in person? Shown to anyone who picks “Pay at venue” at checkout.</div>'
       + '<div id="me-accpay-opts" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">'
         + _meAccpayChip('cash','💵','Cash')
         + _meAccpayChip('card','💳','Card')
         + _meAccpayChip('either','💵 💳','Either')
       + '</div>'
-      + '<div id="me-accpay-status" style="font-size:11px;color:#9A9AB0;text-align:center;margin-top:10px;font-family:Inter,sans-serif;min-height:14px;"></div>'
+      + '<div id="me-accpay-status" style="font-size:11px;color:#6B7280;text-align:center;margin-top:10px;font-family:Inter,sans-serif;min-height:14px;"></div>'
     + '</div>'
   + '</div>';
 
@@ -28667,8 +28667,8 @@ async function meLoadBankDetails(){
   }
 
   var hasBankDetails = bank.holder || bank.iban || bank.name;
-  var fld = 'background:#F8F8FA;border-radius:10px;padding:10px 12px;border:1.5px solid #E8E8EC;';
-  var lbl2 = 'font-size:10px;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;font-family:Inter,sans-serif;';
+  var fld = 'background:#F6F7F9;border-radius:10px;padding:10px 12px;border:1px solid #ECEDF0;';
+  var lbl2 = 'font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;font-family:Inter,sans-serif;';
 
   var html = '';
 
@@ -28696,7 +28696,7 @@ async function meLoadBankDetails(){
   if(!pendingReq){
     html += '<button onclick="meShowBankChangeRequest(\''+bank.holder+'\',\''+bank.iban+'\',\''+esc(bank.name)+'\',\''+bank.swift+'\')" style="width:100%;background:#1A1A1A;color:white;border:none;border-radius:10px;padding:13px;font-size:13px;font-weight:800;cursor:pointer;font-family:Inter,sans-serif;">📝 Request Bank Details Change</button>';
   }
-  html += '<div style="font-size:11px;color:#9A9AB0;text-align:center;margin-top:8px;font-family:Inter,sans-serif;">Changes require admin approval before taking effect</div>';
+  html += '<div style="font-size:11px;color:#6B7280;text-align:center;margin-top:8px;font-family:Inter,sans-serif;">Changes require admin approval before taking effect</div>';
 
   el.innerHTML = html;
 }
@@ -28801,7 +28801,7 @@ function meRenderReviews(){
   // own deals (deal_kind='verified'). No sample/placeholder content.
   return '<div style="display:flex;flex-direction:column;gap:20px;" id="me-reviews-root">'
     +'<div id="me-reviews-body">'
-      +'<div style="padding:40px;text-align:center;color:#9A9AB0;font-family:Inter,sans-serif;font-size:13px;font-weight:600;">Loading reviews…</div>'
+      +'<div style="padding:40px;text-align:center;color:#6B7280;font-family:Inter,sans-serif;font-size:13px;font-weight:600;">Loading reviews…</div>'
     +'</div>'
   +'</div>';
 }
@@ -28813,7 +28813,7 @@ async function meLoadReviews(){
     return '<div class="me-card"><div style="padding:40px 24px;text-align:center;">'
       +'<div style="font-size:34px;margin-bottom:10px;">⭐</div>'
       +'<div style="font-size:15px;font-weight:800;color:#1A1A1A;font-family:Inter,sans-serif;margin-bottom:6px;">'+title+'</div>'
-      +'<div style="font-size:13px;color:#9A9AB0;font-weight:500;font-family:Inter,sans-serif;line-height:1.6;">'+sub+'</div>'
+      +'<div style="font-size:13px;color:#6B7280;font-weight:500;font-family:Inter,sans-serif;line-height:1.6;">'+sub+'</div>'
     +'</div></div>';
   };
 
@@ -28846,10 +28846,10 @@ async function meLoadReviews(){
   var mostCommon = Object.keys(dist).reduce(function(a,b){ return dist[b]>=dist[a]?b:a; }, '5');
 
   var stats = '<div class="me-stat-grid">'
-    +'<div class="me-stat-card"><div class="me-stat-header"><div class="me-stat-icon" style="background:rgba(255,179,0,.12);">⭐</div></div><div class="me-stat-value">'+avg.toFixed(1)+'</div><div class="me-stat-label">Avg rating</div><div style="font-size:11px;color:#9A9AB0;margin-top:6px;">'+count+' total review'+(count===1?'':'s')+'</div></div>'
-    +'<div class="me-stat-card"><div class="me-stat-header"><div class="me-stat-icon" style="background:rgba(18,161,80,.1);">👍</div></div><div class="me-stat-value">'+positivePct+'%</div><div class="me-stat-label">Positive</div><div style="font-size:11px;color:#9A9AB0;margin-top:6px;">'+positive+' of '+count+' rated ★4+</div></div>'
+    +'<div class="me-stat-card"><div class="me-stat-header"><div class="me-stat-icon" style="background:rgba(255,179,0,.12);">⭐</div></div><div class="me-stat-value">'+avg.toFixed(1)+'</div><div class="me-stat-label">Avg rating</div><div style="font-size:11px;color:#6B7280;margin-top:6px;">'+count+' total review'+(count===1?'':'s')+'</div></div>'
+    +'<div class="me-stat-card"><div class="me-stat-header"><div class="me-stat-icon" style="background:rgba(18,161,80,.1);">👍</div></div><div class="me-stat-value">'+positivePct+'%</div><div class="me-stat-label">Positive</div><div style="font-size:11px;color:#6B7280;margin-top:6px;">'+positive+' of '+count+' rated ★4+</div></div>'
     +'<div class="me-stat-card"><div class="me-stat-header"><div class="me-stat-icon" style="background:rgba(59,130,246,.1);">💬</div></div><div class="me-stat-value">'+count+'</div><div class="me-stat-label">Total reviews</div></div>'
-    +'<div class="me-stat-card"><div class="me-stat-header"><div class="me-stat-icon" style="background:rgba(232,25,44,.1);">★</div></div><div class="me-stat-value">'+mostCommon+'★</div><div class="me-stat-label">Most common</div><div style="font-size:11px;color:#9A9AB0;margin-top:6px;">'+dist[mostCommon]+' review'+(dist[mostCommon]===1?'':'s')+'</div></div>'
+    +'<div class="me-stat-card"><div class="me-stat-header"><div class="me-stat-icon" style="background:rgba(232,25,44,.1);">★</div></div><div class="me-stat-value">'+mostCommon+'★</div><div class="me-stat-label">Most common</div><div style="font-size:11px;color:#6B7280;margin-top:6px;">'+dist[mostCommon]+' review'+(dist[mostCommon]===1?'':'s')+'</div></div>'
   +'</div>';
 
   var list = rows.map(function(r){
@@ -28869,7 +28869,7 @@ async function meLoadReviews(){
             +'<div style="display:flex;gap:2px;">'+stars+'</div>'
             +(r.verified_purchase?'<span style="font-size:10px;font-weight:800;color:#12A150;background:#F0FDF4;border:1px solid #86EFAC;border-radius:20px;padding:2px 8px;">✓ Verified</span>':'')
           +'</div>'
-          +'<div style="font-size:11px;color:#9A9AB0;font-weight:500;">'+when+(dn?' · '+dn:'')+'</div>'
+          +'<div style="font-size:11px;color:#6B7280;font-weight:500;">'+when+(dn?' · '+dn:'')+'</div>'
         +'</div>'
       +'</div>'
       +(r.body?'<div style="font-size:13px;color:#555;line-height:1.6;">'+esc(r.body)+'</div>':'')
