@@ -1,0 +1,9 @@
+{
+  "name": "hhour-build",
+  "private": true,
+  "type": "module",
+  "description": "Build tooling for the Appie Hour single-file app (minify-on-deploy).",
+  "dependencies": {
+    "html-minifier-terser": "^7.2.0"
+  }
+}
