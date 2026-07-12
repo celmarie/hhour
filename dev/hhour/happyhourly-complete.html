@@ -5602,7 +5602,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260711204435';
+var BUILD_VERSION = '20260712034011';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
@@ -15026,7 +15026,7 @@ function goScreen(name){
   _navSettleUntil = Date.now() + 400;          // ignore an accidental Back for 400ms (ghost/second tap)
   if(name==='mycontribs'){ _mcSegment='deals'; setTimeout(function(){ mcSetSegment('deals'); loadMyContribs(); },50); }
   if(name==='community') setTimeout(comInitTab,50);
-  if(name==='watch') setTimeout(function(){ initAddressAutocomplete(); watchInitList(); },50);
+  if(name==='watch') setTimeout(function(){ watchInitList(); },50);
   if(name==='credits') setTimeout(crMaybeInit,50);
   if(name==='map') setTimeout(initDealMap,50);
   if(name==='post') setTimeout(initAddressAutocomplete,100);
@@ -31414,6 +31414,7 @@ async function comCancelRSVP(id){
 // WHERE TO WATCH — community board for World Cup match screenings
 // ════════════════════════════════════════════════════════════════════
 var watchSpots = [];
+var _watchShowN = 24;   // Where-to-Watch: how many spot cards to render (paginated to protect iOS memory)
 var _watchPhotoData = '';
 
 // ⚽ WORLD CUP FIXTURES — EDIT THIS LIST with the official schedule.
@@ -31793,6 +31794,7 @@ async function loadWatchSpots(){
 
 function watchInitList(){
   watchSwitchView('spots');
+  _watchShowN = 24;   // fresh batch on each screen open
   // Render from cache immediately so the screen feels instant
   try {
     var c = localStorage.getItem('hh_watch_cache');
@@ -32121,7 +32123,9 @@ function watchRenderList(){
   // a tapped-match filter and the search box have all been applied.
   var countHtml = '<div style="font-size:12.5px;font-weight:700;color:#9A9AB0;margin:2px 2px 10px;">📍 '
     + spots.length + (spots.length===1 ? ' venue shown' : ' venues shown') + '</div>';
-  el.innerHTML = chips + matchBanner + countHtml + spots.map(function(s){
+  var _wShown = spots.slice(0, _watchShowN);
+  var _wMore = spots.length - _wShown.length;
+  el.innerHTML = chips + matchBanner + countHtml + _wShown.map(function(s){
     var ms = _watchMatchesOf(s);
     var first = ms[0] || { label: s.match_label || 'Match' };
     var when = (first.dateStr ? _watchFmtDate(first.dateStr) : '') + (first.timeStr ? ' · ' + first.timeStr + (first.tz ? ' ' + first.tz : '') : '');
@@ -32160,7 +32164,7 @@ function watchRenderList(){
         + '</div>'
       + '</div>'
     + '</div>';
-  }).join('');
+  }).join('') + (_wMore>0 ? '<button onclick="_watchShowN+=24;watchRenderList()" style="width:100%;background:#fff;border:1.5px solid #ECECF1;border-radius:14px;padding:13px;font-size:13.5px;font-weight:800;color:#0B7A3C;cursor:pointer;font-family:Inter,sans-serif;margin:2px 0 14px;">Show more · '+_wMore+' remaining</button>' : '');
   if(_watchDetailId!=null) watchOpenSpotDetail(_watchDetailId);
 }
 
