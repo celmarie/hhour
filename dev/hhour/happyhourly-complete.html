@@ -136,9 +136,9 @@
   } catch(e){}
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- supabase-js moved lower (just above createClient) so it does not block first paint / the boot splash -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"></noscript>
 <style>
 :root {
   --red:#E8192C; --red2:#C8101F; --redl:rgba(232,25,44,0.1); --redm:rgba(232,25,44,0.18);
@@ -5577,6 +5577,8 @@ function _loadGT(){
   <div class="toast" id="toast"></div>
 </div>
 
+<!-- supabase-js loaded here (moved out of <head>) so it never blocks first paint / the boot splash. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ══ SUPABASE ══════════════════════════════════════════════════════════════════
 const GMAPS_KEY = 'AIzaSyD83PEMhJBR1tQ79Uqgf0N15wKa8fNtwZQ';
