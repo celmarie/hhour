@@ -4,12 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache">
-<!-- Native-app (Capacitor iOS/Android) marker. The wrappers use contentInset:"always",
-     so WKWebView ALREADY insets the web content below the status bar / above the home
-     indicator. We tag <html> as .cap-native so the CSS can drop the env(safe-area-*)
-     paddings that would otherwise be ADDED on top (double spacing). Runs at documentStart
-     — Capacitor injects window.Capacitor before page scripts — with load-time retries. -->
-<script>(function(){function n(){try{if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()){document.documentElement.classList.add('cap-native');return true;}}catch(e){}return false;}if(!n()){document.addEventListener&&document.addEventListener('DOMContentLoaded',n);window.addEventListener&&window.addEventListener('load',n);}})();</script>
 <!-- Warm up boot-critical origins in parallel so first paint isn't waiting on
      serial TLS handshakes (Supabase API, the CDN that serves supabase-js, fonts,
      Google sign-in). Cheap, and shaves connection latency on mobile. -->
@@ -2607,23 +2601,6 @@ body, button, input, textarea, select {
   }
   .fab:active{ transform:scale(.92); }
 }
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   NATIVE APP (Capacitor) — undo the DOUBLE safe-area inset.
-   The iOS/Android wrappers use contentInset:"always", so the native WebView
-   ALREADY pushes the web content below the status bar and above the home
-   indicator (the white strips the user saw). The web env(safe-area-inset-*)
-   paddings then stack ON TOP → headers sit way too low (huge empty red on the
-   map bar) and the bottom nav gets extra space. Under .cap-native we replace the
-   env-based paddings on the IN-FLOW app chrome (hero, screen headers, bottom nav)
-   with plain design padding — the native inset already clears the notch.
-   NOTE: position:fixed overlays (modals, login, offline bar) are NOT moved by
-   contentInset, so they keep their env() padding and are deliberately untouched.
-   ═══════════════════════════════════════════════════════════════════════════ */
-html.cap-native .rh-navbar{ padding-top:16px !important; }
-html.cap-native .screen:not(#screen-deals) > *:first-child{ padding-top:14px !important; }
-html.cap-native .bnav{ height:var(--nav) !important; padding-bottom:8px !important; }
-html.cap-native .screen{ padding-bottom:var(--nav) !important; }
 
 /* Full-bleed everywhere below the desktop dashboard breakpoint — no fake
    phone-frame bezel. Edge-to-edge app on phones, tablets and small windows. */
@@ -5627,7 +5604,7 @@ window.db = db; // Make available to save functions
 // crashing ("A problem repeatedly occurred"). On load we ask the server (no-store)
 // for the current build id; if this page is older, we reload ONCE to pull the
 // fresh build. Fails safe: any error (offline, rewrite, etc.) is a no-op.
-var BUILD_VERSION = '20260714031508';
+var BUILD_VERSION = '20260714034657';
 (function(){
   // POLITE auto-update: reload for a new build only if the user hasn't started
   // using the app yet. If they're already tapping/typing (the check can resolve
