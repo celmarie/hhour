@@ -3075,10 +3075,63 @@ function _loadGT(){
 <!-- Role Detection Splash - Hide until auth is complete -->
 <div id="role-splash" style="position:fixed;inset:0;z-index:999999;background:#F0F2F5;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;font-family:Inter,sans-serif;">
   <div style="text-align:center;">
-    <img src="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-logo.png?v=3" alt="Appie Hour" style="width:140px;height:auto;display:block;margin:0 auto 14px;">
+    <img src="https://hjzyqhfuvcswfcvkjsyv.supabase.co/storage/v1/object/public/photos/appie-logo.png?v=3" alt="Appie Hour" style="width:140px;height:auto;display:block;margin:0 auto 14px;" onerror="this.style.display='none'">
     <div style="font-size:15px;font-weight:700;color:#8A8A95;">Loading…</div>
   </div>
 </div>
+<script>
+(function(){
+  // ── Boot watchdog ──────────────────────────────────────────────────────────
+  // #role-splash covers the entire app (z-index 999999) and is hidden only once
+  // auth resolves. If boot never completes — no network, supabase-js CDN
+  // unreachable, an unexpected throw in the boot script — nothing hides it and
+  // the app sits on "Loading…" forever with no way out. That is never an
+  // acceptable resting state: after a grace period, replace the splash with an
+  // honest message and a Retry button.
+  var GRACE_MS = 9000;
+  var _done = false;
+  function _splashVisible(){
+    var s = document.getElementById('role-splash');
+    if(!s) return null;
+    // NB: role-splash is position:fixed, so offsetParent is always null — test
+    // computed display instead.
+    var d = '';
+    try { d = getComputedStyle(s).display; } catch(e){ d = s.style.display; }
+    return d === 'none' ? null : s;
+  }
+  function _showBootError(){
+    if(_done) return;
+    var s = _splashVisible();
+    if(!s) { _done = true; return; }   // app booted fine — stand down
+    _done = true;
+    var offline = false;
+    try { offline = (navigator.onLine === false); } catch(e){}
+    var title = offline ? 'You’re offline' : 'Couldn’t load Appie Hour';
+    var body  = offline
+      ? 'Connect to Wi-Fi or mobile data, then try again.'
+      : 'Something got in the way of loading. This is usually temporary.';
+    s.innerHTML =
+      '<div style="text-align:center;padding:0 32px;max-width:340px;">'
+      + '<div style="font-size:44px;line-height:1;margin-bottom:16px;">' + (offline ? '📡' : '🍹') + '</div>'
+      + '<div style="font-size:19px;font-weight:900;color:#1A1A1A;margin-bottom:8px;">' + title + '</div>'
+      + '<div style="font-size:14px;font-weight:600;color:#8A8A95;line-height:1.5;margin-bottom:22px;">' + body + '</div>'
+      + '<button type="button" id="boot-retry" style="background:#E8192C;color:#fff;border:none;border-radius:14px;padding:14px 32px;font-size:15px;font-weight:800;font-family:Inter,sans-serif;cursor:pointer;-webkit-appearance:none;">Try again</button>'
+      + '</div>';
+    var btn = document.getElementById('boot-retry');
+    if(btn) btn.addEventListener('click', function(){ try { location.reload(); } catch(e){} });
+  }
+  // Hard failure (CDN gone) is known the moment the boot script runs — no need to
+  // make the user stare at a spinner for the full grace period.
+  function _checkEarly(){ if(window._bootFailed) _showBootError(); }
+  document.addEventListener('DOMContentLoaded', _checkEarly);
+  window.addEventListener('load', _checkEarly);
+  setTimeout(_showBootError, GRACE_MS);
+  // Coming back online after a failed boot is the clearest possible retry signal.
+  window.addEventListener('online', function(){
+    if(_done && _splashVisible()){ try { location.reload(); } catch(e){} }
+  });
+})();
+</script>
 <div id="_gt_el" style="display:none;"></div>
 <!-- Web login dropdown (desktop): shown when a guest clicks Profile, instead of the
      full-screen login. Anchored top-right near the avatar. -->
@@ -5579,6 +5632,10 @@ function _loadGT(){
 
 <!-- supabase-js loaded here (moved out of <head>) so it never blocks first paint / the boot splash. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Fallback CDN: if jsDelivr is blocked/down, try unpkg before giving up. Without this,
+     `supabase` stays undefined and the createClient() below throws, killing the whole boot
+     script → the role splash never hides → permanent "Loading…". -->
+<script>window.supabase || document.write('<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>');</script>
 <script>
 // ══ SUPABASE ══════════════════════════════════════════════════════════════════
 const GMAPS_KEY = 'AIzaSyD83PEMhJBR1tQ79Uqgf0N15wKa8fNtwZQ';
@@ -5586,16 +5643,26 @@ const SUPA_URL = 'https://hjzyqhfuvcswfcvkjsyv.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqenlxaGZ1dmNzd2Zjdmtqc3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4OTk2MzIsImV4cCI6MjA5NTQ3NTYzMn0.lh16PE4S2LA2vxvA31tuxiSTV_1s8DBRDXhJYwBTdoU';
 // VAPID public key for Web Push (safe to expose; the private key lives only in Vercel env).
 const VAPID_PUBLIC = 'BAHC8ym5QUaY6-5Tv3q0Ckc5F1dZj52hj8tY85lzbEpy0BRPNg6RqiG0ajTwhwLs1PnoL5ztmpxnxfMttjKa66g';
-// Create Supabase client with localStorage session persistence
-const db = supabase.createClient(SUPA_URL, SUPA_KEY, {
-  auth: {
-    storage: window.localStorage,
-    storageKey: 'sb-auth-token',
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
-});
+// Create Supabase client with localStorage session persistence.
+// Guarded: if both CDNs failed (offline / airplane mode / blocked network) `supabase`
+// is undefined and this would throw, aborting the REST of this script block — which is
+// how the app used to freeze on "Loading…" forever. Now we flag the failure and let the
+// boot watchdog below show a real retry screen.
+var db = null;
+try {
+  db = supabase.createClient(SUPA_URL, SUPA_KEY, {
+    auth: {
+      storage: window.localStorage,
+      storageKey: 'sb-auth-token',
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  });
+} catch(e) {
+  console.error('[boot] supabase-js unavailable — offline or CDN blocked', e);
+  window._bootFailed = true;
+}
 window.db = db; // Make available to save functions
 
 // ── Auto-update guard ────────────────────────────────────────────────────────
@@ -5868,8 +5935,19 @@ try {
 // iOS sometimes restores a killed/backgrounded page from a half-dead snapshot
 // (blank hero, frozen embeds, stale layout). A restore from that snapshot gets
 // one clean reload so the app always comes back whole.
+// RATE-LIMITED: unguarded, this reloads on *every* restore — and if a restore
+// happens right after a reload (WKWebView re-restoring a snapshot), the app
+// visibly strobes and can never finish booting. Reload at most once per window.
 window.addEventListener('pageshow', function(e){
-  if(e && e.persisted){ try { location.reload(); } catch(err){} }
+  if(!(e && e.persisted)) return;
+  var MIN_GAP_MS = 10000, k = 'hh_pageshow_reload';
+  try {
+    var last = parseInt(sessionStorage.getItem(k) || '0', 10) || 0;
+    var now  = Date.now();
+    if(now - last < MIN_GAP_MS) return;   // we *just* did this — don't strobe
+    sessionStorage.setItem(k, String(now));
+  } catch(err){}   // storage blocked → fall through to a single reload
+  try { location.reload(); } catch(err){}
 });
 
 // Status-bar probe: when running full-screen (home-screen app) the status bar
