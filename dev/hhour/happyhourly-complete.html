@@ -35864,6 +35864,13 @@ window.AppieOnboarding = (function(){
   var slides  = [];
   var i = 0, started = false;
 
+  // ?onboarding=1 — force the flow in ANY browser so it can be reviewed without
+  // installing the app. Deliberately never persists: a preview must not mark the
+  // device onboarded, or the real first-run would be silently consumed.
+  function isPreview(){
+    try { return /[?&](onboarding|ob)=(1|preview)/i.test(location.search || ''); } catch(e){ return false; }
+  }
+
   // Web Push needs a service worker + PushManager + the Notification API. Inside the
   // Capacitor wrapper none of that is wired (no push plugin, no APNs registration),
   // so Notification is undefined and pushEnable() can only ever toast "not supported".
@@ -35948,6 +35955,7 @@ window.AppieOnboarding = (function(){
   }
 
   function persist(){
+    if(isPreview()) return;   // reviewing it must not consume the real first-run
     try { localStorage.setItem('hh_pref_cats', JSON.stringify(prefs.categories || [])); } catch(e){}
     if(typeof _obMarkDone === 'function') _obMarkDone();
   }
@@ -36052,8 +36060,22 @@ window.AppieOnboarding = (function(){
     // Called by applyAppCategories() when the real category list lands from
     // app_config — no-op until the flow is actually open.
     refreshChips: function(){ if(started) { try { buildChips(); } catch(e){} } },
+    isPreview: isPreview,
     prefs: prefs
   };
+
+  // Preview link (?onboarding=1) — start regardless of platform or onboarded state.
+  // Fires here rather than via _maybeShowOnboarding so it works even when signed in.
+  try {
+    if(isPreview()){
+      if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', function(){ try { API.start(); } catch(e){} }, { once:true });
+      } else {
+        API.start();
+      }
+    }
+  } catch(e){}
+
   return API;
 })();
 </script>
