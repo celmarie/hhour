@@ -5852,11 +5852,10 @@ async function initializeAuth(){
   // means they already accepted at sign-up; never interrupt them). One-time per device.
   // Consumer-only: staff portals (/merchant, /fireclay) have their own logins and must
   // never be covered by the customer welcome gate.
-  try { if(!currentUser && !_loginRequiredPath() && typeof _maybeShowTermsGate==='function') _maybeShowTermsGate(); } catch(e){}
-  // Onboarding follows the T&C gate. If the terms were already accepted on this
-  // device the gate above is a no-op, so this is what greets them; if the gate DID
-  // open, this returns early and _acceptTermsGate chains the flow instead.
-  try { if(!currentUser && !_loginRequiredPath() && typeof _maybeShowOnboarding==='function') _maybeShowOnboarding(); } catch(e){}
+  // Order: the welcome flow introduces the app FIRST, then the T&C gate asks for
+  // acceptance. _maybeShowFirstRun owns that sequencing (and the chaining) so the
+  // two overlays can never stack on each other.
+  try { if(!currentUser && !_loginRequiredPath() && typeof _maybeShowFirstRun==='function') _maybeShowFirstRun(); } catch(e){}
 }
 
 // iOS keeps offering "Fill Password" for the hidden login/merchant forms even after
@@ -15880,9 +15879,6 @@ function _acceptTermsGate(){
     var wt=document.getElementById('wl-terms');   if(wt) wt.checked=true;
     if(typeof _syncTermsGate==='function') _syncTermsGate();
   } catch(e){}
-  // Terms accepted → the welcome flow is what comes next. Chained from here (rather
-  // than fired alongside the gate) so the legal gate is never covered by it.
-  try { if(typeof _maybeShowOnboarding==='function') _maybeShowOnboarding(); } catch(e){}
 }
 function _maybeShowTermsGate(){
   try {
@@ -15938,28 +15934,45 @@ function _obPrefCats(){
     return a.map(function(c){ return (typeof _canonCat==='function') ? _canonCat(c) : c; });
   } catch(e){ return []; }
 }
-function _maybeShowOnboarding(){
+function _obInstalled(){
   try {
     // Installed app only (home-screen PWA or the App Store / Play Store wrapper).
-    var _installed = (window.navigator && window.navigator.standalone === true)
-                  || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-                  || !!window.Capacitor;
-    if(!_installed) return;
-    if(_obDone()) return;
-    // The T&C gate is a LEGAL gate and outranks this — if it's up, _acceptTermsGate
-    // chains here once it's dismissed. Never cover it.
-    if(document.getElementById('hh-terms-gate')) return;
-    // The block near </body> may not be parsed yet (initializeAuth runs long before
-    // it). Wait for it rather than silently doing nothing.
-    if(!window.AppieOnboarding){
-      if(document.readyState === 'loading'){
-        document.addEventListener('DOMContentLoaded', function(){ try { _maybeShowOnboarding(); } catch(e){} }, { once:true });
-      }
+    return (window.navigator && window.navigator.standalone === true)
+        || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+        || !!window.Capacitor;
+  } catch(e){ return false; }
+}
+function _obShouldShow(){
+  try {
+    if(!_obInstalled()) return false;
+    if(_obDone()) return false;
+    if(!window.AppieOnboarding) return false;
+    return true;
+  } catch(e){ return false; }
+}
+// Boot sequencing for the two first-run overlays. ORDER: onboarding first (it sells
+// the app), then the T&C gate (it asks for legal acceptance). They must never be on
+// screen together, so the gate is chained from the onboarding's close — see
+// _obChainTermsGate in the onboarding block — rather than fired alongside it.
+function _maybeShowFirstRun(){
+  try {
+    // initializeAuth runs while the page is still parsing, long before the
+    // onboarding block near </body> exists. Decide once the DOM is there, or the
+    // "is onboarding available?" check below would always be false and every
+    // install would skip straight to the T&C gate.
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', function(){ try { _maybeShowFirstRun(); } catch(e){} }, { once:true });
       return;
     }
-    window.AppieOnboarding.start();
+    if(_obShouldShow()){
+      window.AppieOnboarding.start();   // T&C gate follows, chained from its close
+      return;
+    }
+    if(typeof _maybeShowTermsGate === 'function') _maybeShowTermsGate();
   } catch(e){}
 }
+// Kept as a named entry point: the onboarding block calls this on close.
+function _maybeShowOnboarding(){ if(_obShouldShow()) window.AppieOnboarding.start(); }
 
 async function doSignUp(){
   if(!_loginTermsCheck('login-terms', document.getElementById('login-error'))){ return; }
@@ -35964,6 +35977,14 @@ window.AppieOnboarding = (function(){
     root.setAttribute('aria-hidden', 'true');
     try { document.documentElement.style.overflow = ''; } catch(e){}
   }
+  // The welcome flow runs BEFORE the T&C gate, so dismissing it — whether by
+  // finishing or skipping — is what hands over to the legal gate. Chained here so
+  // the two are never on screen at once. Preview (?onboarding=1) must not summon a
+  // real legal gate over someone just looking at the flow.
+  function _obChainTermsGate(){
+    if(isPreview()) return;
+    try { if(typeof _maybeShowTermsGate === 'function') _maybeShowTermsGate(); } catch(e){}
+  }
   // Re-render the deck so the category boost applies immediately, and re-translate —
   // this UI was hidden while the page first translated, so it's still in English.
   function applyAndClose(){
@@ -35972,6 +35993,7 @@ window.AppieOnboarding = (function(){
     try { if(typeof renderCoupons === 'function') renderCoupons('all'); } catch(e){}
     try { if(typeof renderUC === 'function') renderUC('all'); } catch(e){}
     try { if(typeof _reapplyLanguage === 'function') _reapplyLanguage(); } catch(e){}
+    _obChainTermsGate();
   }
 
   root.addEventListener('click', function(e){
@@ -36007,8 +36029,9 @@ window.AppieOnboarding = (function(){
       return;
     }
     if(t.dataset.finish !== undefined){ applyAndClose(); return; }
-    // Skip still marks the flow done — otherwise it reappears on every launch.
-    if(t.dataset.skip !== undefined){ persist(); close(); return; }
+    // Skip still marks the flow done — otherwise it reappears on every launch —
+    // and still hands over to the T&C gate: skipping the tour is not consent.
+    if(t.dataset.skip !== undefined){ persist(); close(); _obChainTermsGate(); return; }
     if(t.dataset.next !== undefined){ go(i + 1); return; }
     if(t.dataset.back !== undefined){ go(i - 1); return; }
   });
