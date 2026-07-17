@@ -5853,6 +5853,10 @@ async function initializeAuth(){
   // Consumer-only: staff portals (/merchant, /fireclay) have their own logins and must
   // never be covered by the customer welcome gate.
   try { if(!currentUser && !_loginRequiredPath() && typeof _maybeShowTermsGate==='function') _maybeShowTermsGate(); } catch(e){}
+  // Onboarding follows the T&C gate. If the terms were already accepted on this
+  // device the gate above is a no-op, so this is what greets them; if the gate DID
+  // open, this returns early and _acceptTermsGate chains the flow instead.
+  try { if(!currentUser && !_loginRequiredPath() && typeof _maybeShowOnboarding==='function') _maybeShowOnboarding(); } catch(e){}
 }
 
 // iOS keeps offering "Fill Password" for the hidden login/merchant forms even after
@@ -8456,6 +8460,11 @@ function _venueTypeOptionsHtml(selected){
 }
 
 function applyAppCategories(){
+  // Onboarding taste chips. The welcome flow opens during boot, BEFORE loadAppConfig
+  // has fetched the real category list — so without this it would show only the
+  // hard-coded 'gastronomy' default. Rebuild it here, where every other consumer of
+  // appCategories is already refreshed.
+  try { if(window.AppieOnboarding && window.AppieOnboarding.refreshChips) window.AppieOnboarding.refreshChips(); } catch(e){}
   // Consumer filter chips
   var chips = document.getElementById('cat-chips');
   if(chips){
@@ -10043,8 +10052,20 @@ function _imgThumb(url, w){
 function renderCoupons(cat){
   if(!Array.isArray(vouchers)) vouchers = [];
   var src = cat==='all' ? vouchers : vouchers.filter(function(v){return v.cat===cat;});
-  // Always sort by nearest first within the deck
-  var list = fApplyToDeals(src).sort(function(a,b){ return (a.distKm||0)-(b.distKm||0); });
+  // Nearest first within the deck — but deals in the categories picked during
+  // onboarding float to the top of that order. A re-ORDER, never a filter: the
+  // onboarding promises "you'll still see everything", so everything still renders.
+  var _pref = (typeof _obPrefCats==='function') ? _obPrefCats() : [];
+  var list = fApplyToDeals(src).sort(function(a,b){
+    if(_pref.length){
+      var _ca = (typeof _canonCat==='function') ? _canonCat(a.cat) : a.cat;
+      var _cb = (typeof _canonCat==='function') ? _canonCat(b.cat) : b.cat;
+      var _pa = _pref.indexOf(_ca) !== -1 ? 0 : 1;
+      var _pb = _pref.indexOf(_cb) !== -1 ? 0 : 1;
+      if(_pa !== _pb) return _pa - _pb;
+    }
+    return (a.distKm||0)-(b.distKm||0);
+  });
   var el = document.getElementById('coupon-scroll');
   if(!el) return;
   if(!list.length){
@@ -15859,6 +15880,9 @@ function _acceptTermsGate(){
     var wt=document.getElementById('wl-terms');   if(wt) wt.checked=true;
     if(typeof _syncTermsGate==='function') _syncTermsGate();
   } catch(e){}
+  // Terms accepted → the welcome flow is what comes next. Chained from here (rather
+  // than fired alongside the gate) so the legal gate is never covered by it.
+  try { if(typeof _maybeShowOnboarding==='function') _maybeShowOnboarding(); } catch(e){}
 }
 function _maybeShowTermsGate(){
   try {
@@ -15893,6 +15917,49 @@ function _maybeShowTermsGate(){
 }
 // NOTE: the gate is triggered from initializeAuth (only when there's NO logged-in
 // session) — never at page-load, so it can't appear over an already-signed-in user.
+
+// ── First-run onboarding ─────────────────────────────────────────────────────
+// The welcome flow (markup + styles + AppieOnboarding API live near </body>).
+// Shown once per device, INSTALLED APP ONLY — same audience as the T&C gate, and
+// it runs immediately AFTER it, never on top of it. These helpers live here (not
+// in the onboarding block) so they're hoisted into the main script and callable
+// from initializeAuth and renderCoupons, which both run before </body> is parsed.
+var HH_ONBOARD_VERSION = '1';
+function _obDone(){ try { return localStorage.getItem('hh_onboarded') === HH_ONBOARD_VERSION; } catch(e){ return true; } }
+function _obMarkDone(){ try { localStorage.setItem('hh_onboarded', HH_ONBOARD_VERSION); } catch(e){} }
+// The categories the user said they're into, canonicalised. Feeds the gentle
+// ordering boost in renderCoupons — never a filter, so nothing is ever hidden.
+function _obPrefCats(){
+  try {
+    var raw = localStorage.getItem('hh_pref_cats');
+    if(!raw) return [];
+    var a = JSON.parse(raw);
+    if(!Array.isArray(a)) return [];
+    return a.map(function(c){ return (typeof _canonCat==='function') ? _canonCat(c) : c; });
+  } catch(e){ return []; }
+}
+function _maybeShowOnboarding(){
+  try {
+    // Installed app only (home-screen PWA or the App Store / Play Store wrapper).
+    var _installed = (window.navigator && window.navigator.standalone === true)
+                  || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                  || !!window.Capacitor;
+    if(!_installed) return;
+    if(_obDone()) return;
+    // The T&C gate is a LEGAL gate and outranks this — if it's up, _acceptTermsGate
+    // chains here once it's dismissed. Never cover it.
+    if(document.getElementById('hh-terms-gate')) return;
+    // The block near </body> may not be parsed yet (initializeAuth runs long before
+    // it). Wait for it rather than silently doing nothing.
+    if(!window.AppieOnboarding){
+      if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', function(){ try { _maybeShowOnboarding(); } catch(e){} }, { once:true });
+      }
+      return;
+    }
+    window.AppieOnboarding.start();
+  } catch(e){}
+}
 
 async function doSignUp(){
   if(!_loginTermsCheck('login-terms', document.getElementById('login-error'))){ return; }
@@ -35549,6 +35616,447 @@ function _setupDealMap() {
   font-family:'Inter',sans-serif;
   -webkit-overflow-scrolling:touch;
 "></div>
+
+<!-- ══ FIRST-RUN ONBOARDING ═════════════════════════════════════════════════════
+     Shown ONCE per device, INSTALLED APP ONLY (home-screen PWA or the App Store /
+     Play Store wrapper) — the same audience as the T&C gate, and always AFTER it.
+     Trigger + storage helpers live up in the main script (_maybeShowOnboarding,
+     _obPrefCats, _obMarkDone) so they hoist; this block is just the UI + API.
+
+     Wiring notes:
+       • Location uses _mapLocateOnce — the native-safe wrapper. Raw
+         navigator.geolocation can be silently blocked inside the app's webview.
+       • Alerts use pushEnable() so the subscription actually reaches the backend.
+         The slide REMOVES ITSELF where push can't work (see _obPushSupported) —
+         the Capacitor wrapper has no push plugin, so Notification is undefined
+         there and the button would only ever toast "not supported".
+       • Category chips render from appCategories (admin-managed, from app_config)
+         rather than a hard-coded list, so they follow Content automatically.
+-->
+<div id="appie-onboarding" aria-hidden="true">
+  <div class="ob-shell" role="dialog" aria-modal="true" aria-label="Welcome to Appie Hour">
+
+    <!-- top bar: pour-meter progress + skip -->
+    <header class="ob-top">
+      <div class="ob-meter" aria-hidden="true">
+        <svg viewBox="0 0 40 56" class="ob-glass">
+          <defs>
+            <clipPath id="ob-bowl">
+              <path d="M4 8 L20 30 L36 8 Z"/>
+            </clipPath>
+          </defs>
+          <rect class="ob-pour" x="4" y="8" width="32" height="22" clip-path="url(#ob-bowl)"/>
+          <path class="ob-outline" d="M4 8 L20 30 L36 8 Z"/>
+          <path class="ob-outline" d="M20 30 L20 48 M12 50 L28 50"/>
+          <circle class="ob-olive" cx="27" cy="14" r="2.5"/>
+        </svg>
+        <span class="ob-step-text">Step <b id="ob-n">1</b> of <span id="ob-total">5</span></span>
+      </div>
+      <button class="ob-skip" type="button" data-skip>Skip</button>
+    </header>
+
+    <!-- slides -->
+    <div class="ob-track" id="ob-track">
+
+      <!-- 1 · welcome -->
+      <section class="ob-slide ob-hero">
+        <div class="ob-hero-glow"></div>
+        <div class="ob-clock" aria-hidden="true">
+          <span class="ob-clock-hand"></span>
+          <span class="ob-clock-face">5<small>PM</small></span>
+        </div>
+        <h1>It's happy hour<br><em>somewhere near you.</em></h1>
+        <p>2-for-1 cocktails, kitchen specials and match nights — from verified venues and the people who drink at them.</p>
+      </section>
+
+      <!-- 2 · location -->
+      <section class="ob-slide" data-slide="location">
+        <div class="ob-tile ob-tile-red">📍</div>
+        <h2>Deals lose their point<br>if they're across town.</h2>
+        <p>Turn on location and the feed sorts itself by walking distance — nearest first, ending soonest at the top.</p>
+        <div class="ob-card ob-card-live">
+          <span class="ob-dot"></span>
+          <div>
+            <b>The Golden Tap</b>
+            <small>2-for-1 cocktails · ends 21:00</small>
+          </div>
+          <span class="ob-badge">0.3 km</span>
+        </div>
+        <button class="ob-primary" type="button" data-action="location">Use my location</button>
+        <button class="ob-ghost" type="button" data-next>I'll search manually</button>
+        <p class="ob-fine">Only used to show deals near you. Never shared.</p>
+      </section>
+
+      <!-- 3 · taste — chips injected from appCategories at start() -->
+      <section class="ob-slide" data-slide="taste">
+        <div class="ob-tile ob-tile-gold">✨</div>
+        <h2>What are you<br>in the mood for?</h2>
+        <p>Pick what you're into. We'll push these up the feed — you'll still see everything.</p>
+        <div class="ob-chips" id="ob-chips" role="group" aria-label="Favourite categories"></div>
+        <button class="ob-primary" type="button" data-next data-count>Continue</button>
+      </section>
+
+      <!-- 4 · notifications (removed at start() where push can't work) -->
+      <section class="ob-slide" data-slide="push">
+        <div class="ob-tile ob-tile-red">🔔</div>
+        <h2>Happy hour is<br>a deadline.</h2>
+        <p>One nudge when a good deal opens near you, one before a saved deal expires. Nothing else.</p>
+        <div class="ob-card ob-card-push">
+          <span class="ob-push-icon">🔥</span>
+          <div>
+            <b>2-for-1 Aperol Spritz</b>
+            <small>Casa Nova · 400 m · starts in 20 min</small>
+          </div>
+        </div>
+        <button class="ob-primary" type="button" data-action="push">Turn on alerts</button>
+        <button class="ob-ghost" type="button" data-next>Not now</button>
+        <p class="ob-fine">Change this any time in Settings.</p>
+      </section>
+
+      <!-- 5 · done -->
+      <section class="ob-slide ob-done">
+        <div class="ob-tile ob-tile-gold ob-pop">🎟️</div>
+        <h2>Here's how it works</h2>
+        <ol class="ob-steps">
+          <li><span>1</span><div><b>Buy the voucher</b><small>Locked in before you leave the house</small></div></li>
+          <li><span>2</span><div><b>Show the QR at the bar</b><small>Staff scan it — no screenshots</small></div></li>
+          <li><span>3</span><div><b>Earn credits</b><small>Every voucher, review and tip you post</small></div></li>
+        </ol>
+        <button class="ob-primary" type="button" data-finish>Find tonight's deals</button>
+      </section>
+    </div>
+
+    <!-- bottom nav -->
+    <footer class="ob-bottom">
+      <button class="ob-back" type="button" data-back aria-label="Back">‹</button>
+      <div class="ob-dots" id="ob-dots"></div>
+      <button class="ob-next" type="button" data-next aria-label="Next">›</button>
+    </footer>
+  </div>
+</div>
+
+<style>
+#appie-onboarding{
+  --red:#E8192C; --red-deep:#A80E1D; --ink:#160A0C; --muted:#7C6B6E;
+  --gold:#F5B814; --cream:#FFF7F2; --line:#F0DFE0;
+  /* Above the T&C gate (2000000) — the two never coexist, but if they ever did,
+     the legal gate must not end up buried under this. */
+  position:fixed; inset:0; z-index:2000001; display:none;
+  background:var(--cream); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+}
+#appie-onboarding.is-open{display:block}
+#appie-onboarding *{box-sizing:border-box}
+.ob-shell{height:100%; display:flex; flex-direction:column; max-width:480px; margin:0 auto; padding-top:env(safe-area-inset-top)}
+
+/* top */
+.ob-top{display:flex; align-items:center; justify-content:space-between; padding:14px 18px 4px}
+.ob-meter{display:flex; align-items:center; gap:8px}
+.ob-glass{width:26px; height:36px}
+.ob-outline{fill:none; stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round}
+.ob-olive{fill:var(--gold)}
+.ob-pour{fill:var(--red); transform-box:fill-box; transform-origin:bottom; transform:scaleY(.2); transition:transform .5s cubic-bezier(.4,1.4,.5,1)}
+.ob-step-text{font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--muted)}
+.ob-step-text b{color:var(--red)}
+.ob-skip{background:none; border:0; font:inherit; font-size:14px; font-weight:700; color:var(--muted); padding:8px; cursor:pointer}
+
+/* slides */
+.ob-track{flex:1; display:flex; overflow:hidden}
+.ob-slide{
+  min-width:100%; padding:8px 24px 20px; overflow-y:auto;
+  display:flex; flex-direction:column; align-items:flex-start; gap:14px;
+  transform:translateX(0); transition:transform .35s cubic-bezier(.32,.8,.36,1)
+}
+.ob-slide h1,.ob-slide h2{margin:0; font-weight:900; letter-spacing:-.03em; line-height:1.03}
+.ob-slide h1{font-size:clamp(34px,9vw,44px)}
+.ob-slide h2{font-size:clamp(27px,7vw,34px)}
+.ob-slide h1 em{font-style:normal; color:var(--red)}
+.ob-slide p{margin:0; font-size:15.5px; line-height:1.5; color:var(--muted); max-width:34ch}
+.ob-fine{font-size:12px !important; color:#A6969A !important}
+
+/* hero */
+.ob-hero{justify-content:center; position:relative; isolation:isolate}
+.ob-hero-glow{position:absolute; inset:-30% -40% auto -40%; height:70%; z-index:-1;
+  background:radial-gradient(60% 60% at 50% 40%, rgba(232,25,44,.22), transparent 70%)}
+.ob-clock{
+  width:104px; height:104px; border-radius:50%; display:grid; place-items:center; position:relative;
+  background:linear-gradient(150deg,var(--red),var(--red-deep));
+  box-shadow:0 16px 34px -12px rgba(232,25,44,.7);
+  animation:ob-in .5s cubic-bezier(.2,1.5,.4,1) both;
+}
+.ob-clock-face{color:#fff; font-size:32px; font-weight:900; letter-spacing:-.04em}
+.ob-clock-face small{font-size:13px; font-weight:800; opacity:.75; margin-left:1px}
+.ob-clock-hand{position:absolute; inset:0; border-radius:50%; border:3px solid transparent;
+  border-top-color:var(--gold); animation:ob-spin 5.5s linear infinite}
+
+/* tiles */
+.ob-tile{width:60px; height:60px; border-radius:19px; display:grid; place-items:center; font-size:29px; margin-top:6px}
+.ob-tile-red{background:#FFE3E6}
+.ob-tile-gold{background:#FFF0C9}
+.ob-pop{animation:ob-in .45s cubic-bezier(.2,1.5,.4,1) both}
+
+/* cards */
+.ob-card{display:flex; align-items:center; gap:12px; width:100%; padding:13px 14px; border-radius:16px;
+  background:#fff; border:1px solid var(--line); box-shadow:0 8px 20px -14px rgba(22,10,12,.5)}
+.ob-card b{display:block; font-size:14.5px; font-weight:800}
+.ob-card small{font-size:12.5px; color:var(--muted)}
+.ob-dot{width:9px; height:9px; border-radius:50%; background:#22C55E; flex:none;
+  box-shadow:0 0 0 0 rgba(34,197,94,.6); animation:ob-ping 1.8s ease-out infinite}
+.ob-badge{margin-left:auto; flex:none; font-size:11.5px; font-weight:800; color:#fff; background:var(--red);
+  padding:5px 9px; border-radius:999px}
+.ob-card-push{border-left:4px solid var(--gold)}
+.ob-push-icon{font-size:22px}
+
+/* chips */
+.ob-chips{display:flex; flex-wrap:wrap; gap:8px; width:100%}
+.ob-chips button{font:inherit; font-size:14px; font-weight:700; padding:10px 14px; border-radius:999px; cursor:pointer;
+  background:#fff; color:var(--ink); border:1.5px solid var(--line); transition:transform .12s, background .12s, color .12s}
+.ob-chips button:active{transform:scale(.94)}
+.ob-chips button[aria-pressed="true"]{background:var(--red); border-color:var(--red); color:#fff}
+
+/* steps list */
+.ob-steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:12px; width:100%}
+.ob-steps li{display:flex; gap:12px; align-items:center}
+.ob-steps span{width:26px; height:26px; flex:none; border-radius:50%; background:var(--ink); color:#fff;
+  font-size:13px; font-weight:800; display:grid; place-items:center}
+.ob-steps b{display:block; font-size:14.5px; font-weight:800}
+.ob-steps small{font-size:12.5px; color:var(--muted)}
+
+/* buttons */
+.ob-primary{width:100%; margin-top:auto; font:inherit; font-size:16px; font-weight:800; color:#fff; cursor:pointer;
+  padding:15px; border:0; border-radius:15px; background:linear-gradient(140deg,var(--red),var(--red-deep));
+  box-shadow:0 12px 26px -12px rgba(232,25,44,.85); transition:transform .12s}
+.ob-primary:active{transform:scale(.985)}
+.ob-primary[disabled]{opacity:.6}
+.ob-ghost{width:100%; font:inherit; font-size:14.5px; font-weight:700; color:var(--muted); background:none;
+  border:0; padding:6px; cursor:pointer}
+.ob-slide .ob-primary + .ob-ghost{margin-top:-6px}
+
+/* bottom */
+.ob-bottom{display:flex; align-items:center; justify-content:space-between; padding:6px 18px calc(16px + env(safe-area-inset-bottom))}
+.ob-dots{display:flex; gap:6px}
+.ob-dots i{width:6px; height:6px; border-radius:999px; background:var(--line); transition:width .3s, background .3s}
+.ob-dots i.on{width:20px; background:var(--red)}
+.ob-back,.ob-next{width:40px; height:40px; border-radius:50%; border:1.5px solid var(--line); background:#fff;
+  font-size:20px; line-height:1; color:var(--ink); cursor:pointer}
+.ob-back[disabled]{opacity:.3; cursor:default}
+
+#appie-onboarding :focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+
+@keyframes ob-spin{to{transform:rotate(360deg)}}
+@keyframes ob-in{from{opacity:0; transform:scale(.6)}to{opacity:1; transform:scale(1)}}
+@keyframes ob-ping{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+@media (prefers-reduced-motion:reduce){#appie-onboarding *{animation:none !important; transition:none !important}}
+</style>
+
+<script>
+window.AppieOnboarding = (function(){
+  var root = document.getElementById('appie-onboarding');
+  if(!root) return { start:function(){}, close:function(){} };
+
+  var track   = document.getElementById('ob-track');
+  var dots    = document.getElementById('ob-dots');
+  var nEl     = document.getElementById('ob-n');
+  var totalEl = document.getElementById('ob-total');
+  var pour    = root.querySelector('.ob-pour');
+  var backBtn = root.querySelector('[data-back]');
+  var prefs   = { location:false, categories:[], notifications:false };
+  var slides  = [];
+  var i = 0, started = false;
+
+  // Web Push needs a service worker + PushManager + the Notification API. Inside the
+  // Capacitor wrapper none of that is wired (no push plugin, no APNs registration),
+  // so Notification is undefined and pushEnable() can only ever toast "not supported".
+  // Don't ask for something we can't deliver — drop the slide instead.
+  function _obPushSupported(){
+    try {
+      if(window.Capacitor) return false;
+      if(typeof Notification === 'undefined') return false;
+      if(!('serviceWorker' in navigator)) return false;
+      if(!('PushManager' in window)) return false;
+      return true;
+    } catch(e){ return false; }
+  }
+
+  // Chips follow the admin-managed category list (app_config → appCategories), the
+  // same source the deals feed filters on — so a category added in Content shows up
+  // here with no code change. If it hasn't loaded, skip the slide rather than guess.
+  // NB: appCategories arrives ASYNC via loadAppConfig, usually after this flow has
+  // already opened — applyAppCategories() calls refreshChips() when it lands, which
+  // is why selections are restored from prefs rather than read off the old DOM.
+  function buildChips(){
+    var wrap = document.getElementById('ob-chips');
+    if(!wrap) return false;
+    var cats = [];
+    try { cats = (typeof appCategories !== 'undefined' && appCategories) ? appCategories.slice() : []; } catch(e){}
+    if(!cats.length) return false;
+    var chosen = prefs.categories || [];
+    wrap.innerHTML = cats.map(function(c){
+      var id    = String(c.id);
+      var label = ((c.emoji ? c.emoji + ' ' : '') + (c.label || id));
+      var on    = chosen.indexOf(id) !== -1;
+      return '<button type="button" data-cat="' + id.replace(/"/g,'&quot;') + '"'
+           + (on ? ' aria-pressed="true"' : '') + '>' + label + '</button>';
+    }).join('');
+    // Drop any selection whose category no longer exists in the refreshed list.
+    prefs.categories = chosen.filter(function(id){
+      return cats.some(function(c){ return String(c.id) === id; });
+    });
+    var cta = root.querySelector('[data-count]');
+    if(cta) cta.textContent = prefs.categories.length ? ('Continue with ' + prefs.categories.length) : 'Continue';
+    return true;
+  }
+
+  function render(){
+    slides.forEach(function(s){ s.style.transform = 'translateX(-' + (i * 100) + '%)'; });
+    [].slice.call(dots.children).forEach(function(d, n){ d.classList.toggle('on', n === i); });
+    if(nEl) nEl.textContent = i + 1;
+    if(pour && slides.length > 1) pour.style.transform = 'scaleY(' + (0.2 + 0.8 * (i / (slides.length - 1))) + ')';
+    if(backBtn) backBtn.disabled = (i === 0);
+    if(slides[i]) slides[i].scrollTop = 0;
+  }
+  function go(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    render();
+  }
+
+  // Real fix via the native-safe wrapper — raw navigator.geolocation can be silently
+  // blocked in the app's webview, which is exactly what _mapLocateOnce exists for.
+  function requestLocation(){
+    return new Promise(function(res){
+      if(typeof _mapLocateOnce !== 'function') return res(false);
+      var settled = false;
+      var done = function(v){ if(!settled){ settled = true; res(v); } };
+      try {
+        _mapLocateOnce(function(){ done(true); }, function(){ done(false); });
+      } catch(e){ return done(false); }
+      setTimeout(function(){ done(false); }, 16000);   // never hang the flow on a stalled prompt
+    });
+  }
+  // pushEnable() does the whole job: permission, subscribe, and persisting the
+  // subscription server-side. Calling Notification.requestPermission() alone would
+  // prompt and save nothing.
+  function requestPush(){
+    return new Promise(function(res){
+      if(typeof pushEnable !== 'function') return res(false);
+      try {
+        Promise.resolve(pushEnable())
+          .then(function(){ res(typeof Notification !== 'undefined' && Notification.permission === 'granted'); })
+          .catch(function(){ res(false); });
+      } catch(e){ res(false); }
+    });
+  }
+
+  function persist(){
+    try { localStorage.setItem('hh_pref_cats', JSON.stringify(prefs.categories || [])); } catch(e){}
+    if(typeof _obMarkDone === 'function') _obMarkDone();
+  }
+  function close(){
+    root.classList.remove('is-open');
+    root.setAttribute('aria-hidden', 'true');
+    try { document.documentElement.style.overflow = ''; } catch(e){}
+  }
+  // Re-render the deck so the category boost applies immediately, and re-translate —
+  // this UI was hidden while the page first translated, so it's still in English.
+  function applyAndClose(){
+    persist();
+    close();
+    try { if(typeof renderCoupons === 'function') renderCoupons('all'); } catch(e){}
+    try { if(typeof renderUC === 'function') renderUC('all'); } catch(e){}
+    try { if(typeof _reapplyLanguage === 'function') _reapplyLanguage(); } catch(e){}
+  }
+
+  root.addEventListener('click', function(e){
+    var t = e.target.closest ? e.target.closest('button') : null;
+    if(!t) return;
+
+    if(t.dataset.action === 'location'){
+      if(t.disabled) return;
+      t.disabled = true; t.textContent = 'Locating…';
+      requestLocation().then(function(ok){
+        prefs.location = ok;
+        t.disabled = false; t.textContent = 'Use my location';
+        go(i + 1);
+      });
+      return;
+    }
+    if(t.dataset.action === 'push'){
+      if(t.disabled) return;
+      t.disabled = true;
+      requestPush().then(function(ok){
+        prefs.notifications = ok;
+        t.disabled = false;
+        go(i + 1);
+      });
+      return;
+    }
+    if(t.dataset.cat){
+      var on = t.getAttribute('aria-pressed') !== 'true';
+      t.setAttribute('aria-pressed', on);
+      prefs.categories = [].slice.call(root.querySelectorAll('[data-cat][aria-pressed="true"]')).map(function(b){ return b.dataset.cat; });
+      var cta = root.querySelector('[data-count]');
+      if(cta) cta.textContent = prefs.categories.length ? ('Continue with ' + prefs.categories.length) : 'Continue';
+      return;
+    }
+    if(t.dataset.finish !== undefined){ applyAndClose(); return; }
+    // Skip still marks the flow done — otherwise it reappears on every launch.
+    if(t.dataset.skip !== undefined){ persist(); close(); return; }
+    if(t.dataset.next !== undefined){ go(i + 1); return; }
+    if(t.dataset.back !== undefined){ go(i - 1); return; }
+  });
+
+  // swipe
+  var x0 = null;
+  if(track){
+    track.addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; }, { passive:true });
+    track.addEventListener('touchend', function(e){
+      if(x0 === null) return;
+      var dx = e.changedTouches[0].clientX - x0;
+      if(Math.abs(dx) > 50) go(i + (dx < 0 ? 1 : -1));
+      x0 = null;
+    }, { passive:true });
+  }
+  document.addEventListener('keydown', function(e){
+    if(!root.classList.contains('is-open')) return;
+    if(e.key === 'ArrowRight') go(i + 1);
+    if(e.key === 'ArrowLeft')  go(i - 1);
+  });
+
+  var API = {
+    start: function(){
+      if(started) return;
+      started = true;
+      // Slides are resolved HERE, not at parse time — the push slide may be dropped
+      // and the dots/step count must match what's actually shown.
+      if(!_obPushSupported()){
+        var ps = root.querySelector('[data-slide="push"]');
+        if(ps && ps.parentNode) ps.parentNode.removeChild(ps);
+      }
+      if(!buildChips()){
+        var ts = root.querySelector('[data-slide="taste"]');
+        if(ts && ts.parentNode) ts.parentNode.removeChild(ts);
+      }
+      slides = [].slice.call(root.querySelectorAll('.ob-slide'));
+      if(!slides.length) return;
+      if(dots){
+        dots.innerHTML = '';
+        slides.forEach(function(){ dots.insertAdjacentHTML('beforeend', '<i></i>'); });
+      }
+      if(totalEl) totalEl.textContent = slides.length;
+      i = 0; render();
+      root.classList.add('is-open');
+      root.setAttribute('aria-hidden', 'false');
+      try { if(typeof _reapplyLanguage === 'function') _reapplyLanguage(); } catch(e){}
+    },
+    close: close,
+    // Called by applyAppCategories() when the real category list lands from
+    // app_config — no-op until the flow is actually open.
+    refreshChips: function(){ if(started) { try { buildChips(); } catch(e){} } },
+    prefs: prefs
+  };
+  return API;
+})();
+</script>
 
 </body>
 </html>
