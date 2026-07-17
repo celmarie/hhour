@@ -3,7 +3,12 @@
    cache the app already maintains (last-loaded deals), so users can browse what
    they last saw while offline. Private/dynamic data (Supabase REST/auth, our API)
    is NEVER cached — only the shell, libraries, fonts and public deal photos. */
-var CACHE = 'hh-offline-v5';   // v5: navigations always rebuilt from the shell file (kills "A problem repeatedly occurred")
+// v6: purges every pre-2026-07-16 cached shell. Those hold the boot bug where a
+// failed supabase-js load froze the app on "Loading…" forever — and because the
+// cached shell is what answers an OFFLINE launch, devices carrying it would keep
+// replaying that freeze even after the fix shipped. Bumping the name forces the
+// old cache to be deleted on activate.
+var CACHE = 'hh-offline-v6';
 var SHELL = ['/', '/happyhourly-complete.html', '/version.json'];
 
 // Merchant + admin portals must NEVER be answered from this cache — always network.
@@ -90,7 +95,11 @@ self.addEventListener('fetch', function(e){
   }
 
   // Libraries + fonts + public deal photos → cache-first w/ background refresh
+  // NB: unpkg is the supabase-js fallback CDN. It must be cached on the same terms
+  // as jsdelivr — otherwise a boot that fell back to unpkg would leave the library
+  // uncached and the NEXT offline launch would have nothing to load it from.
   if(url.hostname.indexOf('jsdelivr.net') !== -1 ||
+     url.hostname.indexOf('unpkg.com') !== -1 ||
      url.hostname.indexOf('fonts.googleapis.com') !== -1 ||
      url.hostname.indexOf('fonts.gstatic.com') !== -1 ||
      (url.hostname.indexOf('supabase.co') !== -1 && url.pathname.indexOf('/storage/') !== -1)){
