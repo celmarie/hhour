@@ -1,0 +1,2 @@
+# Backfill backups contain the original base64 image data — keep them local, not in git.
+backfill-backup-*.jsonl
